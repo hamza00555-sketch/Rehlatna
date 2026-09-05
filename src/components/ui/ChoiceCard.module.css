@@ -26,6 +26,10 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.threeCols {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .card {
   position: relative;
   display: flex;
@@ -72,9 +76,14 @@
   font-weight: var(--weight-semibold);
 }
 
-:root[data-theme="dark"] .selected,
-:root:not([data-theme="light"]) .selected:where(.darkAware) {
+:root[data-theme="dark"] .selected {
   color: var(--t-ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .selected {
+    color: var(--t-ink);
+  }
 }
 
 .medical {

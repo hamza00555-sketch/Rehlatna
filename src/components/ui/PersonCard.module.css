@@ -80,3 +80,10 @@
   display: inline-flex;
   color: var(--t-muted);
 }
+
+/* The baby card keeps its rose surface in both themes, so its text stays light-theme ink. */
+.baby .relation,
+.baby .meta,
+.baby .chevron {
+  color: var(--color-muted);
+}

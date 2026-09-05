@@ -1,0 +1,133 @@
+.canvas {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: calc(var(--space-md) + env(safe-area-inset-top)) var(--layout-gutter) calc(var(--space-lg) + env(safe-area-inset-bottom));
+  background: var(--c-postpartum-neutral);
+  color: var(--color-dark-ink);
+}
+.top {
+  display: flex;
+}
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding-block-start: var(--space-xl);
+}
+.title {
+  font-size: var(--text-display);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-compact);
+}
+.help {
+  font-size: var(--text-body);
+  color: var(--color-dark-muted);
+  max-width: 36ch;
+}
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-block-start: auto;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  border-radius: var(--radius-card);
+  background: var(--c-sheet-dark-bg);
+  border: var(--border-dark);
+}
+.label {
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+  color: var(--color-dark-ink);
+}
+.hint {
+  font-size: var(--text-label);
+  color: var(--color-dark-muted);
+}
+.input {
+  width: 100%;
+  min-height: var(--comp-control-min-height);
+  padding: var(--comp-control-padding-y) var(--comp-control-padding-x);
+  border-radius: var(--radius-control);
+  background: var(--color-dark-raised);
+  color: var(--color-dark-ink);
+  border: var(--border-dark);
+  font-size: var(--text-body);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  color-scheme: dark;
+}
+.input[type="text"] {
+  font-family: var(--font-ui);
+  text-align: start;
+}
+.input:focus {
+  outline: var(--border-focus);
+  outline-offset: 2px;
+  border-color: var(--color-focus);
+}
+.genderRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-xs);
+}
+.genderCard {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--comp-target-min);
+  padding: var(--space-sm);
+  border-radius: var(--radius-control);
+  border: var(--border-dark);
+  background: var(--color-dark-raised);
+  color: var(--color-dark-muted);
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  text-align: center;
+}
+.genderCard:has(.radio:focus-visible) {
+  outline: var(--border-focus);
+  outline-offset: 2px;
+}
+.radio {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.genderOn {
+  color: var(--color-dark-ink);
+  border-color: var(--color-dark-muted);
+  background: var(--color-dark-tint);
+}
+.girl.genderOn {
+  background: var(--c-girl-selected-bg);
+  border-color: var(--color-accent-rose);
+  color: var(--c-girl-selected-text);
+}
+.boy.genderOn {
+  background: var(--c-boy-selected-bg);
+  border-color: var(--color-accent-blue);
+  color: var(--c-boy-selected-text);
+}
+.error {
+  color: var(--color-accent-warm-soft);
+  font-size: var(--text-body-small);
+}
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.cancel {
+  color: var(--color-dark-muted);
+}

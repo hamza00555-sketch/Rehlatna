@@ -107,6 +107,40 @@ export const ROUTES = [
     },
   },
 
-  // More (placeholder until Phase 4)
-  { name: "more-hub", path: "/more", demo: "pregnancy", themes: light },
+  // More: family, care, planning, settings
+  { name: "more-hub", path: "/more", demo: "pregnancy", themes: both },
+  { name: "more-hub-postpartum", path: "/more", demo: "postpartum", themes: light },
+  { name: "mother-profile", path: "/more/family/demo_m_mother", demo: "pregnancy", themes: light },
+  { name: "partner-profile", path: "/more/family/demo_m_partner", demo: "pregnancy", member: "demo_m_partner", themes: light },
+  { name: "baby-profile", path: "/more/baby", demo: "pregnancy", themes: light },
+  { name: "baby-profile-born", path: "/more/baby", demo: "postpartum", themes: light },
+  { name: "permissions", path: "/more/permissions", demo: "pregnancy", member: "demo_m_partner", themes: light },
+  { name: "care-providers", path: "/more/providers", demo: "pregnancy", themes: both },
+  { name: "care-providers-empty", path: "/more/providers", demo: "fresh", themes: light },
+  { name: "provider-new-doctor", path: "/more/providers/new?kind=doctor", demo: "pregnancy", themes: light },
+  { name: "doctor-detail", path: "/more/providers/doctor/demo_dr1", demo: "pregnancy", themes: light },
+  { name: "hospital-detail", path: "/more/providers/hospital/demo_h2", demo: "pregnancy", themes: light },
+  { name: "insurance-detail", path: "/more/providers/insurance/demo_ins1", demo: "pregnancy", themes: both },
+  { name: "travel-plan", path: "/more/travel", demo: "pregnancy", themes: light },
+  { name: "birth-plan", path: "/more/birth-plan", demo: "pregnancy", themes: both },
+  { name: "settings-privacy", path: "/more/settings", demo: "pregnancy", themes: both },
+
+  // Birth transition
+  { name: "birth-event-form", path: "/journey/birth", demo: "pregnancy", themes: both },
+  { name: "birth-confirmation", path: "/journey/birth/confirmed", demo: "postpartum", themes: light },
+
+  // Error states
+  { name: "not-found", path: "/journey/appointments/does-not-exist", demo: "pregnancy", themes: light },
+  {
+    name: "offline-notice",
+    path: "/today",
+    demo: "pregnancy",
+    themes: light,
+    fullPage: false,
+    action: async (page) => {
+      await page.context().setOffline(true);
+      await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+      await page.waitForTimeout(400);
+    },
+  },
 ];

@@ -25,3 +25,9 @@
 :root[data-theme="dark"] .action {
   color: var(--color-dark-ink);
 }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .action {
+    color: var(--color-dark-ink);
+  }
+}

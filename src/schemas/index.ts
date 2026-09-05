@@ -68,6 +68,7 @@ export const babyNameSchema = z.object({ displayName: z.string().trim().max(60).
 
 export const birthConfirmSchema = z.object({
   birthDate: isoDate,
+  photoNote: z.string().max(200).optional(),
   birthTime: time,
   displayName: z.string().trim().max(60).optional().or(z.literal("").transform(() => undefined)),
   gender: genderSchema.optional(),
@@ -276,6 +277,7 @@ export const settingsSchema = z.object({
   financeEnabled: z.boolean().optional(),
   financeShared: z.boolean().optional(),
   theme: z.enum(["system", "light", "dark"]).optional(),
+  reduceMotion: z.boolean().optional(),
 });
 
 export const notificationPreferenceSchema = z.object({

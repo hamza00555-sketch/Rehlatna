@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { BottomNavigation } from "@/components/shell/BottomNavigation";
 import { DemoBadge } from "@/components/shell/DemoBadge";
+import { OfflineNotice } from "@/components/shell/OfflineNotice";
 import { getContext } from "@/server/session";
 
 /** Authenticated shell: the four-destination navigation lives here. */
@@ -10,6 +11,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <>
       {ctx.session.mode === "demo" && <DemoBadge placement="aboveNav" />}
+      <OfflineNotice />
       <main id="main">{children}</main>
       <BottomNavigation />
     </>

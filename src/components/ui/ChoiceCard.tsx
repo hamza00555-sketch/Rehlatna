@@ -13,7 +13,7 @@ interface GroupProps {
   legend: string;
   help?: string;
   children: ReactNode;
-  columns?: 1 | 2;
+  columns?: 1 | 2 | 3;
 }
 
 export function ChoiceGroup({ legend, help, children, columns = 1 }: GroupProps) {
@@ -21,7 +21,7 @@ export function ChoiceGroup({ legend, help, children, columns = 1 }: GroupProps)
     <fieldset className={styles.group}>
       <legend className={styles.legend}>{legend}</legend>
       {help && <p className={styles.help}>{help}</p>}
-      <div className={cx(styles.list, columns === 2 && styles.twoCols)}>{children}</div>
+      <div className={cx(styles.list, columns === 2 && styles.twoCols, columns === 3 && styles.threeCols)}>{children}</div>
     </fieldset>
   );
 }

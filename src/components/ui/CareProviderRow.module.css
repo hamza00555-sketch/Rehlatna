@@ -70,7 +70,9 @@
 }
 
 .trailing {
-  flex-shrink: 0;
+  display: inline-flex;
+  align-self: flex-start;
+  margin-block-start: var(--space-2xs);
 }
 
 .chevron {

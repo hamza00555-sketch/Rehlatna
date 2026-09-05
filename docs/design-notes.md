@@ -62,3 +62,25 @@ composition only; their Arabic was re-typeset from the catalogue.
    `layout.gutter`.
 3. `today-week-08` reference shows a fetus more mature than week 8 → the
    composition is used, stage accuracy governs assets.
+
+## Phase 4 decisions (care, travel, birth)
+
+- Insurance coverage is stored as a belief (`insuranceBelievedCovered`) with a
+  `lastVerifiedAt` stamp. A record older than 90 days flips to the attention
+  treatment and reads "مرّ وقت طويل على آخر تحقق". Nothing in the UI reads as a
+  guarantee; the disclaimer is always visible next to coverage.
+- "Verify coverage" offers two outcomes: mark verified today, or create a
+  verification task. Tasks are shared and appear on the hospital, insurance
+  and care-list screens.
+- Travel plan only appears when follow-up city and delivery city differ.
+  Its dates are optional; the checklist is free-form.
+- Birth confirmation is a full-screen dark flow (`/journey/birth`) with an
+  explicit confirm button. It rejects future dates and a second birth event.
+  On success the household switches to postpartum, default postpartum tasks
+  are seeded and the journey drops pregnancy milestones dated after birth.
+- Date and time inputs are native `<input type="date|time">` styled with
+  tokens; the platform picker is preferred over a custom one for reliability.
+  The onboarding due-date step keeps the custom calendar because it is the
+  hero moment.
+- Missing records inside the shell render `(app)/not-found.tsx` (a calm dead
+  end with a way back), never the error boundary.

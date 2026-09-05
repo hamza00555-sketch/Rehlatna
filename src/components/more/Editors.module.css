@@ -1,0 +1,72 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--layout-grid-gap);
+}
+.addRow {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+  margin-block-start: var(--space-xs);
+}
+.addRow > :first-child {
+  flex: 1;
+}
+.saved {
+  color: var(--color-success);
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+}
+.readiness {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.segments {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--space-2xs);
+}
+.segment {
+  height: var(--comp-progress-height);
+  border-radius: var(--radius-round);
+  background: var(--t-line);
+}
+.segmentOn {
+  background: var(--color-accent-teal);
+}
+.headCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+.headIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-round);
+  background: var(--color-accent-warm-soft);
+  color: var(--color-accent-warm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.headText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.headTitle {
+  font-size: var(--text-title-small);
+  font-weight: var(--weight-semibold);
+}
+.headMeta {
+  font-size: var(--text-body-small);
+  color: var(--t-muted);
+}

@@ -59,6 +59,8 @@ export interface HouseholdSettings {
   /** true → every member holding finance:view may see it; false → owner-private. */
   financeShared: boolean;
   theme: "system" | "light" | "dark";
+  /** Household-level reduced-motion preference (in addition to the OS setting). */
+  reduceMotion?: boolean;
 }
 
 export interface Household {

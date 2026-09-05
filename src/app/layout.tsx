@@ -35,8 +35,9 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getContext();
   const theme = ctx?.data.household.settings.theme ?? "system";
+  const reduceMotion = ctx?.data.household.settings.reduceMotion ? "reduced" : undefined;
   return (
-    <html lang="ar" dir="rtl" data-theme={theme === "system" ? undefined : theme}>
+    <html lang="ar" dir="rtl" data-theme={theme === "system" ? undefined : theme} data-motion={reduceMotion}>
       <body>{children}</body>
     </html>
   );

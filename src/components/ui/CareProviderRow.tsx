@@ -26,8 +26,8 @@ export function CareProviderRow({ kind, title, subtitle, href, unverified, trail
       <span className={styles.text}>
         <span className={styles.title}>{title}</span>
         {subtitle && <span className={styles.subtitle}>{subtitle}</span>}
+        {trailing && <span className={styles.trailing}>{trailing}</span>}
       </span>
-      {trailing && <span className={styles.trailing}>{trailing}</span>}
       <span className={styles.chevron} aria-hidden="true">
         <Icon name="forward" size={20} />
       </span>

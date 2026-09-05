@@ -166,3 +166,14 @@ video {
     scroll-behavior: auto !important;
   }
 }
+
+/* Household-level reduced motion (Settings) mirrors the OS preference. */
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] *::before,
+:root[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: var(--motion-reduced-opacity-ms) !important;
+  transition-property: opacity !important;
+  scroll-behavior: auto !important;
+}

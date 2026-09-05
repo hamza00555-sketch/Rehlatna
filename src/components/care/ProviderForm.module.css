@@ -1,0 +1,25 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-block: var(--space-sm) var(--space-lg);
+}
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--layout-grid-gap);
+}
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.legend {
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+  margin-block-end: var(--space-xs);
+}
+.help {
+  font-size: var(--text-body-small);
+  color: var(--t-muted);
+}
