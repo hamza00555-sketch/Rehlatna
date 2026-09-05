@@ -53,9 +53,24 @@ The custom set in `src/components/icons/Icon.tsx` covers every current
 use. Remaining wishes: a `bottle`/`spoon` glyph for feeding tasks, a
 `suitcase` variant for travel, and 20 px optical variants for dense rows.
 
-## 6. Development placeholders
+## 6. Development placeholders (present)
 
-Development placeholders (Higgsfield or similar) may be generated for the
-weekly set and studio objects to exercise the media pipeline. They must be
-saved under `public/media/dev/…`, wired with `medicallyReviewed: false`, and
-never promoted to production paths without the review above.
+Generated placeholders live under `public/media/dev/…` and are wired through
+`src/media/dev.ts`. They exercise the pipeline (focal point, scrim, poster →
+video lifecycle, reduced motion, dark mode) and are **not** production
+assets: no medical review, no photography sign-off. The hero shows the
+"غير مُراجَع طبياً — للتطوير فقط" badge whenever one is on screen.
+
+| Slot | Status |
+| --- | --- |
+| Weekly posters | 11 of 36 weeks: 5, 8, 12, 16, 20, 22, 24, 28, 32, 36, 40 (poster 1080×1350 + thumb 480×480). Weeks 12, 20 and 22 are abstract glass forms rather than stage-legible shapes and should be redone first. No loops (mp4/webm) exist; the hero stays poster-only. |
+| Story welcome | present (silhouette, 9:16) |
+| Birth confirmed backdrop | present (linen and light, 9:16) |
+| Postpartum neutral fallback | present (linen and light, 4:5) |
+| Hospital placeholder | present (interior, 16:9) |
+| Travel abstract | present, not yet placed on a screen |
+| Preparation objects | 7 of 8 categories: stroller, crib, bassinet, car seat, pump, bath, travel bag |
+
+Regenerate with `scripts/convert-dev-media.mjs <raw-dir>` after dropping new
+PNGs named `NN.png`, `story-welcome.png`, `birth-confirmed.png`,
+`postpartum-neutral.png`, `hospital.png`, `travel.png`, `prep-<slug>.png`.

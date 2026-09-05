@@ -1,3 +1,4 @@
+import { DEV_MEDIA } from "@/media/dev";
 import { notFound, redirect } from "next/navigation";
 import { getContext } from "@/server/session";
 import { can } from "@/domain/permissions";
@@ -40,7 +41,7 @@ export default async function HospitalPage({ params }: Params) {
       <TopBar title={hospital.name} backHref="/more/providers" actions={canEdit ? <IconButton icon="edit" label={m.common.edit} variant="quiet" href={`/more/providers/edit/hospital/${hospital.id}`} /> : undefined} />
       <div className={styles.body}>
         <div className={styles.hero}>
-          <MediaFrame alt={hospital.name} ratio="card" radius="hero" placeholderLabel={m.care.imagePlaceholder} />
+          <MediaFrame src={DEV_MEDIA.hospitalPlaceholder} focalPoint={{ x: 0.5, y: 0.55 }} alt={hospital.name} ratio="card" radius="hero" placeholderLabel={m.care.imagePlaceholder} />
           <div className={styles.chips}>
             <StatusBadge tone="future">
               <Icon name="pin" size={16} /> {hospital.city}

@@ -33,7 +33,7 @@ export function StatusLine({ status, className }: { status: PreparationStatus; c
 export function PreparationMediaCard({ item }: { item: PreparationItemView }) {
   return (
     <Link href={`/preparation/item/${item.id}`} className={cx(styles.card, styles[item.status])}>
-      <MediaFrame alt={item.title} ratio="card" radius="card" placeholderLabel={m.preparation.imagePlaceholder} className={styles.media} />
+      <MediaFrame src={item.mediaSrc} focalPoint={item.focalPoint} alt={item.title} ratio="card" radius="card" placeholderLabel={m.preparation.imagePlaceholder} className={styles.media} />
       <span className={styles.title}>{item.title}</span>
       <StatusLine status={item.status} />
     </Link>

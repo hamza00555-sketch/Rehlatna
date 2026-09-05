@@ -37,7 +37,7 @@ export default async function ItemPage({ params }: Params) {
   if (!ctx || !ctx.data.pregnancy) redirect("/onboarding");
   const raw = ctx.data.preparationItems.find((i) => i.id === id);
   if (!raw) notFound();
-  const item = serializePreparationItem(raw, ctx.viewer, ctx.data.fundingGoals);
+  const item = serializePreparationItem(raw, ctx.viewer, ctx.data.fundingGoals, ctx.data.mediaAssets);
   const canEdit = can(ctx.viewer, "preparation:edit");
   const canPlan = ctx.data.household.settings.financeEnabled && can(ctx.viewer, "finance:edit");
 
@@ -50,7 +50,7 @@ export default async function ItemPage({ params }: Params) {
       />
       <div className={styles.body}>
         <div className={styles.hero}>
-          <MediaFrame alt={item.title} ratio="card" radius="hero" placeholderLabel={m.preparation.imagePlaceholder} />
+          <MediaFrame src={item.mediaSrc} focalPoint={item.focalPoint} alt={item.title} ratio="card" radius="hero" placeholderLabel={m.preparation.imagePlaceholder} />
           <div className={styles.itemHead}>
             <div className={styles.itemText}>
               <span className={styles.category}>{m.preparation.categories[item.category]}</span>

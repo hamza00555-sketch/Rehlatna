@@ -14,8 +14,9 @@ Honest inventory of what this build does not do, or does approximately.
   family exist; there is no upload endpoint yet. The postpartum hero uses the
   neutral fallback.
 - **Notifications.** Preferences are stored; nothing is delivered.
-- **Production media.** No weekly loops, posters, story or product imagery
-  ship. See `docs/asset-backlog.md`.
+- **Production media.** Only generated development placeholders ship
+  (`public/media/dev`, 11 of 36 weekly posters, no loops). They are flagged
+  unreviewed in the UI. See `docs/asset-backlog.md`.
 - **English catalogue.** Copy is Arabic-only; `src/i18n` is structured for a
   second catalogue.
 

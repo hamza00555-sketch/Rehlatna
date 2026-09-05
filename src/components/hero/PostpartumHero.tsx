@@ -1,3 +1,4 @@
+import { DEV_MEDIA } from "@/media/dev";
 import Link from "next/link";
 import type { PostpartumHeroVM } from "@/server/view-models/today";
 import type { BabyView } from "@/server/serializers";
@@ -36,7 +37,7 @@ export function PostpartumHero({ vm, baby, member, todayIso }: Props) {
         : m.postpartum.ageMonths(age.months, age.monthDays, who);
 
   return (
-    <section className={cx(styles.hero, !vm.hasPersonalMedia && styles.neutral)}>
+    <section className={cx(styles.hero, !vm.hasPersonalMedia && styles.neutral)} style={!vm.hasPersonalMedia && DEV_MEDIA.postpartumNeutral ? { backgroundImage: `url(${DEV_MEDIA.postpartumNeutral})` } : undefined}>
       <div className={styles.content}>
         <div className={styles.topRow}>
           <span className={styles.date}>

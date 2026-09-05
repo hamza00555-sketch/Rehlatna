@@ -1,3 +1,4 @@
+import { DEV_MEDIA } from "@/media/dev";
 import { redirect } from "next/navigation";
 import { getContext } from "@/server/session";
 import { Button } from "@/components/ui/Button";
@@ -13,7 +14,7 @@ export default async function BirthConfirmedPage() {
   if (!ctx?.data.baby?.birthDate) redirect("/journey");
   const name = ctx.data.baby.displayName;
   return (
-    <section className={styles.story}>
+    <section className={styles.story} style={DEV_MEDIA.birthConfirmed ? { backgroundImage: `url(${DEV_MEDIA.birthConfirmed})` } : undefined}>
       <div className={styles.copy}>
         <h1 className={styles.title}>{name ? m.journey.welcomeName(name) : m.journey.welcomeNeutral}</h1>
         <p className={styles.sub}>{m.journey.newChapter}</p>

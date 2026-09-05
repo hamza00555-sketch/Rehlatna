@@ -1,5 +1,6 @@
 import type { WeeklyBabyMedia } from "@/domain/types";
 import { MEDIA_MAX_WEEK, MEDIA_MIN_WEEK } from "@/domain/pregnancy";
+import { devWeeklyPoster, devWeeklyThumb } from "./dev";
 
 /**
  * Weekly baby media manifest — weeks 5 through 40.
@@ -69,8 +70,9 @@ function build(week: number, seed: WeekSeed): WeeklyBabyMedia {
     // Production paths — files are not present yet; see docs/asset-backlog.md.
     videoMp4: undefined,
     videoWebm: undefined,
-    posterWebp: undefined,
-    thumbnailWebp: undefined,
+    // Development placeholder posters exist for a subset of weeks (src/media/dev.ts).
+    posterWebp: devWeeklyPoster(week),
+    thumbnailWebp: devWeeklyThumb(week),
     alt: `صورة تمثيلية عامة لمرحلة الأسبوع ${week} من الحمل — ليست صورة تشخيصية`,
     developmentSummary: seed.summary,
     developmentPoints: seed.points,
@@ -82,7 +84,7 @@ function build(week: number, seed: WeekSeed): WeeklyBabyMedia {
     safeArea: { top: 0.28, right: 0.05, bottom: 0.3, left: 0.45 },
     loopDurationSeconds: 6,
     medicallyReviewed: false,
-    reviewNotes: `week-${nn}: يحتاج مراجعة طبية قبل النشر؛ لا أصول إنتاجية مرفقة.`,
+    reviewNotes: devWeeklyPoster(week) ? `week-${nn}: صورة تطويرية مولّدة، ليست أصلاً إنتاجياً؛ تحتاج مراجعة طبية قبل النشر.` : `week-${nn}: يحتاج مراجعة طبية قبل النشر؛ لا أصول إنتاجية مرفقة.`,
   };
 }
 

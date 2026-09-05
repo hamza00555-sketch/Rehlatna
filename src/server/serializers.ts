@@ -4,6 +4,7 @@ import type {
   FundingGoal,
   HouseholdData,
   HouseholdMember,
+  MediaAsset,
   PreparationItem,
   RecalculationExplanation,
 } from "@/domain/types";
@@ -33,13 +34,18 @@ export interface PreparationItemView {
   updatedAt: string;
   /** Present only for finance viewers. */
   linkedGoalId?: string;
+  /** Resolved from `mediaAssetId`; absent → neutral placeholder. */
+  mediaSrc?: string;
+  focalPoint?: { x: number; y: number };
 }
 
 export function serializePreparationItem(
   item: PreparationItem,
   viewer: Viewer,
   goals: FundingGoal[],
+  mediaAssets: MediaAsset[] = [],
 ): PreparationItemView {
+  const asset = item.mediaAssetId ? mediaAssets.find((a) => a.id === item.mediaAssetId) : undefined;
   const view: PreparationItemView = {
     id: item.id,
     title: item.title,
@@ -50,6 +56,8 @@ export function serializePreparationItem(
     notes: item.notes,
     inHospitalBag: item.inHospitalBag,
     updatedAt: item.updatedAt,
+    mediaSrc: asset?.src,
+    focalPoint: asset?.focalPoint,
   };
   if (can(viewer, "finance:view")) {
     const linked = goals.find((g) => g.preparationItemId === item.id && goalVisibleTo(g, viewer, false));

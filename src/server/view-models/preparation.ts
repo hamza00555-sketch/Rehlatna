@@ -59,7 +59,7 @@ export function buildPreparationViewModel(ctx: RequestContext, filter: Preparati
   const { data, viewer } = ctx;
   const all = data.preparationItems
     .filter((i) => !category || i.category === category)
-    .map((i) => serializePreparationItem(i, viewer, data.fundingGoals))
+    .map((i) => serializePreparationItem(i, viewer, data.fundingGoals, data.mediaAssets))
     .sort((a, b) => (a.status === b.status ? a.title.localeCompare(b.title, "ar") : STATUS_ORDER[a.status] - STATUS_ORDER[b.status]));
 
   const items = filter === "all" ? all : all.filter((i) => i.status === FILTER_STATUS[filter]);

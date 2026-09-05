@@ -1,4 +1,5 @@
-import type { HouseholdData } from "@/domain/types";
+import type { HouseholdData, MediaAsset } from "@/domain/types";
+import { DEV_MEDIA } from "@/media/dev";
 import { permissionsForRoles } from "@/domain/permissions";
 import { addDays } from "@/domain/dates";
 import { appConfig } from "@/config/app";
@@ -23,6 +24,19 @@ const MEMBER_SUPPORTER = "demo_m_supporter";
 const USER_MOTHER = "demo_u_mother";
 const USER_PARTNER = "demo_u_partner";
 const USER_SUPPORTER = "demo_u_supporter";
+
+/** Development studio shots for the demo's large objects (see src/media/dev.ts). */
+function demoPreparationMedia(): MediaAsset[] {
+  return Object.entries(DEV_MEDIA.preparation).map(([slug, src]) => ({
+    id: `demo_media_${slug}`,
+    family: "preparation-object",
+    src,
+    mimeType: "image/webp",
+    alt: "",
+    focalPoint: { x: 0.5, y: 0.55 },
+    crop: "card",
+  }));
+}
 
 export function demoPregnancyHousehold(today: string): HouseholdData {
   const h = DEMO_HOUSEHOLD_PREGNANCY;
@@ -171,19 +185,19 @@ export function demoPregnancyHousehold(today: string): HouseholdData {
       { id: "demo_vt1", householdId: h, subject: "تأكيد تغطية مستشفى النخيل للولادة قبل السفر", relatedHospitalId: "demo_h2", relatedInsuranceId: "demo_ins1", done: false, createdAt },
     ],
     preparationItems: [
-      { id: "demo_pi_crib", householdId: h, category: "sleep", title: "سرير الصغير", status: "owned", size: "object", inHospitalBag: false, updatedAt: createdAt },
-      { id: "demo_pi_bassinet", householdId: h, category: "sleep", title: "مهد بجانب السرير", status: "undecided", size: "object", inHospitalBag: false, updatedAt: createdAt },
+      { id: "demo_pi_crib", householdId: h, category: "sleep", title: "سرير الصغير", status: "owned", size: "object", mediaAssetId: "demo_media_crib", inHospitalBag: false, updatedAt: createdAt },
+      { id: "demo_pi_bassinet", householdId: h, category: "sleep", title: "مهد بجانب السرير", status: "undecided", size: "object", mediaAssetId: "demo_media_bassinet", inHospitalBag: false, updatedAt: createdAt },
       { id: "demo_pi_sheets", householdId: h, category: "sleep", title: "أغطية قطنية", status: "need_to_buy", size: "task", inHospitalBag: false, updatedAt: createdAt },
-      { id: "demo_pi_stroller", householdId: h, category: "mobility", title: "عربة الأطفال", status: "owned", size: "object", inHospitalBag: false, updatedAt: createdAt },
-      { id: "demo_pi_carseat", householdId: h, category: "mobility", title: "مقعد السيارة", status: "need_to_buy", size: "object", inHospitalBag: false, updatedAt: createdAt },
+      { id: "demo_pi_stroller", householdId: h, category: "mobility", title: "عربة الأطفال", status: "owned", size: "object", mediaAssetId: "demo_media_stroller", inHospitalBag: false, updatedAt: createdAt },
+      { id: "demo_pi_carseat", householdId: h, category: "mobility", title: "مقعد السيارة", status: "need_to_buy", size: "object", mediaAssetId: "demo_media_carseat", inHospitalBag: false, updatedAt: createdAt },
       { id: "demo_pi_bottles", householdId: h, category: "feeding", title: "زجاجات ومستلزمات التخزين", status: "undecided", size: "task", inHospitalBag: false, updatedAt: createdAt },
-      { id: "demo_pi_pump", householdId: h, category: "feeding", title: "مضخة حليب", status: "undecided", size: "object", inHospitalBag: false, updatedAt: createdAt },
+      { id: "demo_pi_pump", householdId: h, category: "feeding", title: "مضخة حليب", status: "undecided", size: "object", mediaAssetId: "demo_media_pump", inHospitalBag: false, updatedAt: createdAt },
       { id: "demo_pi_clothes", householdId: h, category: "clothing", title: "ملابس حديثي الولادة", status: "need_to_buy", size: "task", inHospitalBag: true, updatedAt: createdAt },
       { id: "demo_pi_blanket", householdId: h, category: "clothing", title: "بطانية خفيفة", status: "owned", size: "task", inHospitalBag: true, updatedAt: createdAt },
       { id: "demo_pi_diapers", householdId: h, category: "care", title: "حفاضات حديثي الولادة", status: "need_to_buy", size: "task", inHospitalBag: true, updatedAt: createdAt },
-      { id: "demo_pi_bath", householdId: h, category: "care", title: "حوض استحمام صغير", status: "not_required", size: "object", inHospitalBag: false, updatedAt: createdAt },
+      { id: "demo_pi_bath", householdId: h, category: "care", title: "حوض استحمام صغير", status: "not_required", size: "object", mediaAssetId: "demo_media_bath", inHospitalBag: false, updatedAt: createdAt },
       { id: "demo_pi_docs", householdId: h, category: "hospital", title: "الأوراق: الهوية، بطاقة التأمين، ملف المتابعة", status: "owned", size: "task", inHospitalBag: true, updatedAt: createdAt },
-      { id: "demo_pi_mother_bag", householdId: h, category: "hospital", title: "حقيبة السفر للولادة", status: "need_to_buy", size: "object", inHospitalBag: true, updatedAt: createdAt },
+      { id: "demo_pi_mother_bag", householdId: h, category: "hospital", title: "حقيبة السفر للولادة", status: "need_to_buy", size: "object", mediaAssetId: "demo_media_travel_bag", inHospitalBag: true, updatedAt: createdAt },
       { id: "demo_pi_travel_docs", householdId: h, category: "travel", title: "حجز الإقامة قرب مستشفى الولادة", status: "undecided", size: "task", inHospitalBag: false, updatedAt: createdAt },
       { id: "demo_pi_mother_pp", householdId: h, category: "mother_postpartum", title: "مستلزمات الأم بعد الولادة", status: "undecided", size: "task", inHospitalBag: true, updatedAt: createdAt },
     ],
@@ -293,7 +307,7 @@ export function demoPregnancyHousehold(today: string): HouseholdData {
     },
     feedingPreference: null,
     postpartumTasks: [],
-    mediaAssets: [],
+    mediaAssets: demoPreparationMedia(),
     notificationPreferences: [],
   };
 }
