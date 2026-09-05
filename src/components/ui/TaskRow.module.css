@@ -1,0 +1,109 @@
+.group {
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  border: var(--t-border);
+  background: var(--t-surface);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  min-height: var(--comp-row-min-height);
+  padding: var(--comp-row-padding-y) var(--comp-row-padding-x);
+  background: var(--t-surface);
+  color: var(--t-ink);
+  font-size: var(--text-body-small);
+  border-bottom: 1px solid var(--t-line);
+  text-align: start;
+  transition: background-color var(--motion-fast) var(--motion-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.group .row:last-child {
+  border-bottom: none;
+}
+
+.row:active {
+  background: var(--t-surface-tint);
+}
+
+.completed {
+  background: var(--color-accent-sage-soft);
+  color: var(--color-success);
+  border-bottom-color: var(--c-completed-border);
+}
+.completed .title {
+  text-decoration: line-through;
+  text-decoration-color: var(--color-accent-sage);
+}
+
+.undecided {
+  color: var(--t-muted);
+}
+
+.disabled {
+  opacity: 0.55;
+  background: var(--t-surface-tint);
+  color: var(--color-faint);
+}
+
+.row:focus-visible {
+  outline: var(--border-focus);
+  outline-offset: -2px;
+}
+
+.check {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-small);
+  border: 1px solid var(--t-line-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-on-primary);
+}
+.checkOn {
+  background: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.leading {
+  display: inline-flex;
+  color: var(--t-muted);
+  flex-shrink: 0;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-heading);
+}
+
+.meta {
+  color: var(--t-muted);
+  font-size: var(--text-label);
+}
+.completed .meta {
+  color: var(--color-success);
+}
+
+.trailing {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.chevron {
+  display: inline-flex;
+  color: var(--t-muted);
+  flex-shrink: 0;
+}

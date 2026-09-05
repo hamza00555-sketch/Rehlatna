@@ -1,0 +1,65 @@
+.frame {
+  position: relative;
+  overflow: hidden;
+  background: var(--t-surface-tint);
+  width: 100%;
+}
+
+.ratio_card {
+  aspect-ratio: 4 / 3;
+}
+.ratio_square {
+  aspect-ratio: 1;
+}
+.ratio_portrait {
+  aspect-ratio: 3 / 4;
+}
+.ratio_hero {
+  aspect-ratio: 9 / 11;
+}
+
+.radius_card {
+  border-radius: var(--radius-card);
+}
+.radius_hero {
+  border-radius: var(--radius-hero);
+}
+.radius_none {
+  border-radius: 0;
+}
+
+.img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--fx) var(--fy);
+}
+
+.placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  color: var(--t-muted);
+  background: var(--t-surface-tint);
+  border: var(--t-border);
+  border-radius: inherit;
+}
+
+.placeholderLabel {
+  font-size: var(--text-label);
+  text-align: center;
+  padding-inline: var(--space-sm);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.overlay > * {
+  pointer-events: auto;
+}

@@ -1,0 +1,14 @@
+.badge {
+  position: fixed;
+  top: calc(var(--space-xs) + env(safe-area-inset-top));
+  inset-inline-end: var(--space-xs);
+  z-index: 50;
+  padding: var(--comp-badge-padding-y) var(--comp-badge-padding-x);
+  border-radius: var(--radius-round);
+  background: var(--c-attention-bg);
+  color: var(--color-warning);
+  border: 1px solid var(--c-attention-border);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  pointer-events: none;
+}

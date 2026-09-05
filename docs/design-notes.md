@@ -1,0 +1,64 @@
+# Design notes — compositions, approximations, deviations
+
+Every place the implementation composes something the design system does not
+define verbatim, or resolves an ambiguity, is recorded here. Nothing on this
+list is a silent deviation.
+
+## Token handling
+
+- `src/design/tokens.ts` is the single source; `src/app/tokens.css` is
+  generated (`npm run tokens`). Components reference variables only.
+- **Composite values** (`--c-*`): scrims, gradients, soft borders and tints
+  that appear inside approved component-state CSS but are not top-level
+  tokens (e.g. `rgba(255,248,242,0.94)` nav background, `#0E182A` pressed
+  primary). Copied verbatim; not new colours.
+- **Component dimensions** (`--comp-*`): min-heights and paddings copied
+  from component CSS (52px buttons, 14px vertical button padding, 34px chips
+  …). Not a spacing scale.
+- **Layout** (`--layout-*`): 20px gutter, 12px grid gap, 24px section
+  rhythm come from the explicit grid rule; `520px` max width and the
+  76px/82px bar heights are implementation constants (max width is not in
+  the spec — chosen so the four-column mobile grid stays intact on larger
+  screens).
+- Theme aliases (`--t-*`) map light → dark pairs: `surfaceWarm` has no dark
+  counterpart, so it maps to `darkTint`; `faint` maps to `darkMuted` in dark
+  mode (spec: faint is never used for essential text anyway).
+
+## Component compositions
+
+| Component | Spec coverage | Composition |
+| --- | --- | --- |
+| Button `outline` | Variant named, no CSS | Transparent surface, `lineStrong` border, ink text, 52px pill |
+| Button `danger` | Variant named, no CSS | Transparent surface, `danger` border and text — destructive confirmation only |
+| Button `quiet` | Not in spec | Text-only secondary action keeping the 52px target; used for "later"/"not now" paths |
+| IconButton `accent` | Variant named, no CSS | `accentWarmSoft` fill with `accentWarm` border (the spec's pressed colours) |
+| StatusBadge `medical` | Not in spec | `accentBlueSoft` field with the medical row border |
+| PrivacyNotice `private` | Spec names it `fatherPrivate` | Same CSS; renamed because the financial planner is configurable (brief §5 governs) |
+| RolePrivacyGate | Spec = CSS `display:none` | Implemented server-side: `serializeFinanceOverview` returns `null`; nothing is rendered or fetched. CSS hiding is never used. |
+| TaskRow `undecided` | Variant named, no CSS | Open row with muted text |
+| Card tones | Not a spec component | Surface primitive with tone + hairline border (spec rule: tone before shadow) |
+| Bento | Spec sizes only | CSS grid, four columns, dense flow; items choose spans |
+| Toggle | Not in spec | Composed from `primary`, `line`, `surfaceRaised`, `raised` shadow |
+| EmptyState visual | "one material image" | Neutral `surfaceTint` panel + product icon until material photography exists |
+
+## Icons
+
+Custom set drawn on a 24px grid, 1.6px stroke, round joins, softened-square
+geometry, selective active fill for the four navigation icons. `back` points
+to the inline start (right in RTL) and `forward` to the inline end; they are
+semantic, not mirrored copies.
+
+## Copy
+
+All strings live in `src/i18n/ar.ts`. Reference screenshots were used for
+composition only; their Arabic was re-typeset from the catalogue.
+
+## Conflicts resolved
+
+1. Finance ownership: spec labels finance "father-only"; brief forbids
+   assuming the father. Behaviour follows the brief (`financial_planner`
+   role); visuals follow the spec.
+2. 20px gutter is not a spacing token but is an explicit grid rule →
+   `layout.gutter`.
+3. `today-week-08` reference shows a fetus more mature than week 8 → the
+   composition is used, stage accuracy governs assets.

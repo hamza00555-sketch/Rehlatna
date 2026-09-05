@@ -1,0 +1,56 @@
+.hero {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: calc(var(--space-2xl) + env(safe-area-inset-top)) var(--space-lg) calc(var(--space-xl) + env(safe-area-inset-bottom));
+  color: var(--color-dark-ink);
+  background: var(--c-onboarding-loading);
+  background-size: cover;
+  background-position: center;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--c-onboarding-scrim);
+  pointer-events: none;
+}
+
+.copy {
+  position: relative;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+}
+
+.title {
+  font-size: var(--text-display);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-compact);
+}
+
+.subtitle {
+  font-size: var(--text-body);
+  color: var(--color-dark-muted);
+}
+
+.actions {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+}
+
+.demo {
+  color: var(--color-dark-muted);
+}

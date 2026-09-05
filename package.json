@@ -1,0 +1,38 @@
+{
+  "name": "rehlatna",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Arabic-first pregnancy, birth and postpartum journey app template",
+  "scripts": {
+    "predev": "node scripts/generate-tokens.mjs",
+    "prebuild": "node scripts/generate-tokens.mjs",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "tokens": "node scripts/generate-tokens.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "screenshots": "node scripts/screenshots.mjs"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-sans-arabic": "^5.2.5",
+    "@fontsource/inter": "^5.2.5",
+    "next": "^15.5.2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.5.0",
+    "jsdom": "^26.1.0",
+    "playwright-core": "^1.55.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

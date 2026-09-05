@@ -1,0 +1,82 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--comp-person-card-min-height);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-card);
+  background: var(--t-surface-tint);
+  color: var(--t-ink);
+  border: var(--t-border);
+  box-shadow: var(--shadow-flat);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease);
+}
+
+.baby {
+  min-height: var(--comp-choice-card-min-height);
+  background: var(--color-accent-rose-soft);
+  color: var(--color-ink);
+  border: 1px solid var(--c-baby-card-border);
+}
+
+.interactive:active {
+  transform: scale(0.99);
+  background: var(--t-surface-warm);
+  border: 1px solid var(--t-line-strong);
+}
+.interactive:focus-visible {
+  outline: var(--border-focus);
+  outline-offset: 2px;
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-round);
+  background: var(--t-surface-raised);
+  border: var(--t-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--t-muted);
+  flex-shrink: 0;
+}
+.baby .avatar {
+  color: var(--color-accent-rose);
+}
+
+.initials {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-body-small);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-body);
+  line-height: var(--leading-heading);
+}
+
+.relation {
+  font-size: var(--text-body-small);
+  color: var(--t-muted);
+}
+
+.meta {
+  font-size: var(--text-label);
+  color: var(--t-muted);
+}
+
+.chevron {
+  display: inline-flex;
+  color: var(--t-muted);
+}

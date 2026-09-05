@@ -1,0 +1,115 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.label {
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+  color: var(--t-ink);
+}
+
+.optional {
+  color: var(--t-muted);
+  font-weight: var(--weight-regular);
+}
+
+.help {
+  font-size: var(--text-body-small);
+  color: var(--t-muted);
+}
+
+.error {
+  font-size: var(--text-body-small);
+  color: var(--color-danger);
+  font-weight: var(--weight-medium);
+}
+
+.control {
+  width: 100%;
+  min-height: var(--comp-control-min-height);
+  padding: var(--comp-control-padding-y) var(--comp-control-padding-x);
+  border-radius: var(--radius-control);
+  background: var(--t-surface-raised);
+  color: var(--t-ink);
+  border: 1px solid var(--t-line);
+  font-size: var(--text-body);
+  line-height: var(--leading-heading);
+  appearance: none;
+  -webkit-appearance: none;
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+.control::placeholder {
+  color: var(--t-muted);
+}
+
+.control:focus {
+  border-color: var(--color-focus);
+  outline: 2px solid var(--c-input-focus-ring);
+  outline-offset: 1px;
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--c-input-focus-ring);
+  outline-offset: 1px;
+}
+
+.invalid,
+.invalid .control {
+  border-color: var(--color-danger);
+}
+
+.control:disabled {
+  background: var(--t-surface-tint);
+  color: var(--color-faint);
+  opacity: 0.68;
+}
+
+.numeric {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-tight);
+  text-align: start;
+}
+
+.date {
+  /* Keep the native picker readable; digits LTR inside the RTL page. */
+  min-width: 0;
+}
+
+.date::-webkit-calendar-picker-indicator {
+  opacity: 0.7;
+}
+
+.textarea {
+  resize: vertical;
+  line-height: var(--leading-body);
+}
+
+.select {
+  background-image: none;
+  padding-inline-end: var(--space-xl);
+  cursor: pointer;
+}
+
+.moneyWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.moneyInput {
+  padding-inline-end: calc(var(--space-2xl) + var(--space-xs));
+}
+
+.unit {
+  position: absolute;
+  inset-inline-end: var(--comp-control-padding-x);
+  color: var(--t-muted);
+  font-size: var(--text-body-small);
+  pointer-events: none;
+}

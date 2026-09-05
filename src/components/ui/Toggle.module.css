@@ -1,0 +1,71 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  min-height: var(--comp-row-min-height);
+  padding-block: var(--space-xs);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  color: var(--t-ink);
+}
+
+.description {
+  font-size: var(--text-body-small);
+  color: var(--t-muted);
+}
+
+.switch {
+  position: relative;
+  width: 52px;
+  height: 32px;
+  border-radius: var(--radius-round);
+  background: var(--t-line);
+  border: 1px solid var(--t-line-strong);
+  flex-shrink: 0;
+  transition: background-color var(--motion-base) var(--motion-ease);
+}
+
+.knob {
+  position: absolute;
+  top: 3px;
+  inset-inline-start: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-round);
+  background: var(--t-surface-raised);
+  box-shadow: var(--shadow-raised);
+  transition: transform var(--motion-base) var(--motion-ease);
+}
+
+.on {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* Logical travel: knob moves toward inline-end when on. */
+.on .knob {
+  transform: translateX(-20px);
+}
+:root[dir="ltr"] .on .knob {
+  transform: translateX(20px);
+}
+
+.switch:focus-visible {
+  outline: var(--border-focus);
+  outline-offset: 2px;
+}
+
+.disabled {
+  opacity: 0.55;
+}

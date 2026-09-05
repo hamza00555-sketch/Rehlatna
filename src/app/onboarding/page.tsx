@@ -1,0 +1,26 @@
+import { Button } from "@/components/ui/Button";
+import { m } from "@/i18n";
+import styles from "./onboarding.module.css";
+import { DemoEntry } from "./DemoEntry";
+
+/**
+ * Welcome — OnboardingHero. Full-bleed premium baby imagery is a production
+ * asset that is not yet attached (see docs/asset-backlog.md); until then the
+ * approved loading gradient carries the scene.
+ */
+export default function OnboardingWelcome() {
+  return (
+    <section className={styles.hero}>
+      <div className={styles.copy}>
+        <h1 className={styles.title}>{m.onboarding.welcomeTitle}</h1>
+        <p className={styles.subtitle}>{m.onboarding.welcomeSubtitle}</p>
+      </div>
+      <div className={styles.actions}>
+        <Button href="/onboarding/start" variant="lightOverMedia" fullWidth>
+          {m.onboarding.start}
+        </Button>
+        <DemoEntry />
+      </div>
+    </section>
+  );
+}

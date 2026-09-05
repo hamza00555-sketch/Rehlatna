@@ -1,0 +1,116 @@
+.content {
+  position: relative;
+  background: var(--t-sheet-bg);
+  color: var(--t-ink);
+  padding: var(--space-lg);
+  border: var(--t-border);
+  border-bottom: none;
+  border-radius: var(--radius-hero) var(--radius-hero) 0 0;
+  backdrop-filter: var(--c-nav-blur);
+  -webkit-backdrop-filter: var(--c-nav-blur);
+}
+
+.contentDark {
+  background: var(--c-sheet-dark-bg);
+  color: var(--color-dark-ink);
+  border: var(--border-dark);
+  border-bottom: none;
+}
+
+.dialog {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  color: var(--t-ink);
+}
+.dialog:not([open]) {
+  display: none;
+}
+
+.dialog::backdrop {
+  background: var(--color-dark-scrim);
+}
+
+.panel {
+  width: 100%;
+  max-width: var(--layout-max-width);
+  max-height: 88vh;
+  overflow: auto;
+  background: var(--t-sheet-bg);
+  border: var(--t-border);
+  border-bottom: none;
+  border-radius: var(--radius-hero) var(--radius-hero) 0 0;
+  box-shadow: var(--t-shadow-floating);
+  padding: var(--space-sm) var(--layout-gutter) calc(var(--space-lg) + env(safe-area-inset-bottom));
+  animation: rise var(--motion-slow) var(--motion-ease);
+}
+
+.dialogDark .panel {
+  background: var(--c-sheet-dark-bg);
+  color: var(--color-dark-ink);
+  border: var(--border-dark);
+  border-bottom: none;
+}
+
+.handle {
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-round);
+  background: var(--t-line-strong);
+  margin: 0 auto var(--space-sm);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-block-end: var(--space-sm);
+}
+
+.title {
+  font-size: var(--text-title-small);
+  font-weight: var(--weight-semibold);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: fade var(--motion-reduced-opacity-ms) linear;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

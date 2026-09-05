@@ -1,0 +1,44 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--comp-badge-padding-y) var(--comp-badge-padding-x);
+  border-radius: var(--radius-round);
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-heading);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.ready {
+  background: var(--color-accent-sage-soft);
+  color: var(--color-success);
+  border-color: var(--c-completed-border);
+}
+
+.needed {
+  background: var(--color-accent-warm-soft);
+  color: var(--c-needed-badge-text);
+  border-color: var(--c-needed-badge-border);
+}
+
+.future {
+  background: var(--color-surface-tint);
+  color: var(--color-muted);
+  border-color: var(--color-line);
+  font-weight: var(--weight-medium);
+}
+
+.unverified {
+  background: var(--c-attention-bg);
+  color: var(--color-warning);
+  border-color: var(--c-attention-border);
+}
+
+/* Composition: medical context uses the approved blue-soft field. */
+.medical {
+  background: var(--color-accent-blue-soft);
+  color: var(--color-primary);
+  border-color: var(--c-medical-row-border);
+}

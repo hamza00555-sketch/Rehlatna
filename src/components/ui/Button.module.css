@@ -1,0 +1,105 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  min-height: var(--comp-button-min-height);
+  padding: var(--comp-button-padding-y) var(--comp-button-padding-x);
+  border-radius: var(--radius-round);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-heading);
+  border: 1px solid transparent;
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
+    opacity var(--motion-fast) var(--motion-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+}
+.primary:active {
+  background: var(--c-primary-pressed);
+  border-color: var(--c-primary-pressed);
+  transform: scale(0.985);
+}
+
+.lightOverMedia {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border-color: var(--c-on-media-button-border);
+}
+.lightOverMedia:active {
+  background: var(--color-surface-tint);
+  transform: scale(0.985);
+}
+
+/* Composition: transparent surface + strong neutral outline. */
+.outline {
+  background: transparent;
+  color: var(--t-ink);
+  border-color: var(--t-line-strong);
+}
+.outline:active {
+  background: var(--t-surface-tint);
+  transform: scale(0.985);
+}
+
+/* Composition: destructive confirmation only. */
+.danger {
+  background: transparent;
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+.danger:active {
+  transform: scale(0.985);
+  opacity: 0.85;
+}
+
+/* Composition: text-only secondary action, still a 52px target. */
+.quiet {
+  background: transparent;
+  color: var(--t-muted);
+  border-color: transparent;
+  font-weight: var(--weight-medium);
+}
+.quiet:active {
+  background: var(--t-surface-tint);
+}
+
+.button:disabled,
+.disabledLink {
+  opacity: 0.72;
+  color: var(--color-faint);
+  background: var(--color-line);
+  border-color: var(--color-line);
+  transform: none;
+}
+
+.button:focus-visible {
+  outline: var(--border-focus);
+  outline-offset: 2px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-round);
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

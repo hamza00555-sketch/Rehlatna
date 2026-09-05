@@ -1,0 +1,156 @@
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.legend {
+  font-size: var(--text-title-small);
+  font-weight: var(--weight-semibold);
+  color: var(--t-ink);
+  margin-block-end: var(--space-2xs);
+}
+
+.help {
+  font-size: var(--text-body-small);
+  color: var(--t-muted);
+  margin-block-end: var(--space-2xs);
+}
+
+.list {
+  display: grid;
+  gap: var(--layout-grid-gap);
+}
+
+.twoCols {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--comp-choice-card-min-height);
+  padding: var(--space-md);
+  border-radius: var(--radius-card);
+  background: var(--t-surface);
+  color: var(--t-ink);
+  border: var(--t-border);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card:active {
+  transform: scale(0.99);
+  background: var(--t-surface-warm);
+}
+
+.input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.card:has(.input:focus-visible) {
+  outline: var(--border-focus);
+  outline-offset: 2px;
+}
+
+.selected {
+  background: var(--t-surface-tint);
+  border: 1px solid var(--t-line-strong);
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+}
+
+:root[data-theme="dark"] .selected,
+:root:not([data-theme="light"]) .selected:where(.darkAware) {
+  color: var(--t-ink);
+}
+
+.medical {
+  background: var(--color-accent-blue-soft);
+  color: var(--color-ink);
+}
+.medical.selected {
+  border-color: var(--color-accent-blue);
+}
+
+/* Gender fields: subtle blue/rose around a neutral centre, contextual only. */
+.boy.selected {
+  background: var(--c-boy-selected-bg);
+  border-color: var(--color-accent-blue);
+}
+.girl.selected {
+  background: var(--c-girl-selected-bg);
+  border-color: var(--color-accent-rose);
+}
+
+.disabled {
+  opacity: 0.55;
+  background: var(--t-surface-tint);
+  color: var(--color-faint);
+  cursor: default;
+}
+
+.leading {
+  display: inline-flex;
+  color: var(--t-muted);
+  flex-shrink: 0;
+}
+.selected .leading {
+  color: inherit;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  line-height: var(--leading-heading);
+}
+
+.description {
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-regular);
+  color: var(--t-muted);
+  line-height: var(--leading-body);
+}
+
+.mark {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-round);
+  border: 1px solid var(--t-line-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-on-primary);
+  background: transparent;
+}
+.selected .mark {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.boy.selected .mark {
+  background: var(--color-accent-blue);
+  border-color: var(--color-accent-blue);
+}
+.girl.selected .mark {
+  background: var(--color-accent-rose);
+  border-color: var(--color-accent-rose);
+}

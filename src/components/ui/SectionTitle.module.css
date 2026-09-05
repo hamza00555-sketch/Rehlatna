@@ -1,0 +1,27 @@
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-block-end: var(--space-sm);
+}
+
+.title {
+  font-size: var(--text-title-small);
+  font-weight: var(--weight-semibold);
+  color: var(--t-ink);
+}
+
+.action {
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+  min-height: var(--comp-target-min);
+  display: inline-flex;
+  align-items: center;
+  padding-inline: var(--space-2xs);
+}
+
+:root[data-theme="dark"] .action {
+  color: var(--color-dark-ink);
+}

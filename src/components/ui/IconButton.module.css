@@ -1,0 +1,60 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--comp-icon-button-size);
+  height: var(--comp-icon-button-size);
+  border-radius: var(--radius-round);
+  border: 1px solid transparent;
+  flex-shrink: 0;
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.neutral {
+  background: var(--c-icon-button-bg);
+  border-color: var(--t-border);
+  color: var(--t-ink);
+}
+
+.overMedia {
+  background: var(--c-icon-button-over-media-bg);
+  border-color: var(--c-icon-button-over-media-border);
+  color: var(--color-dark-ink);
+  backdrop-filter: var(--c-icon-button-blur);
+  -webkit-backdrop-filter: var(--c-icon-button-blur);
+}
+
+.quiet {
+  background: transparent;
+  color: var(--t-muted);
+}
+
+/* Composition: warm-soft fill for a contextual accent action. */
+.accent {
+  background: var(--color-accent-warm-soft);
+  border-color: var(--color-accent-warm);
+  color: var(--color-ink);
+}
+
+.button:active {
+  transform: scale(0.94);
+  background: var(--color-accent-warm-soft);
+  border-color: var(--color-accent-warm);
+  color: var(--color-ink);
+}
+
+.button:disabled {
+  background: var(--color-surface-tint);
+  color: var(--color-faint);
+  border-color: var(--color-line);
+  opacity: 0.55;
+  transform: none;
+}
+
+.button:focus-visible {
+  outline: var(--border-focus);
+  outline-offset: 2px;
+}
