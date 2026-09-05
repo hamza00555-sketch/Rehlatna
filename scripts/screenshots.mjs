@@ -46,6 +46,8 @@ for (const route of ROUTES) {
     try {
       if (route.demo) {
         await page.request.post(`${base}/api/demo/enter`, { data: { scenario: route.demo } });
+        // Fresh fixture every time so an interaction in one state never leaks into the next.
+        await page.request.post(`${base}/api/demo/reset`);
       }
       if (route.member) {
         await page.request.post(`${base}/api/session/member`, { data: { memberId: route.member } });

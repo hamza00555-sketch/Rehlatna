@@ -1,0 +1,94 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-section-rhythm);
+  padding-block-start: var(--space-sm);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.headIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-rose-soft);
+  color: var(--color-accent-rose);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.headText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.headTitle {
+  font-size: var(--text-title-small);
+  font-weight: var(--weight-semibold);
+}
+
+.headMeta {
+  font-size: var(--text-body-small);
+  color: var(--t-muted);
+}
+
+.months {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--layout-grid-gap);
+}
+
+.month {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-md);
+  border-radius: var(--radius-card);
+  background: var(--t-surface);
+  border: var(--t-border);
+  min-height: var(--comp-choice-card-min-height);
+}
+
+.monthOn {
+  background: var(--c-completed-bg);
+  border-color: var(--c-completed-border);
+}
+
+.monthNow {
+  background: var(--color-accent-rose-soft);
+  border-color: var(--c-baby-card-border);
+}
+
+.monthLabel {
+  font-size: var(--text-caption);
+  color: var(--t-muted);
+}
+
+.monthOn .monthLabel,
+.monthNow .monthLabel {
+  color: var(--color-muted);
+}
+
+.monthValue {
+  font-weight: var(--weight-semibold);
+  color: var(--t-ink);
+}
+
+.monthOn .monthValue,
+.monthNow .monthValue {
+  color: var(--color-ink);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}

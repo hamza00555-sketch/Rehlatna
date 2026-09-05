@@ -125,6 +125,21 @@ export const ROUTES = [
   { name: "birth-plan", path: "/more/birth-plan", demo: "pregnancy", themes: both },
   { name: "settings-privacy", path: "/more/settings", demo: "pregnancy", themes: both },
 
+  // Postpartum chapter
+  { name: "postpartum-journey", path: "/journey/postpartum", demo: "postpartum", themes: both },
+  { name: "feeding-preferences", path: "/more/feeding", demo: "postpartum", themes: light },
+  { name: "feeding-unset", path: "/more/feeding", demo: "pregnancy", themes: light },
+  {
+    name: "postpartum-task-toggle",
+    path: "/journey/postpartum",
+    demo: "postpartum",
+    themes: light,
+    action: async (page) => {
+      await page.getByRole("checkbox", { name: /الرضاعة/ }).first().click();
+      await page.waitForTimeout(600);
+    },
+  },
+
   // Birth transition
   { name: "birth-event-form", path: "/journey/birth", demo: "pregnancy", themes: both },
   { name: "birth-confirmation", path: "/journey/birth/confirmed", demo: "postpartum", themes: light },

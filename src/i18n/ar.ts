@@ -26,6 +26,7 @@ export function count(n: number, forms: CountForms, gen = false): string {
 
 const WEEK_FORMS: CountForms = { one: "أسبوع واحد", two: "أسبوعان", twoGen: "أسبوعين", few: "أسابيع", many: "أسبوعاً" };
 const PERMISSION_FORMS: CountForms = { one: "صلاحية واحدة", two: "صلاحيتان", twoGen: "صلاحيتين", few: "صلاحيات", many: "صلاحية" };
+const MILESTONE_FORMS: CountForms = { one: "محطة واحدة", two: "محطتان", twoGen: "محطتين", few: "محطات", many: "محطة" };
 const DAY_FORMS: CountForms = { one: "يوم واحد", two: "يومان", twoGen: "يومين", few: "أيام", many: "يوماً" };
 const MONTH_FORMS: CountForms = { one: "شهر واحد", two: "شهران", twoGen: "شهرين", few: "أشهر", many: "شهراً" };
 
@@ -173,6 +174,15 @@ export const ar = {
     mother: "الأم",
     motherCare: "رعاية الأم",
     pregnancyHistory: "رحلة الحمل",
+    pregnancyHistoryMeta: (n: number) => (n === 0 ? "كل ما سبق الولادة محفوظ" : `${count(n, MILESTONE_FORMS)} محفوظة من أيام الحمل`),
+    fortyTitle: "الأربعين والأشهر الأولى",
+    fortySubtitle: "إيقاع هادئ لأول أيام صغيركم",
+    fortyComplete: "اكتملت الأربعين",
+    remaining: (d: string) => `يتبقى ${d}`,
+    monthLabels: ["الشهر الأول", "الشهر الثاني", "الشهر الثالث"] as string[],
+    monthNow: (elapsed: string) => `الآن · ${elapsed}`,
+    viewAll: "الأربعين وكل المهام",
+    tasksAll: "كل المهام",
     viewPregnancyHistory: "استعرضوا رحلة الحمل كاملة",
   },
   onboarding: {
@@ -733,6 +743,11 @@ export const ar = {
     formula: "حليب صناعي",
     formulaHelp: "يظهر فقط إن اختارته العائلة أو احتاجته طبياً.",
     note: "لا يوجد اختيار صحيح للجميع — ما يناسب عائلتكم هو الصواب.",
+    notes: "ملاحظات",
+    notesHelp: "ما يفيد المتابعة فقط؛ لا يُشارك خارج العائلة.",
+    saved: "تم حفظ الاختيار",
+    none: "لم تختاروا بعد — ولا بأس بذلك.",
+    disclaimer: "التطبيق لا يقدّم توصية تغذية؛ الاستشارة الطبية هي مرجع أي قرار.",
   },
   postpartumTasks: {
     defaults: [
@@ -751,6 +766,8 @@ export const ar = {
     title: "المهمة",
     kind: "النوع",
     dueDate: "التاريخ",
+    deleteTask: "حذف المهمة",
+    placeholder: "مثال: ترتيب زيارة الجدة",
   },
   status: {
     ready: "متوفر",

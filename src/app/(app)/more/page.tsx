@@ -63,7 +63,9 @@ export default async function MorePage() {
           <RowGroup>
             {!born && <TaskRow title={m.more.birthPlan} meta={m.birthPlan.deliveryIn(pregnancy.deliveryCity)} href="/more/birth-plan" leading={<Icon name="heart" size={20} />} />}
             {citiesDiffer && <TaskRow title={m.more.travel} meta={m.travel.route(pregnancy.followUpCity, pregnancy.deliveryCity)} href="/more/travel" leading={<Icon name="car" size={20} />} />}
-            <TaskRow title={m.preparation.hospitalBag} href="/preparation/hospital-bag" leading={<Icon name="bag" size={20} />} />
+            {born && <TaskRow title={m.postpartum.fortyTitle} meta={m.postpartum.fortySubtitle} href="/journey/postpartum" leading={<Icon name="moon" size={20} />} />}
+            <TaskRow title={m.postpartum.feedingPreferences} meta={m.postpartum.feeding} href="/more/feeding" leading={<Icon name="sprout" size={20} />} />
+            {!born && <TaskRow title={m.preparation.hospitalBag} href="/preparation/hospital-bag" leading={<Icon name="bag" size={20} />} />}
             {finance && <TaskRow title={m.more.finance} meta={m.finance.privateLabel} href="/finance" leading={<Icon name="lock" size={20} />} />}
             {!born && can(viewer, "journey:edit") && <TaskRow title={m.journey.birthEvent} meta={m.family.arrivalHelp} href="/journey/birth" leading={<Icon name="sprout" size={20} />} />}
           </RowGroup>

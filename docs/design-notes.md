@@ -84,3 +84,17 @@ composition only; their Arabic was re-typeset from the catalogue.
   hero moment.
 - Missing records inside the shell render `(app)/not-found.tsx` (a calm dead
   end with a way back), never the error boundary.
+
+## Phase 5 decisions (postpartum)
+
+- Feeding preference is a multi-select with no default. Formula is one option
+  among equals, with a neutral note; the page never recommends a method and
+  carries a disclaimer that medical advice is the reference.
+- The postpartum chapter (`/journey/postpartum`) reads: baby age, forty-day
+  progress, the first three months as three quiet cards, postpartum
+  milestones, feeding summary, the full task stack (toggle, delete, add), and
+  a row back into the pregnancy history so the narrative stays continuous.
+- The postpartum hero keeps at most five tasks in view; "الأربعين وكل المهام"
+  opens the full stack.
+- The screenshot walker re-seeds demo data on every capture so an interaction
+  in one state (e.g. toggling a task) never leaks into the next.

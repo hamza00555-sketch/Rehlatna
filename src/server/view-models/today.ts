@@ -149,7 +149,7 @@ export function buildTodayViewModel(ctx: RequestContext): TodayViewModel {
     } else if (!data.feedingPreference && can(viewer, "care:edit")) {
       nextAction = { title: m.postpartum.feedingPreferences, body: m.postpartum.feedingIntro, href: "/more/feeding", cta: m.common.open };
     } else if (openTask) {
-      nextAction = { title: openTask.title, href: "/today", cta: m.common.done };
+      nextAction = { title: openTask.title, body: m.postpartumTasks.kinds[openTask.kind], href: "/journey/postpartum", cta: m.common.open };
     }
   }
 

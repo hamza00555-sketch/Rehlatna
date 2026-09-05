@@ -73,6 +73,10 @@ export function PostpartumHero({ vm, baby, member, todayIso }: Props) {
       <div className={styles.sheet}>
         <h2 className={styles.sheetTitle}>{m.postpartum.tasksTitle}</h2>
         <PostpartumTaskList tasks={vm.tasks} />
+        <Link href="/journey/postpartum" className={styles.historyLink}>
+          {m.postpartum.viewAll}
+          <Icon name="forward" size={16} />
+        </Link>
         <Link href="/journey" className={styles.historyLink}>
           {m.postpartum.viewPregnancyHistory}
           <Icon name="forward" size={16} />
