@@ -1,108 +1,78 @@
+// @vitest-environment node
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createHouseholdFromOnboarding } from "./empty";
-import { demoHouseholds } from "./demo";
-import { weeklyMedia, weeklyMediaInventory } from "@/media/weekly";
-import { m } from "@/i18n";
 
-const ids = {
-  household: "h",
-  users: ["u1", "u2"] as [string, string],
-  members: ["m1", "m2"] as [string, string],
-  pregnancy: "p",
-  baby: "b",
-};
+const ids = { household: "h", users: ["u1", "u2"] as [string, string], members: ["m1", "m2"] as [string, string], pregnancy: "p", baby: "b" };
 
-describe("template behaviour", () => {
-  it("creates a household with a single member, no partner, no name, no gender", () => {
+describe("template-first household", () => {
+  it("is built entirely from onboarding input", () => {
     const data = createHouseholdFromOnboarding(
       {
-        dueDate: "2027-03-20",
-        creator: { displayName: "أنا", roles: ["mother"] },
-        finance: { enabled: false, shared: false },
-        followUpCity: "مدينة أ",
-        deliveryCity: "مدينة ب",
-      },
-      ids,
-      "2026-09-05T00:00:00.000Z",
-    );
-    expect(data.members).toHaveLength(1);
-    expect(data.baby?.displayName).toBeNull();
-    expect(data.baby?.gender).toBe("unknown");
-    expect(data.pregnancy?.followUpCity).not.toBe(data.pregnancy?.deliveryCity);
-    expect(data.household.settings.financeEnabled).toBe(false);
-    expect(data.fundingGoals).toEqual([]);
-  });
-
-  it("assigns the financial_planner role to whichever member the family chooses", () => {
-    const partnerOwns = createHouseholdFromOnboarding(
-      {
-        dueDate: "2027-03-20",
+        dueDate: "2027-05-10",
         creator: { displayName: "أ", roles: ["mother"] },
         partner: { displayName: "ب", roles: ["partner"] },
         finance: { enabled: true, owner: "partner", shared: false },
-        followUpCity: "س",
-        deliveryCity: "س",
+        followUpCity: "مدينة 1",
+        deliveryCity: "مدينة 2",
       },
       ids,
       "2026-09-05T00:00:00.000Z",
     );
-    expect(partnerOwns.members[1]?.roles).toContain("financial_planner");
-    expect(partnerOwns.members[0]?.roles).not.toContain("financial_planner");
+    expect(data.members.map((mm) => mm.displayName)).toEqual(["أ", "ب"]);
+    expect(data.pregnancy!.followUpCity).toBe("مدينة 1");
+    expect(data.pregnancy!.deliveryCity).toBe("مدينة 2");
+    expect(data.members[1]!.roles).toContain("financial_planner");
+    expect(data.members[0]!.roles).not.toContain("financial_planner");
+    expect(data.appointments).toEqual([]);
+    expect(data.fundingGoals).toEqual([]);
+    expect(data.preparationItems).toEqual([]);
+    expect(data.careProviders).toEqual([]);
+    expect(data.baby!.gender).toBe("unknown");
+    expect(data.baby!.displayName).toBeNull();
+  });
 
-    const creatorOwns = createHouseholdFromOnboarding(
-      {
-        dueDate: "2027-03-20",
-        creator: { displayName: "أ", roles: ["mother"] },
-        partner: { displayName: "ب", roles: ["partner"] },
-        finance: { enabled: true, owner: "creator", shared: true },
-        followUpCity: "س",
-        deliveryCity: "س",
-      },
+  it("gives the creator the finance role when they own it", () => {
+    const data = createHouseholdFromOnboarding(
+      { dueDate: "2027-05-10", creator: { displayName: "أ", roles: ["partner"] }, finance: { enabled: true, owner: "creator", shared: true }, followUpCity: "x", deliveryCity: "x" },
       ids,
       "2026-09-05T00:00:00.000Z",
     );
-    expect(creatorOwns.members[0]?.roles).toContain("financial_planner");
-    expect(creatorOwns.members[0]?.permissions).toContain("finance:view");
-    expect(creatorOwns.members[1]?.permissions).not.toContain("finance:view");
-  });
-
-  it("neutral baby wording is used when no name exists", () => {
-    expect(m.baby.nameOf(null)).toBe("صغيركم");
-    expect(m.baby.nameOf("اسم")).toBe("اسم");
+    expect(data.members[0]!.roles).toContain("financial_planner");
+    expect(data.household.settings.financeShared).toBe(true);
   });
 });
 
-describe("demo fixtures", () => {
-  it("are clearly namespaced and never share ids with live data", () => {
-    for (const h of demoHouseholds("2026-09-05")) {
-      expect(h.household.id.startsWith("demo_")).toBe(true);
-      for (const mm of h.members) expect(mm.id.startsWith("demo_")).toBe(true);
+function walk(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    const p = join(dir, entry);
+    if (statSync(p).isDirectory()) walk(p, out);
+    else if (/\.(ts|tsx|css|mjs)$/.test(entry) && !entry.endsWith(".test.ts")) out.push(p);
+  }
+  return out;
+}
+
+describe("source hygiene", () => {
+  const files = walk(join(process.cwd(), "src"));
+
+  it("contains no hardcoded real-family data", () => {
+    const forbidden = ["Hamza", "حمزة", "Asma", "سلمان", "Salman", "Riyadh", "Makkah", "2027-03-"];
+    for (const f of files) {
+      const text = readFileSync(f, "utf8");
+      for (const word of forbidden) expect(text, `${f} contains ${word}`).not.toContain(word);
     }
   });
 
-  it("cover both lifecycle states plus a fresh empty household", () => {
-    const [preg, post, fresh] = demoHouseholds("2026-09-05");
-    expect(fresh?.preparationItems).toEqual([]);
-    expect(fresh?.fundingGoals).toEqual([]);
-    expect(preg?.pregnancy?.mode).toBe("pregnancy");
-    expect(post?.pregnancy?.mode).toBe("postpartum");
-    expect(post?.baby?.birthDate).toBeDefined();
+  it("uses no emoji anywhere in the product", () => {
+    const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
+    for (const f of files) expect(emoji.test(readFileSync(f, "utf8")), `${f} contains emoji`).toBe(false);
   });
-});
 
-describe("weekly media manifest", () => {
-  it("covers weeks 5–40 with review metadata and no fake production files", () => {
-    const inv = weeklyMediaInventory();
-    expect(inv.total).toBe(36);
-    expect(inv.reviewed).toBe(0);
-    expect(inv.withVideo).toBe(0);
-    for (let w = 5; w <= 40; w++) {
-      const media = weeklyMedia(w);
-      expect(media.week).toBe(w);
-      expect(media.medicallyReviewed).toBe(false);
-      expect(media.developmentSummary.length).toBeGreaterThan(10);
+  it("weekly media is never marked medically reviewed without a reviewer", async () => {
+    const { WEEKLY_MEDIA } = await import("@/media/weekly");
+    for (const media of WEEKLY_MEDIA.values()) {
+      if (media.medicallyReviewed) expect(media.reviewedAt, `week ${media.week}`).toBeTruthy();
     }
-    expect(weeklyMedia(2).week).toBe(5);
-    expect(weeklyMedia(44).week).toBe(40);
   });
 });

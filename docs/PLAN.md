@@ -102,3 +102,13 @@ One coherent commit per phase.
    behind an adapter, `currencyCode` in household settings (default SAR,
    editable).
 6. No production weekly media → manifest + placeholders + backlog.
+
+## 10. Status
+
+Phases 1–6 are implemented and pushed as one commit each. Route inventory
+above is complete plus `/journey/postpartum`, `/more/feeding`,
+`/more/providers/new`, `/more/providers/edit/[kind]/[id]` and
+`/journey/birth/confirmed`. QA: 61 tests, 72 screenshot states (light and
+dark), axe-core walk with zero serious/critical violations. Remaining work
+is the asset pass (`docs/asset-backlog.md`) and the items in
+`docs/limitations.md`.

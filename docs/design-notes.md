@@ -63,6 +63,14 @@ composition only; their Arabic was re-typeset from the catalogue.
 3. `today-week-08` reference shows a fetus more mature than week 8 → the
    composition is used, stage accuracy governs assets.
 
+## Dark-mode additions
+
+- `--t-warning-text`: the warning brown (`#805124`) fails AA on dark surfaces;
+  in dark the alias resolves to `accentWarmSoft`. Used for warning-coloured
+  text on themed (non-fixed) surfaces only.
+- Card tones with fixed light surfaces (rose, sage, blue, attention) re-scope
+  `--t-ink` / `--t-muted` / `--t-line` so nested components keep contrast.
+
 ## Phase 4 decisions (care, travel, birth)
 
 - Insurance coverage is stored as a belief (`insuranceBelievedCovered`) with a

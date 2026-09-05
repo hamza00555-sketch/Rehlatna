@@ -22,7 +22,7 @@
   font-size: var(--text-page-title);
   font-weight: var(--weight-semibold);
   line-height: var(--leading-compact);
-  color: var(--color-warning);
+  color: var(--t-warning-text);
 }
 
 .monthly {

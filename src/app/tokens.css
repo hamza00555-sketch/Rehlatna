@@ -188,6 +188,7 @@
   --t-nav-active: var(--color-primary);
   --t-chip-selected-bg: var(--color-ink);
   --t-chip-selected-fg: var(--color-on-primary);
+  --t-warning-text: var(--color-warning);
   color-scheme: light;
 }
 
@@ -210,6 +211,7 @@
   --t-nav-active: var(--color-dark-ink);
   --t-chip-selected-bg: var(--color-dark-ink);
   --t-chip-selected-fg: var(--color-dark-canvas);
+  --t-warning-text: var(--color-accent-warm-soft);
   color-scheme: dark;
 }
 
@@ -233,6 +235,7 @@
     --t-nav-active: var(--color-dark-ink);
     --t-chip-selected-bg: var(--color-dark-ink);
     --t-chip-selected-fg: var(--color-dark-canvas);
+    --t-warning-text: var(--color-accent-warm-soft);
     color-scheme: dark;
   }
 }

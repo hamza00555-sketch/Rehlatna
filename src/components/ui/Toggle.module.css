@@ -69,3 +69,10 @@
 .disabled {
   opacity: 0.55;
 }
+
+/* Switch keeps its 52×32 geometry; the touch target is extended to 44px. */
+.switch::before {
+  content: "";
+  position: absolute;
+  inset: -6px -4px;
+}

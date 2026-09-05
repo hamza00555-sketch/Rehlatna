@@ -72,6 +72,8 @@ const aliases = [
   ["nav-active", "--color-primary", "--color-dark-ink"],
   ["chip-selected-bg", "--color-ink", "--color-dark-ink"],
   ["chip-selected-fg", "--color-on-primary", "--color-dark-canvas"],
+  // Warning text on themed surfaces: the light warning brown fails on dark surfaces.
+  ["warning-text", "--color-warning", "--color-accent-warm-soft"],
 ];
 
 css += `\n:root {\n`;

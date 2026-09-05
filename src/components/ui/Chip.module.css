@@ -12,6 +12,7 @@
 }
 
 .chip {
+  position: relative;
   flex-shrink: 0;
   min-height: var(--comp-chip-min-height);
   padding: var(--comp-chip-padding-y) var(--comp-chip-padding-x);
@@ -53,4 +54,11 @@
 .chip:focus-visible {
   outline: var(--border-focus);
   outline-offset: 2px;
+}
+
+/* Visual chip stays compact; the touch target is extended to 44px. */
+.chip::before {
+  content: "";
+  position: absolute;
+  inset: calc((var(--comp-chip-min-height) - var(--comp-target-min)) / 2) 0;
 }

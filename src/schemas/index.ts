@@ -9,7 +9,12 @@ import { isValidIsoDate } from "@/domain/dates";
 const isoDate = z.string().refine(isValidIsoDate, { message: "invalid_date" });
 const shortText = z.string().trim().min(1).max(120);
 const longText = z.string().trim().max(2000);
-const optionalText = z.string().trim().max(2000).optional().or(z.literal("").transform(() => undefined));
+const optionalText = z
+  .string()
+  .trim()
+  .max(2000)
+  .transform((v) => (v === "" ? undefined : v))
+  .optional();
 const money = z.number().finite().min(0).max(1_000_000_000);
 const time = z
   .string()

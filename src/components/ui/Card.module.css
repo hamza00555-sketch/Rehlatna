@@ -20,23 +20,32 @@
 .tone_raised {
   background: var(--t-surface-raised);
 }
+/* Tones below keep a light surface in both themes, so they re-scope the
+   theme aliases: children written against --t-ink / --t-muted stay legible. */
+.tone_sage,
+.tone_blue,
+.tone_rose,
+.tone_attention {
+  --t-ink: var(--color-ink);
+  --t-muted: var(--color-muted);
+  --t-line: var(--color-line);
+  color: var(--color-ink);
+}
 .tone_sage {
   background: var(--color-accent-sage-soft);
-  color: var(--color-ink);
 }
 .tone_blue {
   background: var(--color-accent-blue-soft);
-  color: var(--color-ink);
 }
 .tone_rose {
   background: var(--color-accent-rose-soft);
-  color: var(--color-ink);
 }
 .tone_attention {
   background: var(--c-attention-bg);
-  color: var(--color-ink);
 }
 .tone_dark {
+  --t-ink: var(--color-dark-ink);
+  --t-muted: var(--color-dark-muted);
   background: var(--color-dark-raised);
   color: var(--color-dark-ink);
 }

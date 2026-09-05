@@ -24,6 +24,26 @@
   border-bottom: none;
 }
 
+/* Toggle area inside a split row: same geometry as the row, no visual seam. */
+.toggleArea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1;
+  min-width: 0;
+  min-height: var(--comp-target-min);
+  margin: calc(-1 * var(--comp-row-padding-y)) 0;
+  padding: var(--comp-row-padding-y) 0;
+  text-align: start;
+  color: inherit;
+  font: inherit;
+}
+.toggleArea:focus-visible {
+  outline: var(--border-focus);
+  outline-offset: -2px;
+  border-radius: var(--radius-control);
+}
+
 .row:active {
   background: var(--t-surface-tint);
 }

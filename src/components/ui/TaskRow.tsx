@@ -42,6 +42,25 @@ export function TaskRow({ title, meta, state = "open", onToggle, href, leading, 
     </>
   );
 
+  if (onToggle && state !== "disabled" && trailing) {
+    // A secondary control beside a toggle: split into siblings so no
+    // interactive element nests inside another.
+    return (
+      <div className={classes}>
+        <button type="button" className={styles.toggleArea} onClick={onToggle} role="checkbox" aria-checked={state === "completed"}>
+          <span className={cx(styles.check, state === "completed" && styles.checkOn)} aria-hidden="true">
+            {state === "completed" && <Icon name="check" size={16} />}
+          </span>
+          {leading && <span className={styles.leading}>{leading}</span>}
+          <span className={styles.text}>
+            <span className={styles.title}>{title}</span>
+            {meta && <span className={styles.meta}>{meta}</span>}
+          </span>
+        </button>
+        <span className={styles.trailing}>{trailing}</span>
+      </div>
+    );
+  }
   if (onToggle && state !== "disabled") {
     return (
       <button type="button" className={classes} onClick={onToggle} role="checkbox" aria-checked={state === "completed"}>

@@ -29,6 +29,7 @@ export function Toggle({ id, checked, onChange, label, description, disabled }: 
         aria-checked={checked}
         disabled={disabled}
         className={cx(styles.switch, checked && styles.on)}
+        data-hit-extended=""
         onClick={() => onChange(!checked)}
       >
         <span className={styles.knob} />

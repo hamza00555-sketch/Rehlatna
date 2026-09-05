@@ -1,0 +1,61 @@
+# Asset backlog
+
+Every production asset the product is designed around but does not ship
+with. The app is fully functional without them: each slot renders the
+approved neutral placeholder and keeps its information hierarchy. Nothing in
+this list may be faked with stock footage or a mature-fetus loop resized.
+
+Paths are served from `/public/media/…`. Manifest: `src/media/weekly.ts`
+(`WEEKLY_MEDIA`), `src/domain/types.ts` (`MediaAsset`, `WeeklyBabyMedia`).
+
+## 1. Weekly baby media — weeks 5 to 40 (36 sets)
+
+| File | Purpose | Ratio / size | Crop & safe area | Medical review |
+| --- | --- | --- | --- | --- |
+| `weekly/week-NN.mp4` | Silent loop, Today hero + expanded hero | 4:5 (1080×1350), 6–10 s, H.264, ≤ 2.5 MB | Focal point on the baby, centred; keep top 18% and bottom 26% free of detail (scrim + text) | **Required** before `medicallyReviewed: true` |
+| `weekly/week-NN.webm` | Same loop, VP9 | as above | as above | same review as the MP4 |
+| `weekly/week-NN.poster.webp` | First frame, shown before playback and under reduced motion | 4:5, 1080×1350, ≤ 160 KB | identical framing to the loop | same review |
+| `weekly/week-NN.thumb.webp` | Weekly development page, journey history | 1:1, 480×480 | tighter crop on the baby | same review |
+
+Rules: one visual universe (lighting, material, lens, palette) across all
+36 weeks; each week is a distinct, stage-accurate model — never scaled or
+morphed from another week; no diagnostic look; `alt` stays descriptive and
+non-medical. Set `reviewedAt` and `reviewNotes` when the reviewer signs off.
+
+## 2. Onboarding and story
+
+| File | Purpose | Ratio | Notes |
+| --- | --- | --- | --- |
+| `story/welcome.webp` | Full-bleed welcome hero | 9:16 | dark cinematic, text-safe bottom 40% |
+| `story/chapter-01.webp` … `chapter-03.webp` | Story steps | 9:16 | same universe as weekly media |
+
+## 3. Preparation objects (studio photography)
+
+| File | Purpose | Ratio | Notes |
+| --- | --- | --- | --- |
+| `preparation/{category}/{slug}.webp` | Object cards, item detail | 4:3 | one warm neutral background, one soft shadow direction, consistent scale; no brands, no prices in frame |
+
+Categories: sleep, travel, feeding, clothing, care, bath, mother_postpartum,
+hospital_bag.
+
+## 4. Care, travel, birth, postpartum
+
+| File | Purpose | Ratio | Notes |
+| --- | --- | --- | --- |
+| `care/hospital-placeholder.webp` | Hospital detail hero when no photo is set | 16:9 | neutral architecture / light |
+| `travel/route-abstract.webp` | Travel plan header | 3:1 | abstract, no maps |
+| `birth/confirmed.webp` | "وصل صغيرنا" confirmation backdrop | 9:16 | material and light, no child |
+| `postpartum/neutral-fallback.webp` | Postpartum hero when the family has not added a photo | 4:5 | material and light, **never** a generated child |
+
+## 5. Icons
+
+The custom set in `src/components/icons/Icon.tsx` covers every current
+use. Remaining wishes: a `bottle`/`spoon` glyph for feeding tasks, a
+`suitcase` variant for travel, and 20 px optical variants for dense rows.
+
+## 6. Development placeholders
+
+Development placeholders (Higgsfield or similar) may be generated for the
+weekly set and studio objects to exercise the media pipeline. They must be
+saved under `public/media/dev/…`, wired with `medicallyReviewed: false`, and
+never promoted to production paths without the review above.

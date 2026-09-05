@@ -16,6 +16,7 @@ export function Chip({ selected = false, children, className, ...rest }: ChipPro
       aria-checked={selected}
       {...rest}
       className={cx(styles.chip, selected && styles.selected, className)}
+      data-hit-extended=""
     >
       {children}
     </button>

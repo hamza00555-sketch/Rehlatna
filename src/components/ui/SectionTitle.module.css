@@ -17,8 +17,10 @@
   font-weight: var(--weight-medium);
   color: var(--color-primary);
   min-height: var(--comp-target-min);
+  min-width: var(--comp-target-min);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding-inline: var(--space-2xs);
 }
 
