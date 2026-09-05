@@ -1,0 +1,155 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-grid-gap);
+  padding-block-start: var(--space-xs);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-block-start: var(--space-sm);
+}
+
+.goalMeta {
+  display: inline-flex;
+  gap: var(--space-2xs);
+  align-items: baseline;
+}
+
+/* Goal detail — private planning surface (darkRaised) regardless of theme. */
+.private {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--comp-panel-padding);
+  border-radius: var(--radius-card);
+  background: var(--color-dark-raised);
+  color: var(--color-dark-ink);
+  border: var(--border-dark);
+  box-shadow: var(--shadow-dark-raised);
+}
+
+.privateStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-sm);
+  text-align: center;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statLabel {
+  font-size: var(--text-label);
+  color: var(--color-dark-muted);
+}
+
+.statValue {
+  font-size: var(--text-title-small);
+  font-weight: var(--weight-semibold);
+  color: var(--color-dark-ink);
+}
+.statAccent {
+  color: var(--color-accent-warm-soft);
+}
+
+.privateTrack {
+  height: var(--comp-progress-height);
+  border-radius: var(--radius-round);
+  background: var(--color-dark-line);
+  overflow: hidden;
+}
+.privateFill {
+  height: 100%;
+  border-radius: var(--radius-round);
+  background: var(--color-accent-warm);
+}
+.privateFillComplete {
+  background: var(--color-accent-sage);
+}
+
+.privateFoot {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-body-small);
+  color: var(--color-dark-muted);
+}
+
+.dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--layout-grid-gap);
+}
+
+.dateCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.dateLabel {
+  font-size: var(--text-label);
+  color: var(--t-muted);
+}
+
+.dateValue {
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+}
+
+.monthlyBig {
+  font-size: var(--text-page-title);
+  font-weight: var(--weight-semibold);
+  color: var(--color-accent-teal);
+}
+
+.history {
+  display: flex;
+  flex-direction: column;
+}
+
+.historyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--comp-target-min);
+  padding-block: var(--space-xs);
+  border-bottom: 1px solid var(--t-line);
+  font-size: var(--text-body-small);
+}
+.historyRow:last-child {
+  border-bottom: none;
+}
+
+.historyAmount {
+  font-weight: var(--weight-semibold);
+  color: var(--color-success);
+}
+
+.explain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-block: var(--space-xs);
+  border-bottom: 1px solid var(--t-line);
+  font-size: var(--text-body-small);
+}
+.explain:last-child {
+  border-bottom: none;
+}
+.explainWhy {
+  color: var(--t-muted);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-block-start: var(--space-sm);
+}

@@ -2,6 +2,7 @@ import type { HouseholdData } from "@/domain/types";
 import { permissionsForRoles } from "@/domain/permissions";
 import { addDays } from "@/domain/dates";
 import { appConfig } from "@/config/app";
+import { createHouseholdFromOnboarding } from "./empty";
 
 /**
  * DEMO FIXTURES — generic fictional data only. Never loaded in live mode;
@@ -14,6 +15,7 @@ import { appConfig } from "@/config/app";
 
 export const DEMO_HOUSEHOLD_PREGNANCY = "demo_pregnancy";
 export const DEMO_HOUSEHOLD_POSTPARTUM = "demo_postpartum";
+export const DEMO_HOUSEHOLD_FRESH = "demo_fresh";
 
 const MEMBER_MOTHER = "demo_m_mother";
 const MEMBER_PARTNER = "demo_m_partner";
@@ -377,11 +379,34 @@ export function demoPostpartumHousehold(today: string): HouseholdData {
   };
 }
 
+/** A just-onboarded household (week ~8): the respectful empty state, for demos and QA. */
+export function demoFreshHousehold(today: string): HouseholdData {
+  return createHouseholdFromOnboarding(
+    {
+      dueDate: addDays(today, 280 - 8 * 7 - 2),
+      creator: { displayName: "نورة", roles: ["mother"] },
+      partner: { displayName: "فيصل", roles: ["partner"] },
+      finance: { enabled: true, owner: "partner", shared: false },
+      followUpCity: "الطائف",
+      deliveryCity: "الطائف",
+    },
+    {
+      household: DEMO_HOUSEHOLD_FRESH,
+      users: ["demo_u_fresh_mother", "demo_u_fresh_partner"],
+      members: ["demo_m_fresh_mother", "demo_m_fresh_partner"],
+      pregnancy: "demo_p_fresh",
+      baby: "demo_b_fresh",
+    },
+    `${today}T08:00:00.000Z`,
+  );
+}
+
 export function demoHouseholds(today: string): HouseholdData[] {
-  return [demoPregnancyHousehold(today), demoPostpartumHousehold(today)];
+  return [demoPregnancyHousehold(today), demoPostpartumHousehold(today), demoFreshHousehold(today)];
 }
 
 export const DEMO_DEFAULT_MEMBER: Record<string, string> = {
   [DEMO_HOUSEHOLD_PREGNANCY]: MEMBER_MOTHER,
   [DEMO_HOUSEHOLD_POSTPARTUM]: `${MEMBER_MOTHER}_pp`,
+  [DEMO_HOUSEHOLD_FRESH]: "demo_m_fresh_mother",
 };

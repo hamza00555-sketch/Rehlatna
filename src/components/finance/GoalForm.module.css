@@ -1,0 +1,66 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-block: var(--space-sm) var(--space-lg);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--layout-grid-gap);
+}
+
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.legend {
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+  margin-block-end: var(--space-xs);
+}
+
+.impact {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-radius: var(--radius-card);
+  background: var(--t-surface-tint);
+  border: var(--t-border);
+}
+.impactChanged {
+  background: var(--c-attention-bg);
+  border-color: var(--c-attention-border);
+}
+
+.impactIcon {
+  color: var(--color-warning);
+  flex-shrink: 0;
+  margin-block-start: 2px;
+}
+
+.impactTitle {
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-semibold);
+  color: var(--color-warning);
+}
+
+.impactLine {
+  font-size: var(--text-body);
+  margin-block-start: var(--space-2xs);
+}
+
+.impactNote {
+  font-size: var(--text-label);
+  color: var(--t-muted);
+  margin-block-start: var(--space-2xs);
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+}

@@ -62,7 +62,51 @@ export const ROUTES = [
   { name: "gender-choice", path: "/journey/gender", demo: "pregnancy", themes: light },
   { name: "baby-name", path: "/journey/name", demo: "pregnancy", themes: light },
 
-  // Preparation / finance / more (placeholders until their phases land)
-  { name: "preparation-filled", path: "/preparation", demo: "pregnancy", themes: light },
+  // Preparation
+  { name: "preparation-empty", path: "/preparation", demo: "fresh", themes: light },
+  { name: "preparation-filled", path: "/preparation", demo: "pregnancy", themes: both },
+  { name: "preparation-needed-filter", path: "/preparation?status=needed", demo: "pregnancy", themes: light },
+  { name: "preparation-sleep", path: "/preparation/sleep", demo: "pregnancy", themes: light },
+  { name: "preparation-item-owned", path: "/preparation/item/demo_pi_stroller", demo: "pregnancy", themes: light },
+  { name: "preparation-item-needed-shared", path: "/preparation/item/demo_pi_clothes", demo: "pregnancy", themes: light },
+  { name: "preparation-item-needed-planner", path: "/preparation/item/demo_pi_clothes", demo: "pregnancy", member: "demo_m_partner", themes: light },
+  {
+    name: "preparation-finance-prompt",
+    path: "/preparation/item/demo_pi_clothes",
+    demo: "pregnancy",
+    member: "demo_m_partner",
+    themes: light,
+    fullPage: false,
+    action: async (page) => {
+      await page.getByRole("button", { name: "نعم، أضفه" }).click();
+      await page.waitForTimeout(500);
+    },
+  },
+  { name: "preparation-item-undecided", path: "/preparation/item/demo_pi_bassinet", demo: "pregnancy", themes: light },
+  { name: "preparation-item-edit", path: "/preparation/item/demo_pi_bassinet/edit", demo: "pregnancy", themes: light },
+  { name: "hospital-bag", path: "/preparation/hospital-bag", demo: "pregnancy", themes: light },
+
+  // Private finance
+  { name: "finance-unauthorized", path: "/finance", demo: "pregnancy", themes: light },
+  { name: "finance-overview", path: "/finance", demo: "pregnancy", member: "demo_m_partner", themes: both },
+  { name: "finance-empty", path: "/finance", demo: "fresh", member: "demo_m_fresh_partner", themes: light },
+  { name: "funding-goal-detail", path: "/finance/goals/demo_g_carseat", demo: "pregnancy", member: "demo_m_partner", themes: light },
+  { name: "funding-goal-complete", path: "/finance/goals/demo_g_hospital", demo: "pregnancy", member: "demo_m_partner", themes: light },
+  { name: "expense-editor", path: "/finance/goals/demo_g_carseat/edit", demo: "pregnancy", member: "demo_m_partner", themes: light },
+  {
+    name: "finance-recalculation-confirm",
+    path: "/finance/goals/demo_g_carseat/edit",
+    demo: "pregnancy",
+    member: "demo_m_partner",
+    themes: light,
+    fullPage: false,
+    action: async (page) => {
+      await page.fill("#goal-expected", "1600");
+      await page.getByRole("button", { name: "تطبيق التغيير" }).click();
+      await page.waitForTimeout(500);
+    },
+  },
+
+  // More (placeholder until Phase 4)
   { name: "more-hub", path: "/more", demo: "pregnancy", themes: light },
 ];

@@ -80,8 +80,10 @@ describe("demo fixtures", () => {
     }
   });
 
-  it("cover both lifecycle states", () => {
-    const [preg, post] = demoHouseholds("2026-09-05");
+  it("cover both lifecycle states plus a fresh empty household", () => {
+    const [preg, post, fresh] = demoHouseholds("2026-09-05");
+    expect(fresh?.preparationItems).toEqual([]);
+    expect(fresh?.fundingGoals).toEqual([]);
     expect(preg?.pregnancy?.mode).toBe("pregnancy");
     expect(post?.pregnancy?.mode).toBe("postpartum");
     expect(post?.baby?.birthDate).toBeDefined();

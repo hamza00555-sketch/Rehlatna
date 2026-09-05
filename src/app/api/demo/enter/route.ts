@@ -4,7 +4,7 @@ import { parseBody } from "@/server/http";
 import { demoSession, ensureDemoSeeded } from "@/server/demo";
 import { sessionCookie } from "@/server/session";
 
-const schema = z.object({ scenario: z.enum(["pregnancy", "postpartum"]).default("pregnancy") });
+const schema = z.object({ scenario: z.enum(["pregnancy", "postpartum", "fresh"]).default("pregnancy") });
 
 /** Enters demo mode: seeds the in-memory demo store and points the session at it. */
 export async function POST(req: Request) {
