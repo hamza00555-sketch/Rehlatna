@@ -61,9 +61,10 @@ type Registry = { live?: FileStore; demo?: MemoryStore };
 const registry: Registry = ((globalThis as unknown as { __rjStores?: Registry }).__rjStores ??= {});
 
 function liveStore(): FileStore {
-  registry.live ??= new FileStore(
-    process.env.DATA_FILE ?? join(process.cwd(), ".data", "store.json"),
-  );
+  // Serverless hosts (Vercel) expose a read-only bundle; /tmp is the only
+  // writable path there and is ephemeral — fine for review, not for production.
+  const fallback = process.env.VERCEL ? "/tmp/rehlatna-store.json" : join(process.cwd(), ".data", "store.json");
+  registry.live ??= new FileStore(process.env.DATA_FILE ?? fallback);
   return registry.live;
 }
 
