@@ -1,14 +1,23 @@
 .badge {
   position: fixed;
-  top: calc(var(--space-xs) + env(safe-area-inset-top));
-  inset-inline-end: var(--space-xs);
+  top: calc(var(--space-2xs) + env(safe-area-inset-top));
+  inset-inline: 0;
+  width: fit-content;
+  margin-inline: auto;
   z-index: 50;
-  padding: var(--comp-badge-padding-y) var(--comp-badge-padding-x);
+  padding: var(--space-2xs) var(--comp-badge-padding-x);
   border-radius: var(--radius-round);
   background: var(--c-attention-bg);
   color: var(--color-warning);
   border: 1px solid var(--c-attention-border);
   font-size: var(--text-caption);
   font-weight: var(--weight-semibold);
+  line-height: var(--leading-heading);
   pointer-events: none;
+  opacity: 0.92;
+}
+
+.aboveNav {
+  top: auto;
+  bottom: calc(var(--layout-bottom-nav-height) + var(--space-xs) + env(safe-area-inset-bottom));
 }

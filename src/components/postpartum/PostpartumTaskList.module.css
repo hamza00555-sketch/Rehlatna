@@ -1,0 +1,83 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.empty {
+  font-size: var(--text-body-small);
+  color: var(--color-dark-muted);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  min-height: var(--comp-row-min-height);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-control);
+  background: var(--color-dark-raised);
+  border: var(--border-dark);
+  color: var(--color-dark-ink);
+  font-size: var(--text-body-small);
+  text-align: start;
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease);
+}
+.row:active {
+  transform: scale(0.99);
+  background: var(--color-dark-tint);
+  border-color: var(--c-postpartum-pressed-border);
+}
+.row:focus-visible {
+  outline: var(--border-focus);
+  outline-offset: 2px;
+}
+
+.medical {
+  background: var(--c-medical-row-bg);
+  border-color: var(--c-medical-row-border);
+}
+
+.completed {
+  background: var(--c-postpartum-completed-bg);
+  border-color: var(--c-postpartum-completed-border);
+  color: var(--c-postpartum-completed-text);
+}
+
+.check {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-small);
+  border: 1px solid var(--color-dark-line);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.completed .check {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--color-on-primary);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.title {
+  font-weight: var(--weight-medium);
+}
+.completed .title {
+  text-decoration: line-through;
+}
+
+.meta {
+  font-size: var(--text-label);
+  color: var(--color-dark-muted);
+}

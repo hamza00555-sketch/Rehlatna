@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ComponentPropsWithRef } from "react";
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons/Icon";
 import { cx } from "@/lib/cx";
@@ -6,7 +6,7 @@ import styles from "./IconButton.module.css";
 
 type Variant = "neutral" | "overMedia" | "quiet" | "accent";
 
-interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface Props extends ComponentPropsWithRef<"button"> {
   icon: IconName;
   /** Required: icon-only controls always carry a screen-reader label. */
   label: string;

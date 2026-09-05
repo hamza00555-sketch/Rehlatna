@@ -33,11 +33,27 @@ describe("system milestones", () => {
     const ms = generateSystemMilestones(pregnancy, born);
     const keys = ms.map((mm) => mm.key);
     expect(keys).toContain("setup");
-    expect(keys).toContain("due_date");
+    expect(keys).toContain("first_trimester_end");
+    expect(keys).toContain("hospital_bag");
     expect(keys).toContain("birth");
     expect(keys).toContain("forty_days");
     expect(keys).toContain("month_3");
     expect(ms.find((mm) => mm.key === "forty_days")?.date).toBe(addDays("2027-03-18", 40));
+  });
+
+  it("drops pregnancy milestones that fall after an early birth so birth becomes the pivot", () => {
+    // 2027-02-15 is 35w+2d for a 2027-03-20 due date: the hospital-bag
+    // (36w), due-window (37w) and due-date milestones never happened.
+    const early: Baby = { ...baby, birthDate: "2027-02-15" };
+    const ms = generateSystemMilestones(pregnancy, early);
+    const keys = ms.map((mm) => mm.key);
+    expect(keys).not.toContain("due_date");
+    expect(keys).not.toContain("due_window");
+    expect(keys).not.toContain("hospital_bag");
+    expect(keys).toContain("third_trimester_begin");
+    expect(keys).toContain("birth");
+    const birthIdx = ms.findIndex((mm) => mm.key === "birth");
+    expect(ms.slice(0, birthIdx).every((mm) => mm.date <= "2027-02-15")).toBe(true);
   });
 });
 

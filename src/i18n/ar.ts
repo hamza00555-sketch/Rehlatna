@@ -3,20 +3,48 @@
  * Warm, brief, clear, mature. Add `en.ts` with the same shape to localise.
  */
 
-/** Arabic count agreement: 1 → singular, 2 → dual, 3–10 → plural, 11+ → singular accusative. */
-export function count(n: number, forms: { one: string; two: string; few: string; many: string }): string {
+interface CountForms {
+  one: string;
+  two: string;
+  /** Dual after a preposition (بعد / قبل / نحو): يومين instead of يومان. */
+  twoGen: string;
+  few: string;
+  many: string;
+}
+
+/**
+ * Arabic count agreement: 1 → singular, 2 → dual, 3–10 → plural, 11+ →
+ * singular accusative. `gen` selects the genitive dual used after
+ * prepositions.
+ */
+export function count(n: number, forms: CountForms, gen = false): string {
   if (n === 1) return forms.one;
-  if (n === 2) return forms.two;
+  if (n === 2) return gen ? forms.twoGen : forms.two;
   if (n >= 3 && n <= 10) return `${n} ${forms.few}`;
   return `${n} ${forms.many}`;
 }
 
-export const weeks = (n: number) =>
-  count(n, { one: "أسبوع واحد", two: "أسبوعان", few: "أسابيع", many: "أسبوعاً" });
-export const days = (n: number) =>
-  count(n, { one: "يوم واحد", two: "يومان", few: "أيام", many: "يوماً" });
-export const months = (n: number) =>
-  count(n, { one: "شهر واحد", two: "شهران", few: "أشهر", many: "شهراً" });
+const WEEK_FORMS: CountForms = { one: "أسبوع واحد", two: "أسبوعان", twoGen: "أسبوعين", few: "أسابيع", many: "أسبوعاً" };
+const DAY_FORMS: CountForms = { one: "يوم واحد", two: "يومان", twoGen: "يومين", few: "أيام", many: "يوماً" };
+const MONTH_FORMS: CountForms = { one: "شهر واحد", two: "شهران", twoGen: "شهرين", few: "أشهر", many: "شهراً" };
+
+export const weeks = (n: number, gen = false) => count(n, WEEK_FORMS, gen);
+export const days = (n: number, gen = false) => count(n, DAY_FORMS, gen);
+export const months = (n: number, gen = false) => count(n, MONTH_FORMS, gen);
+
+/** Bare unit that agrees with a number displayed separately (e.g. a hero numeral). */
+export function unitFor(n: number, kind: "days" | "weeks" | "months"): string {
+  const bare = kind === "days" ? ["يوم", "يومان", "أيام", "يوماً"] : kind === "weeks" ? ["أسبوع", "أسبوعان", "أسابيع", "أسبوعاً"] : ["شهر", "شهران", "أشهر", "شهراً"];
+  if (n === 1) return bare[0]!;
+  if (n === 2) return bare[1]!;
+  if (n >= 3 && n <= 10) return bare[2]!;
+  return bare[3]!;
+}
+
+/** "عمره" / "عمرها" / neutral "العمر" when the gender is not recorded. */
+export function ageWord(gender: "boy" | "girl" | "unknown" | "undisclosed"): string {
+  return gender === "girl" ? "عمرها" : gender === "boy" ? "عمره" : "العمر";
+}
 
 export const ar = {
   nav: {
@@ -55,8 +83,8 @@ export const ar = {
     later: "لاحقاً",
     today: "اليوم",
     tomorrow: "غداً",
-    inDays: (n: number) => `بعد ${days(n)}`,
-    daysAgo: (n: number) => `قبل ${days(n)}`,
+    inDays: (n: number) => `بعد ${days(n, true)}`,
+    daysAgo: (n: number) => `قبل ${days(n, true)}`,
     unknownDate: "غير محدد",
     demoBadge: "بيانات تجريبية",
     switchMember: "تبديل العضو (للتطوير)",
@@ -78,8 +106,8 @@ export const ar = {
     weekLabel: "الأسبوع",
     ofWeeks: (total: number) => `من ${total} أسبوعاً`,
     dayOfWeek: (day: number) => `اليوم ${day} من الأسبوع`,
-    remainingApprox: (w: number) => `يتبقّى نحو ${weeks(w)}`,
-    remainingDays: (d: number) => `يتبقّى نحو ${days(d)}`,
+    remainingApprox: (w: number) => `يتبقّى نحو ${weeks(w, true)}`,
+    remainingDays: (d: number) => `يتبقّى نحو ${days(d, true)}`,
     dueSoon: "موعد الوصول قريب جداً",
     pastDue: "تجاوزنا الموعد المتوقع — تابعوا مع طبيبكم",
     trimester: { 1: "أنتِ في الثلث الأول من الحمل", 2: "أنتِ في الثلث الثاني من الحمل", 3: "أنتِ في الثلث الثالث من الحمل" } as Record<1 | 2 | 3, string>,
@@ -110,12 +138,25 @@ export const ar = {
     developing: "ما الذي يتطور الآن",
     changedThisWeek: "ما الذي تغيّر هذا الأسبوع",
     motherContext: "وأنتِ؟",
+    motherContextByTrimester: {
+      1: "الإرهاق والتغيّرات في الشهية شائعة الآن. الراحة والسوائل والمتابعة المنتظمة مع طبيبك تكفي غالباً في هذه المرحلة.",
+      2: "كثيرات يشعرن بطاقة أعلى في هذه المرحلة. وقت مناسب لترتيب المواعيد القادمة والبدء بالتجهيز بهدوء.",
+      3: "الجسم يستعد للوصول. أي تغيّر مفاجئ أو ألم غير معتاد يستحق مكالمة مع طبيبك دون تردد.",
+    } as Record<1 | 2 | 3, string>,
     generalInfo: "معلومات عامة",
+    browseWeeks: "تصفّح الأسابيع",
+    previousWeek: "الأسبوع السابق",
+    nextWeek: "الأسبوع التالي",
+    currentWeek: "أسبوعكم الحالي",
+    sizeAndWeight: "الحجم والوزن التقريبيان",
+    length: "الطول",
+    weight: "الوزن",
+    nextSteps: "الخطوات القادمة",
   },
   postpartum: {
-    ageDays: (d: number) => (d === 0 ? "يوم الولادة" : `عمره ${days(d)}`),
-    ageWeeks: (w: number, d: number) => (d === 0 ? `عمره ${weeks(w)}` : `${weeks(w)} و${days(d)}`),
-    ageMonths: (m: number, d: number) => (d === 0 ? `عمره ${months(m)}` : `${months(m)} و${days(d)}`),
+    ageDays: (d: number, who: string) => (d === 0 ? "يوم الولادة" : `${who} ${days(d)}`),
+    ageWeeks: (w: number, d: number, who: string) => (d === 0 ? `${who} ${weeks(w)}` : `${who} ${weeks(w)} و${days(d)}`),
+    ageMonths: (mo: number, d: number, who: string) => (d === 0 ? `${who} ${months(mo)}` : `${who} ${months(mo)} و${days(d)}`),
     dayNumber: (n: number) => `اليوم ${n}`,
     fortyDays: "الأربعين",
     fortyDayProgress: (n: number) => `اليوم ${n} من 40`,
@@ -175,7 +216,7 @@ export const ar = {
     title: "الرحلة",
     current: "الآن",
     next: "التالي",
-    nextIn: (n: number) => `بعد ${days(n)}`,
+    nextIn: (n: number) => `بعد ${days(n, true)}`,
     nextTomorrow: "غداً",
     today: "اليوم",
     past: "سابق",
@@ -260,6 +301,7 @@ export const ar = {
     status: "الحالة",
     reminder: "تذكير",
     preparationTasks: "ما نجهّزه قبل الموعد",
+    openTasks: (n: number) => count(n, { one: "خطوة واحدة", two: "خطوتان", twoGen: "خطوتين", few: "خطوات", many: "خطوة" }),
     addTask: "إضافة خطوة",
     none: "لا مواعيد بعد",
     markDone: "تم الموعد",
@@ -347,11 +389,12 @@ export const ar = {
     phases: { before_birth: "قبل الولادة", at_birth: "عند الولادة", after_birth: "بعد الولادة" } as Record<string, string>,
     priorities: { essential: "أساسي", important: "مهم", optional: "اختياري" } as Record<string, string>,
     totalRequired: "المطلوب إجمالاً",
+    of: "من",
     saved: "المدّخر",
     remaining: "المتبقي",
     thisMonth: "هدف هذا الشهر",
     monthlyRequirement: "المطلوب شهرياً",
-    periods: (n: number) => `على ${months(n)}`,
+    periods: (n: number) => `على ${months(n, true)}`,
     onTrack: "على المسار",
     attention: "يحتاج انتباهاً هذا الشهر",
     overdue: "تجاوز تاريخ التمويل",

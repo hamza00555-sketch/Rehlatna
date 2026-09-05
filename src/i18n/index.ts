@@ -1,4 +1,4 @@
-import { ar, count, days, months, weeks } from "./ar";
+import { ar, ageWord, count, days, months, unitFor, weeks } from "./ar";
 
 /**
  * Single active catalogue. To add English: create `en.ts` with the same
@@ -6,5 +6,5 @@ import { ar, count, days, months, weeks } from "./ar";
  * directly.
  */
 export const m = ar;
-export { count, days, months, weeks };
+export { ageWord, count, days, months, unitFor, weeks };
 export type { Messages } from "./ar";

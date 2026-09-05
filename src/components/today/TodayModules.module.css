@@ -1,0 +1,126 @@
+.next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-card);
+  background: var(--t-surface-warm);
+  color: var(--t-ink);
+  border: var(--t-border);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease);
+}
+.next:active {
+  transform: scale(0.99);
+  background: var(--t-surface-tint);
+}
+.next:focus-visible {
+  outline: var(--border-focus);
+  outline-offset: 2px;
+}
+
+.nextText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nextLabel {
+  font-size: var(--text-label);
+  color: var(--t-muted);
+}
+
+.nextTitle {
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+}
+
+.nextBody {
+  font-size: var(--text-body-small);
+  color: var(--t-muted);
+}
+
+.nextCta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+  flex-shrink: 0;
+  min-height: var(--comp-target-min);
+}
+:root[data-theme="dark"] .nextCta {
+  color: var(--color-dark-ink);
+}
+
+.module {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  height: 100%;
+}
+
+.label {
+  font-size: var(--text-label);
+  color: var(--t-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.private {
+  color: var(--t-muted);
+}
+
+.title {
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-heading);
+}
+
+.meta {
+  font-size: var(--text-body-small);
+  color: var(--t-muted);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-block-start: auto;
+}
+
+.relative {
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.points {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.pointRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  font-size: var(--text-body-small);
+  line-height: var(--leading-body);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-round);
+  background: var(--color-accent-warm);
+  margin-block-start: 8px;
+  flex-shrink: 0;
+}

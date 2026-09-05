@@ -1,0 +1,39 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding-block-start: var(--space-sm);
+}
+
+.headCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: flex-start;
+}
+
+.dateRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.date {
+  font-size: var(--text-title-small);
+  font-weight: var(--weight-semibold);
+}
+
+.to {
+  color: var(--t-muted);
+}
+
+.week {
+  font-size: var(--text-body-small);
+  color: var(--t-muted);
+}
+
+.description {
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}

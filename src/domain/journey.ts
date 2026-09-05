@@ -64,19 +64,26 @@ export function generateSystemMilestones(
     });
   };
 
+  // Once birth is confirmed, pregnancy milestones that would have fallen
+  // after the birth date no longer apply (an early arrival skips them); the
+  // ones already lived through stay as history.
+  const birthDate = baby?.birthDate;
+  const stillApplies = (date: IsoDate) => !birthDate || date <= birthDate;
+
   push("setup", "automatic", pregnancy.createdAt.slice(0, 10));
   for (const [key, day] of Object.entries(PREGNANCY_MILESTONE_DAYS) as [
     SystemMilestoneKey,
     number,
   ][]) {
     const date = dateForGestationalDay(pregnancy.dueDate, day);
+    if (!stillApplies(date)) continue;
     if (key === "due_window") {
       push(key, "automatic", date, dateForGestationalDay(pregnancy.dueDate, 42 * 7));
     } else {
       push(key, key === "hospital_bag" ? "preparation" : "automatic", date);
     }
   }
-  push("due_date", "automatic", pregnancy.dueDate);
+  if (stillApplies(pregnancy.dueDate)) push("due_date", "automatic", pregnancy.dueDate);
 
   if (baby?.birthDate) {
     push("birth", "birth", baby.birthDate);

@@ -1,0 +1,108 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-section-rhythm);
+  padding-block-start: var(--space-xs);
+}
+
+.browse {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.browseLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  min-height: var(--comp-target-min);
+  padding-inline: var(--space-xs);
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+  color: var(--t-ink);
+  border-radius: var(--radius-control);
+}
+.browseLink:active {
+  background: var(--t-surface-tint);
+}
+
+.browseDisabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.browseCurrent {
+  font-size: var(--text-label);
+  padding: var(--comp-badge-padding-y) var(--comp-badge-padding-x);
+  border-radius: var(--radius-round);
+  background: var(--color-accent-warm-soft);
+  color: var(--color-ink);
+  font-weight: var(--weight-semibold);
+}
+
+.summary {
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}
+
+.points {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-block-start: var(--space-sm);
+}
+
+.point {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: flex-start;
+  font-size: var(--text-body-small);
+  line-height: var(--leading-body);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-round);
+  background: var(--color-accent-warm);
+  margin-block-start: 8px;
+  flex-shrink: 0;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--layout-grid-gap);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  color: var(--t-ink);
+}
+.stat > svg {
+  color: var(--color-accent-warm);
+}
+
+.statLabel {
+  font-size: var(--text-label);
+  color: var(--t-muted);
+}
+
+.statValue {
+  font-size: var(--text-title-small);
+  font-weight: var(--weight-semibold);
+}
+
+.statHint {
+  font-size: var(--text-label);
+  color: var(--t-muted);
+}
+
+.boundary {
+  font-size: var(--text-label);
+  color: var(--t-muted);
+  text-align: center;
+}

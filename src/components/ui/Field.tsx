@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { Icon } from "@/components/icons/Icon";
 import { cx } from "@/lib/cx";
 import styles from "./Field.module.css";
 
@@ -104,8 +105,13 @@ export function TextArea({ invalid, className, ...rest }: TextareaHTMLAttributes
 
 export function Select({ invalid, className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement> & { invalid?: boolean }) {
   return (
-    <select {...rest} className={cx(styles.control, styles.select, invalid && styles.invalid, className)} aria-invalid={invalid || undefined}>
-      {children}
-    </select>
+    <div className={styles.selectWrap}>
+      <select {...rest} className={cx(styles.control, styles.select, invalid && styles.invalid, className)} aria-invalid={invalid || undefined}>
+        {children}
+      </select>
+      <span className={styles.selectIcon} aria-hidden="true">
+        <Icon name="chevronDown" size={20} />
+      </span>
+    </div>
   );
 }

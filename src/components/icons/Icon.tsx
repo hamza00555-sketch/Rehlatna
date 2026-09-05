@@ -55,7 +55,10 @@ export type IconName =
   | "video"
   | "image"
   | "expand"
-  | "minus";
+  | "minus"
+  | "ruler"
+  | "scale"
+  | "wave";
 
 type Path = { d: string; fill?: boolean } | { circle: [number, number, number]; fill?: boolean };
 
@@ -250,6 +253,22 @@ const ICONS: Record<IconName, { outline: Path[]; filled?: Path[] }> = {
     outline: [
       { d: "M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" },
     ],
+  },
+  ruler: {
+    outline: [
+      { d: "M4.5 16.5 16.5 4.5a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1L7.5 19.5a1.5 1.5 0 0 1-2.1 0l-.9-.9a1.5 1.5 0 0 1 0-2.1z" },
+      { d: "M8 13l1.5 1.5M11 10l1.5 1.5M14 7l1.5 1.5" },
+    ],
+  },
+  scale: {
+    outline: [
+      { d: "M12 4v3" },
+      { d: "M6.5 7h11a1 1 0 0 1 1 .9l1 11a1.5 1.5 0 0 1-1.5 1.6h-12A1.5 1.5 0 0 1 4.5 18.9l1-11a1 1 0 0 1 1-.9z" },
+      { d: "M9 12a3 3 0 0 0 6 0" },
+    ],
+  },
+  wave: {
+    outline: [{ d: "M3 12c2 0 2-3 4.5-3s2.5 3 4.5 3 2.5-3 4.5-3S19 12 21 12" }, { d: "M3 17c2 0 2-3 4.5-3s2.5 3 4.5 3 2.5-3 4.5-3S19 17 21 17" }],
   },
 };
 

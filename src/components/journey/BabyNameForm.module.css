@@ -1,0 +1,33 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding-block-start: var(--space-md);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  align-items: center;
+  text-align: center;
+  min-height: 120px;
+  justify-content: center;
+}
+
+.previewLabel {
+  font-size: var(--text-label);
+  color: var(--color-muted);
+}
+
+.previewName {
+  font-size: var(--text-page-title);
+  font-weight: var(--weight-semibold);
+  color: var(--color-ink);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}

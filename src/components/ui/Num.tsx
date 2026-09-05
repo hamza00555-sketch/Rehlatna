@@ -31,7 +31,7 @@ export function Num({ value, format = "int", currency = "SAR", className }: NumP
 
 export function DateText({ iso, style = "long", className }: { iso: string; style?: DateStyle; className?: string }) {
   return (
-    <bdi className={cx("num", className)} dir="rtl">
+    <bdi className={cx("num", "num--rtl", className)} dir="rtl">
       {fmtDate(iso, style)}
     </bdi>
   );
@@ -39,7 +39,7 @@ export function DateText({ iso, style = "long", className }: { iso: string; styl
 
 export function TimeText({ value, className }: { value: string; className?: string }) {
   return (
-    <bdi className={cx("num", className)} dir="ltr">
+    <bdi className={cx("num", "num--rtl", className)} dir="rtl">
       {fmtTime(value)}
     </bdi>
   );

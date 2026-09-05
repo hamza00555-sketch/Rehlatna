@@ -41,13 +41,14 @@ export function fmtCurrency(amount: number, currencyCode: string): string {
   return f.format(amount);
 }
 
-export type DateStyle = "long" | "short" | "weekday" | "monthDay";
+export type DateStyle = "long" | "short" | "weekday" | "monthDay" | "month";
 
 const dateFormatters: Record<DateStyle, Intl.DateTimeFormat> = {
   long: new Intl.DateTimeFormat(appConfig.dateLocale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }),
   short: new Intl.DateTimeFormat(appConfig.dateLocale, { day: "numeric", month: "short", timeZone: "UTC" }),
   weekday: new Intl.DateTimeFormat(appConfig.dateLocale, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }),
   monthDay: new Intl.DateTimeFormat(appConfig.dateLocale, { day: "numeric", month: "long", timeZone: "UTC" }),
+  month: new Intl.DateTimeFormat(appConfig.dateLocale, { month: "long", timeZone: "UTC" }),
 };
 
 export function fmtDate(iso: string, style: DateStyle = "long"): string {

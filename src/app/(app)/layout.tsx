@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!ctx) redirect("/onboarding");
   return (
     <>
-      {ctx.session.mode === "demo" && <DemoBadge />}
+      {ctx.session.mode === "demo" && <DemoBadge placement="aboveNav" />}
       <main id="main">{children}</main>
       <BottomNavigation />
     </>

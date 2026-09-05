@@ -1,0 +1,500 @@
+/* Baby Hero — collapsed at the top of Today; fixed full-screen when expanded. */
+
+.anchor {
+  display: none;
+}
+/* While expanded the hero is fixed; the anchor holds its footprint. */
+.anchorActive {
+  display: block;
+  height: clamp(var(--comp-hero-min-height), 60vh, 560px);
+}
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: var(--comp-hero-min-height);
+  height: clamp(var(--comp-hero-min-height), 60vh, 560px);
+  border-radius: 0 0 var(--radius-hero) var(--radius-hero);
+  color: var(--color-dark-ink);
+  background: var(--c-hero-loading);
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+
+.hero:has(.trigger:active) {
+  transform: scale(0.995);
+}
+
+.noMedia {
+  background: var(--c-hero-loading);
+}
+
+.error {
+  background: var(--color-surface-tint);
+  color: var(--color-ink);
+  border: 1px solid var(--color-line);
+}
+
+.expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  height: auto;
+  border-radius: 0;
+  background: var(--color-dark-canvas);
+  display: flex;
+  flex-direction: column;
+}
+
+.mediaLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.poster,
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--fx) var(--fy);
+}
+
+.video {
+  opacity: 0;
+  transition: opacity var(--motion-slow) var(--motion-ease);
+}
+
+.videoVisible {
+  opacity: 1;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--c-hero-scrim);
+  pointer-events: none;
+}
+.hero:has(.trigger:active) .scrim {
+  background: var(--c-hero-scrim-pressed);
+}
+.expanded .scrim {
+  background: var(--c-expanded-paused-scrim);
+}
+
+.trigger {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.trigger:focus-visible {
+  outline: var(--border-focus);
+  outline-offset: -4px;
+}
+
+/* ---- Collapsed content ---------------------------------------------------- */
+
+.collapsed {
+  position: relative;
+  z-index: 3;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--space-md) + env(safe-area-inset-top)) var(--layout-gutter) var(--space-lg);
+  pointer-events: none;
+  transition: opacity var(--motion-reduced-opacity-ms) linear;
+}
+.collapsed > * {
+  pointer-events: none;
+}
+.collapsed a,
+.collapsed button {
+  pointer-events: auto;
+}
+
+/* Taken out of flow while expanded so the expanded layer owns the height. */
+.hiddenLayer {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Text protection for the date/greeting on light media (approved over-media gradient). */
+.topScrim {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 45%;
+  z-index: 1;
+  background: var(--c-top-bar-over-media);
+  pointer-events: none;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.date {
+  font-size: var(--text-body-small);
+  color: var(--color-dark-muted);
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-round);
+  background: var(--c-icon-button-bg);
+  border: 1px solid var(--c-on-media-button-border);
+  color: var(--color-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-body-small);
+}
+
+.greeting {
+  margin-block-start: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  max-width: 60%;
+}
+
+.greetingTitle {
+  font-size: var(--text-page-title);
+  font-weight: var(--weight-semibold);
+  color: var(--color-dark-ink);
+}
+
+.greetingLead {
+  font-size: var(--text-title-small);
+  font-weight: var(--weight-medium);
+}
+
+.greetingSub {
+  font-size: var(--text-body-small);
+  color: var(--color-dark-muted);
+}
+
+/* Week block hugs the inline-end edge, leaving the focal area free. */
+.weekBlock {
+  margin-block-start: auto;
+  align-self: flex-end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: end;
+  gap: 2px;
+  max-width: 55%;
+}
+
+.heroNumber {
+  font-size: var(--text-hero-number);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-compact);
+  color: var(--color-dark-ink);
+}
+.error .heroNumber,
+.error .weekLabel,
+.error .ofWeeks {
+  color: var(--color-ink);
+}
+
+.weekLabel {
+  font-size: var(--text-title-small);
+  font-weight: var(--weight-semibold);
+}
+
+.ofWeeks {
+  font-size: var(--text-body-small);
+  color: var(--color-dark-muted);
+}
+
+.progress {
+  width: 140px;
+  height: 6px;
+  margin-block: var(--space-xs);
+  border-radius: var(--radius-round);
+  background: var(--c-icon-button-over-media-border);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: var(--radius-round);
+  background: var(--accent-context);
+  transition: width var(--motion-slow) var(--motion-ease);
+}
+
+.trimester {
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+}
+
+.dayLine {
+  font-size: var(--text-label);
+  color: var(--color-dark-muted);
+}
+
+.bottomRow {
+  margin-block-start: var(--space-lg);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.sizeBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  order: 2;
+  text-align: end;
+}
+
+.sizeTitle {
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+}
+
+.sizeSub {
+  font-size: var(--text-body-small);
+  color: var(--color-dark-muted);
+}
+
+.watch {
+  order: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.playRing {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-round);
+  background: var(--c-icon-button-over-media-bg);
+  border: 1px solid var(--c-icon-button-over-media-border);
+  backdrop-filter: var(--c-icon-button-blur);
+  -webkit-backdrop-filter: var(--c-icon-button-blur);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-dark-ink);
+}
+
+.watchLabel {
+  font-size: var(--text-label);
+  color: var(--color-dark-ink);
+}
+
+/* Sits in the media focal region (start side), away from the week block. */
+.mediaNote {
+  position: absolute;
+  inset-inline-start: var(--layout-gutter);
+  top: 52%;
+  max-width: 42%;
+  text-align: start;
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
+  color: var(--color-dark-muted);
+}
+
+.devBadge {
+  position: absolute;
+  top: calc(var(--space-md) + env(safe-area-inset-top) + 52px);
+  inset-inline-end: var(--layout-gutter);
+}
+
+/* ---- Expanded content ---------------------------------------------------- */
+
+.expandedLayer {
+  position: relative;
+  z-index: 3;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  animation: fadeIn var(--motion-reduced-opacity-ms) linear;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.chrome {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: calc(var(--space-md) + env(safe-area-inset-top)) var(--layout-gutter) var(--space-sm);
+  background: var(--c-top-bar-over-media);
+}
+
+.chromeTitle {
+  flex: 1;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.chromeWeek {
+  font-size: var(--text-page-title);
+  font-weight: var(--weight-semibold);
+}
+
+.chromeSub {
+  font-size: var(--text-body-small);
+  color: var(--color-dark-muted);
+}
+
+.stats {
+  display: flex;
+  gap: var(--space-md);
+  margin-block-start: var(--space-2xs);
+}
+
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+  padding: var(--comp-badge-padding-y) var(--comp-badge-padding-x);
+  border-radius: var(--radius-round);
+  background: var(--c-icon-button-over-media-bg);
+  border: 1px solid var(--c-icon-button-over-media-border);
+}
+
+.centerControls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  padding-block-end: var(--space-lg);
+}
+
+.playBig {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-round);
+  background: var(--c-icon-button-over-media-bg);
+  border: 1px solid var(--c-icon-button-over-media-border);
+  backdrop-filter: var(--c-icon-button-blur);
+  -webkit-backdrop-filter: var(--c-icon-button-blur);
+  color: var(--color-dark-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+.playBig:active {
+  transform: scale(0.94);
+}
+.playBig:focus-visible {
+  outline: var(--border-focus);
+  outline-offset: 2px;
+}
+
+.mediaNoteCenter {
+  font-size: var(--text-label);
+  color: var(--color-dark-muted);
+  text-align: center;
+  padding-inline: var(--space-xl);
+}
+
+.sheet {
+  background: var(--c-sheet-dark-bg);
+  color: var(--color-dark-ink);
+  border: var(--border-dark);
+  border-bottom: none;
+  border-radius: var(--radius-hero) var(--radius-hero) 0 0;
+  backdrop-filter: var(--c-nav-blur);
+  -webkit-backdrop-filter: var(--c-nav-blur);
+  padding: var(--space-sm) var(--layout-gutter) calc(var(--space-lg) + env(safe-area-inset-bottom));
+  max-height: 46vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.handle {
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-round);
+  background: var(--color-dark-line);
+  margin: 0 auto var(--space-2xs);
+}
+
+.sheetTitle {
+  font-size: var(--text-title-small);
+  font-weight: var(--weight-semibold);
+}
+
+.sheetSummary {
+  font-size: var(--text-body-small);
+  color: var(--color-dark-muted);
+}
+
+.points {
+  display: flex;
+  flex-direction: column;
+}
+
+.point {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-block: var(--space-sm);
+  border-bottom: 1px solid var(--color-dark-line);
+  font-size: var(--text-body-small);
+}
+.point:last-child {
+  border-bottom: none;
+}
+
+.pointIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-control);
+  background: var(--color-dark-raised);
+  border: var(--border-dark);
+  color: var(--color-accent-warm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.boundary {
+  font-size: var(--text-caption);
+  color: var(--color-dark-muted);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video {
+    display: none;
+  }
+}

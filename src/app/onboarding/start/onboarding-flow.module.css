@@ -1,0 +1,158 @@
+.page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(var(--space-lg) + env(safe-area-inset-bottom));
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  min-height: var(--layout-top-bar-height);
+  padding-block-start: calc(var(--space-md) + env(safe-area-inset-top));
+}
+
+.stepLabel {
+  font-size: var(--text-label);
+  color: var(--t-muted);
+}
+
+.dots {
+  display: inline-flex;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-round);
+  background: var(--t-line);
+}
+.dotDone {
+  background: var(--color-accent-warm-soft);
+}
+.dotActive {
+  width: 20px;
+  background: var(--color-primary);
+}
+.story .dot {
+  background: var(--c-icon-button-over-media-border);
+}
+.story .dotActive {
+  background: var(--color-dark-ink);
+}
+
+.step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding-block: var(--space-md) var(--space-lg);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.title {
+  font-size: var(--text-display);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-compact);
+  color: var(--t-ink);
+  letter-spacing: var(--tracking-normal);
+}
+
+.help {
+  font-size: var(--text-body);
+  color: var(--t-muted);
+  max-width: 36ch;
+}
+
+.preview {
+  display: flex;
+  justify-content: center;
+  min-height: var(--comp-target-min);
+  align-items: center;
+}
+
+.previewChip {
+  padding: var(--comp-chip-padding-y) var(--space-md);
+  border-radius: var(--radius-round);
+  background: var(--color-accent-warm-soft);
+  color: var(--color-accent-warm);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-body);
+}
+
+.previewHint {
+  font-size: var(--text-body-small);
+  color: var(--t-muted);
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+}
+
+.footer {
+  position: sticky;
+  bottom: 0;
+  padding-block: var(--space-sm);
+  background: linear-gradient(180deg, transparent, var(--t-canvas) 30%);
+}
+
+/* Story step — StoryHero (sharedJourney). Production family imagery pending. */
+.story {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: calc(var(--space-2xl) + env(safe-area-inset-top)) var(--space-lg) calc(var(--space-xl) + env(safe-area-inset-bottom));
+  color: var(--color-dark-ink);
+  background: var(--c-story-loading);
+  background-size: cover;
+  background-position: center;
+}
+.story::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--c-story-scrim);
+  pointer-events: none;
+}
+.story > * {
+  position: relative;
+}
+
+.storyTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.storyCopy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.storyTitle {
+  font-size: var(--text-display);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-compact);
+}
+
+.storySub {
+  font-size: var(--text-body);
+  color: var(--color-dark-muted);
+  max-width: 36ch;
+}

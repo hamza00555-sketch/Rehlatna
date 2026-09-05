@@ -1,0 +1,12 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-block: var(--space-sm) var(--space-lg);
+}
+
+.saved {
+  color: var(--color-success);
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+}

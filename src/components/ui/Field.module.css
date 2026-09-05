@@ -90,10 +90,24 @@
   line-height: var(--leading-body);
 }
 
+.selectWrap {
+  position: relative;
+}
+
 .select {
   background-image: none;
-  padding-inline-end: var(--space-xl);
+  padding-inline-end: var(--space-2xl);
   cursor: pointer;
+}
+
+.selectIcon {
+  position: absolute;
+  inset-inline-end: var(--comp-control-padding-x);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--t-muted);
+  pointer-events: none;
+  display: inline-flex;
 }
 
 .moneyWrap {

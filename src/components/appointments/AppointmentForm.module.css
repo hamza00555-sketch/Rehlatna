@@ -1,0 +1,39 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-block: var(--space-sm) var(--space-lg);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--layout-grid-gap);
+}
+
+.tasks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.legend {
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+  margin-block-end: var(--space-xs);
+}
+
+.taskRow {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+}
+.taskRow > :first-child {
+  flex: 1;
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+}

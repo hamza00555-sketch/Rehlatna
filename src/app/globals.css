@@ -117,6 +117,11 @@ video {
   unicode-bidi: isolate;
 }
 
+/* Arabic-formatted dates/times: numeric face, but the run itself stays RTL. */
+.num--rtl {
+  direction: rtl;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
