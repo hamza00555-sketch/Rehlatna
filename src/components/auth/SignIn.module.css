@@ -1,0 +1,16 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.help {
+  font-size: var(--text-body-small);
+  color: var(--t-muted);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}

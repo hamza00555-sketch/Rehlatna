@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getContext } from "@/server/session";
+import { getAuthUser } from "@/server/supabase";
 import { can } from "@/domain/permissions";
 import { TopBar } from "@/components/ui/TopBar";
 import { Card } from "@/components/ui/Card";
@@ -23,6 +24,7 @@ export default async function SettingsPage() {
           <span className={styles.coverageMeta}>{m.more.privacyStatementBody}</span>
         </Card>
         <SettingsPanel
+          authEmail={(await getAuthUser())?.email ?? null}
           settings={data.household.settings}
           notifications={data.notificationPreferences.find((n) => n.memberId === viewer.memberId) ?? null}
           canManage={can(viewer, "household:manage")}

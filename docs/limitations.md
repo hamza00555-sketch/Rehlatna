@@ -4,12 +4,17 @@ Honest inventory of what this build does not do, or does approximately.
 
 ## Not implemented
 
-- **Authentication.** A cookie names the active household member. The swap
-  point is `src/server/session.ts`; the rest of the server only sees a
-  `Viewer`. The member switcher in Settings is a development tool.
-- **Database.** Development persists to `.data/store.json` through
-  `src/server/store.ts`; the demo runs in memory. A Postgres/Supabase adapter
-  replaces `FileStore` without touching callers.
+- **Partner invitations.** Supabase auth signs one person in per household
+  today: the creator. The membership table and its policies already allow the
+  owner to add a partner's user id; the invite flow (code or link) is not
+  built, so the second member is a named profile without a login.
+- **Email delivery.** The built-in Supabase mailer allows only a few messages
+  per hour and is meant for development. Custom SMTP is required before
+  real users, and the Magic Link template must include `{{ .Token }}` for the
+  code flow.
+- **Development session.** Without Supabase env vars the app uses a cookie
+  session and a JSON file store; the member switcher in Settings exists only
+  in that mode and in the demo.
 - **Photo upload.** `Baby.personalMediaAssetId` and the `user-upload` media
   family exist; there is no upload endpoint yet. The postpartum hero uses the
   neutral fallback.

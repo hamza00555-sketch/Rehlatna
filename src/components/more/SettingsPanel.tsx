@@ -23,9 +23,11 @@ interface Props {
   financeOwnerName: string | null;
   members: { id: string; displayName: string; isViewer: boolean }[];
   isDemo: boolean;
+  /** Signed-in email when Supabase auth is active; null on the local development session. */
+  authEmail?: string | null;
 }
 
-export function SettingsPanel({ settings, notifications, canManage, canFinance, financeOwnerName, members, isDemo }: Props) {
+export function SettingsPanel({ settings, notifications, canManage, canFinance, financeOwnerName, members, isDemo, authEmail }: Props) {
   const router = useRouter();
   const [s, setS] = useState(settings);
   const [n, setN] = useState(notifications ?? { appointments: true, weeklyUpdate: true, preparation: true, finance: false });
@@ -157,7 +159,23 @@ export function SettingsPanel({ settings, notifications, canManage, canFinance, 
             </Button>
           </div>
         ) : (
-          canManage && (
+          <>
+            {authEmail && (
+              <div className={styles.row}>
+                <span className={styles.saved}>{m.auth.signedInAs(authEmail)}</span>
+                <Button
+                  variant="quiet"
+                  onClick={async () => {
+                    await api("/api/session/exit");
+                    router.push("/onboarding");
+                    router.refresh();
+                  }}
+                >
+                  {m.auth.signOut}
+                </Button>
+              </div>
+            )}
+          {canManage && (
             <>
               <Button variant="danger" fullWidth onClick={() => setConfirmDelete(true)}>
                 {m.more.deleteHousehold}
@@ -186,7 +204,8 @@ export function SettingsPanel({ settings, notifications, canManage, canFinance, 
                 </Button>
               </BottomSheet>
             </>
-          )
+          )}
+          </>
         )}
       </section>
     </div>

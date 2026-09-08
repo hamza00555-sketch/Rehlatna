@@ -109,6 +109,7 @@ Phases 1–6 are implemented and pushed as one commit each. Route inventory
 above is complete plus `/journey/postpartum`, `/more/feeding`,
 `/more/providers/new`, `/more/providers/edit/[kind]/[id]` and
 `/journey/birth/confirmed`. QA: 61 tests, 72 screenshot states (light and
-dark), axe-core walk with zero serious/critical violations. The asset pass
+dark), axe-core walk with zero serious/critical violations. Supabase now provides auth (email code) and
+persistence with row-level security. The asset pass
 produced development placeholders for the media pipeline; production media
 remains listed in `docs/asset-backlog.md`, other gaps in `docs/limitations.md`.

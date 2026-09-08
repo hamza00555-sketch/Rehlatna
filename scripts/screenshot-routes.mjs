@@ -1,4 +1,6 @@
-// Stable route/state names for the screenshot walker. Each entry names the
+// Stable route/state names for the screenshot walker.
+// Run the full walk against a server started WITHOUT Supabase env (the
+// onboarding steps use the development session); run `auth` states with it. Each entry names the
 // route, the demo state used, and (optionally) an interaction to reach a
 // sub-state. Extend per phase; never rename an existing state.
 //
@@ -12,6 +14,20 @@ const light = ["light"];
 export const ROUTES = [
   // Onboarding
   { name: "onboarding-welcome", path: "/onboarding", themes: light },
+  // Sign-in gate (renders only when Supabase env is set; otherwise it redirects to /onboarding/start).
+  { name: "auth-sign-in", path: "/auth", themes: both },
+  {
+    name: "auth-code",
+    path: "/auth",
+    themes: light,
+    action: async (page) => {
+      if (!page.url().includes("/auth")) return;
+      await page.fill("#auth-email", "family@example.com");
+      await page.route("**/api/auth/otp", (route) => route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }));
+      await page.getByRole("button", { name: "أرسلوا الرمز" }).click();
+      await page.waitForTimeout(400);
+    },
+  },
   { name: "onboarding-story", path: "/onboarding/start", themes: light },
   {
     name: "onboarding-due-date",
