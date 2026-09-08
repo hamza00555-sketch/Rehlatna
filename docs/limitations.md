@@ -26,6 +26,11 @@ Honest inventory of what this build does not do, or does approximately.
 - **English catalogue.** Copy is Arabic-only; `src/i18n` is structured for a
   second catalogue.
 
+- **Demo on serverless hosts.** The demo lives in memory per server
+  instance and seeds itself on first read, so entering the demo always works,
+  but a change made on one instance may not show on the next request. The
+  demo is a showcase, not a workspace.
+
 ## Approximations
 
 - Pregnancy math uses a 280-day term from the due date; weeks are whole

@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { HouseholdData } from "@/domain/types";
+import { todayIso } from "@/domain/dates";
+import { demoHouseholds } from "@/fixtures/demo";
 import { supabaseConfigured, supabaseServer } from "./supabase";
 
 /**
@@ -62,7 +64,14 @@ class FileStore implements StoreAdapter {
 
 class MemoryStore implements StoreAdapter {
   private households = new Map<string, HouseholdData>();
+  /**
+   * Serverless hosts run many isolated instances; a demo entered on one must
+   * still resolve on another. Fixtures are deterministic for a given day, so
+   * an empty instance seeds itself on first read (edits stay per instance —
+   * acceptable for a demo, documented in docs/limitations.md).
+   */
   async get(id: string) {
+    if (this.households.size === 0) this.reset(demoHouseholds(todayIso()));
     return this.households.get(id) ?? null;
   }
   async put(data: HouseholdData) {
