@@ -14,3 +14,42 @@
   justify-content: space-between;
   gap: var(--space-sm);
 }
+
+/* Google sign-in: a full-width control in the app's own button language. */
+.google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  width: 100%;
+  min-height: var(--comp-button-min-height);
+  padding-inline: var(--space-lg);
+  border-radius: var(--radius-pill);
+  background: var(--t-surface);
+  border: 1px solid var(--t-line-strong);
+  color: var(--t-ink);
+  font-weight: var(--weight-semibold);
+  transition: background-color var(--motion-fast) var(--motion-ease);
+}
+.google:active {
+  background: var(--t-surface-tint);
+}
+.google:focus-visible {
+  outline: var(--border-focus);
+  outline-offset: 2px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--t-muted);
+  font-size: var(--text-caption);
+}
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--t-line);
+}

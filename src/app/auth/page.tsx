@@ -18,6 +18,7 @@ export default async function AuthPage({ searchParams }: { searchParams: Promise
     <div className="page">
       <TopBar title={m.auth.title} subtitle={m.auth.subtitle} backHref="/onboarding" />
       {error === "link" && <PrivacyNotice variant="warning">{m.auth.linkExpired}</PrivacyNotice>}
+      {error === "google" && <PrivacyNotice variant="warning">{m.auth.googleUnavailable}</PrivacyNotice>}
       <SignIn />
     </div>
   );

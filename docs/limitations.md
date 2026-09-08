@@ -8,8 +8,9 @@ Honest inventory of what this build does not do, or does approximately.
   today: the creator. The membership table and its policies already allow the
   owner to add a partner's user id; the invite flow (code or link) is not
   built, so the second member is a named profile without a login.
-- **Email delivery.** The built-in Supabase mailer allows only a few messages
-  per hour and is meant for development. Custom SMTP is required before
+- **Email delivery.** Google sign-in avoids email entirely and is the
+  recommended path. The email fallback uses the built-in Supabase mailer,
+  which allows only a few messages per hour and is meant for development. Custom SMTP is required before
   real users. The sign-in link must be opened in the same browser that
   requested it (PKCE); a code flow needs custom SMTP so the template can
   include `{{ .Token }}`.
