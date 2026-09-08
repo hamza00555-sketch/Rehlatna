@@ -84,7 +84,8 @@ res = await call("POST", "/api/session/member", { memberId: exported.data.member
 expect(res.status === 403, `member switcher disabled on real sessions → ${res.status}`);
 
 res = await call("DELETE", "/api/household");
-expect(res.status === 200, `DELETE /api/household → ${res.status}`);
+const wiped = await res.json();
+expect(res.status === 200 && wiped.redirect === "/onboarding/start", `DELETE /api/household → ${res.status} → ${wiped.redirect}`);
 res = await call("GET", "/today");
 expect(res.status === 307, `GET /today after delete → ${res.status} redirect`);
 

@@ -177,6 +177,8 @@ export function SettingsPanel({ settings, notifications, canManage, canFinance, 
             )}
           {canManage && (
             <>
+              <SectionTitle>{m.more.startOver}</SectionTitle>
+              <PrivacyNotice variant="warning">{m.more.deleteHouseholdHelp}</PrivacyNotice>
               <Button variant="danger" fullWidth onClick={() => setConfirmDelete(true)}>
                 {m.more.deleteHousehold}
               </Button>
@@ -189,15 +191,15 @@ export function SettingsPanel({ settings, notifications, canManage, canFinance, 
                   onClick={async () => {
                     setBusy(true);
                     try {
-                      await api("/api/household", undefined, "DELETE");
-                      router.push("/onboarding");
+                      const res = await api<{ redirect: string }>("/api/household", undefined, "DELETE");
+                      router.push(res.redirect);
                       router.refresh();
                     } finally {
                       setBusy(false);
                     }
                   }}
                 >
-                  {m.common.confirm}
+                  {m.more.deleteHouseholdCta}
                 </Button>
                 <Button variant="quiet" fullWidth onClick={() => setConfirmDelete(false)}>
                   {m.common.cancel}

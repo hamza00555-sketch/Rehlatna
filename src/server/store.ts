@@ -117,8 +117,9 @@ class SupabaseStore implements StoreAdapter {
   }
   async remove(id: string) {
     const supabase = await supabaseServer();
-    const { error } = await supabase.from("households").delete().eq("id", id);
+    const { error, count } = await supabase.from("households").delete({ count: "exact" }).eq("id", id);
     if (error) throw new Error(`households.remove: ${error.message}`);
+    if (count === 0) throw new Error("households.remove: not_owner");
   }
 }
 
