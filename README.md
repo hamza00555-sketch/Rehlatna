@@ -25,6 +25,7 @@ household through onboarding (persisted to `.data/store.json`).
 | `npm test` | Vitest: domain, permissions, privacy boundary, routes |
 | `npm run screenshots` | Playwright walk of every route/state, light + dark → `screenshots/` |
 | `npm run a11y` | axe-core walk over the same states → `screenshots/a11y.json` |
+| `npm run contrast` | WCAG contrast audit of every text node in every state, both themes |
 | `node scripts/supabase-smoke.mjs` | End-to-end check of the Supabase path against a running server (needs a password user) |
 
 Both walkers expect a running server (`BASE_URL`, default

@@ -33,7 +33,7 @@
 }
 
 .error {
-  color: var(--color-danger);
+  color: var(--t-danger-text);
   font-size: var(--text-body-small);
   font-weight: var(--weight-medium);
 }

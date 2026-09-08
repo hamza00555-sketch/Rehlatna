@@ -74,6 +74,11 @@ const aliases = [
   ["chip-selected-fg", "--color-on-primary", "--color-dark-canvas"],
   // Warning text on themed surfaces: the light warning brown fails on dark surfaces.
   ["warning-text", "--color-warning", "--color-accent-warm-soft"],
+  // Text roles whose light-theme colour fails on dark surfaces.
+  ["link", "--color-primary", "--color-dark-ink"],
+  ["success-text", "--color-success", "--c-postpartum-completed-text"],
+  ["needed-text", "--c-needed-badge-text", "--color-accent-warm"],
+  ["danger-text", "--color-danger", "--color-accent-warm"],
 ];
 
 css += `\n:root {\n`;

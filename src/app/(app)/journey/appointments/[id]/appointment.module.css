@@ -29,10 +29,7 @@
   font-size: var(--text-hero-number);
   font-weight: var(--weight-semibold);
   line-height: var(--leading-compact);
-  color: var(--color-primary);
-}
-:root[data-theme="dark"] .bigDay {
-  color: var(--color-dark-ink);
+  color: var(--t-link);
 }
 
 .month {

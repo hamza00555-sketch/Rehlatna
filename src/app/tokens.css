@@ -46,6 +46,7 @@
   --c-hero-scrim: linear-gradient(180deg,rgba(47,33,36,0.02),rgba(47,33,36,0.76));
   --c-hero-scrim-pressed: linear-gradient(180deg,rgba(47,33,36,0.08),rgba(47,33,36,0.82));
   --c-hero-loading: linear-gradient(135deg,#F3D4CB,#A76861);
+  --c-hero-neutral: linear-gradient(160deg,#6B4E55 0%,#3A2A2E 58%,#2F2124 100%);
   --c-onboarding-scrim: linear-gradient(180deg,rgba(47,33,36,0.18) 0%,rgba(47,33,36,0.06) 45%,rgba(24,17,16,0.78) 100%);
   --c-onboarding-loading: linear-gradient(135deg,#715A65,#2F2124);
   --c-story-scrim: linear-gradient(180deg,rgba(8,11,20,0.03),rgba(8,11,20,0.78));
@@ -189,6 +190,10 @@
   --t-chip-selected-bg: var(--color-ink);
   --t-chip-selected-fg: var(--color-on-primary);
   --t-warning-text: var(--color-warning);
+  --t-link: var(--color-primary);
+  --t-success-text: var(--color-success);
+  --t-needed-text: var(--c-needed-badge-text);
+  --t-danger-text: var(--color-danger);
   color-scheme: light;
 }
 
@@ -212,6 +217,10 @@
   --t-chip-selected-bg: var(--color-dark-ink);
   --t-chip-selected-fg: var(--color-dark-canvas);
   --t-warning-text: var(--color-accent-warm-soft);
+  --t-link: var(--color-dark-ink);
+  --t-success-text: var(--c-postpartum-completed-text);
+  --t-needed-text: var(--color-accent-warm);
+  --t-danger-text: var(--color-accent-warm);
   color-scheme: dark;
 }
 
@@ -236,6 +245,10 @@
     --t-chip-selected-bg: var(--color-dark-ink);
     --t-chip-selected-fg: var(--color-dark-canvas);
     --t-warning-text: var(--color-accent-warm-soft);
+    --t-link: var(--color-dark-ink);
+    --t-success-text: var(--c-postpartum-completed-text);
+    --t-needed-text: var(--color-accent-warm);
+    --t-danger-text: var(--color-accent-warm);
     color-scheme: dark;
   }
 }

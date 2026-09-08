@@ -15,7 +15,7 @@
 .action {
   font-size: var(--text-body-small);
   font-weight: var(--weight-medium);
-  color: var(--color-primary);
+  color: var(--t-link);
   min-height: var(--comp-target-min);
   min-width: var(--comp-target-min);
   display: inline-flex;
@@ -24,12 +24,4 @@
   padding-inline: var(--space-2xs);
 }
 
-:root[data-theme="dark"] .action {
-  color: var(--color-dark-ink);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .action {
-    color: var(--color-dark-ink);
-  }
-}

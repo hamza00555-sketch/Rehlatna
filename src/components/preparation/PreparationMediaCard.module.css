@@ -75,14 +75,14 @@
   color: var(--t-muted);
 }
 .status_owned {
-  color: var(--color-success);
+  color: var(--t-success-text);
 }
 .status_owned .statusIcon {
   background: var(--color-success);
   color: var(--color-on-primary);
 }
 .status_need_to_buy {
-  color: var(--c-needed-badge-text);
+  color: var(--t-needed-text);
 }
 .status_need_to_buy .statusIcon {
   background: var(--color-accent-warm);

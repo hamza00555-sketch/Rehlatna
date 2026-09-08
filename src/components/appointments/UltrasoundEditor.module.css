@@ -6,7 +6,7 @@
 }
 
 .saved {
-  color: var(--color-success);
+  color: var(--t-success-text);
   font-size: var(--text-body-small);
   font-weight: var(--weight-medium);
 }

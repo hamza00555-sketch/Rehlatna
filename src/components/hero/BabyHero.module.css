@@ -25,8 +25,18 @@
   transform: scale(0.995);
 }
 
+/* No poster for this week: a dark warm material instead of the light loading
+   gradient, so the light ink and the muted lines read at any scroll position. */
 .noMedia {
-  background: var(--c-hero-loading);
+  background: var(--c-hero-neutral);
+}
+.noMedia .date,
+.noMedia .greetingSub,
+.noMedia .ofWeeks,
+.noMedia .dayLine,
+.noMedia .sizeSub {
+  color: var(--color-dark-ink);
+  opacity: 0.86;
 }
 
 .error {

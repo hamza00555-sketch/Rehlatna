@@ -22,7 +22,7 @@
 
 .error {
   font-size: var(--text-body-small);
-  color: var(--color-danger);
+  color: var(--t-danger-text);
   font-weight: var(--weight-medium);
 }
 

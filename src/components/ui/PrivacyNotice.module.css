@@ -23,7 +23,7 @@
 
 .warning {
   background: var(--t-surface-warm);
-  color: var(--color-warning);
+  color: var(--t-warning-text);
   border: 1px solid var(--t-line-strong);
   font-weight: var(--weight-medium);
 }

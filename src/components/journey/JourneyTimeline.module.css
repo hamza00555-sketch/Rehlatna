@@ -126,7 +126,7 @@
   line-height: var(--leading-heading);
 }
 .current .title {
-  color: var(--color-accent-warm);
+  color: var(--c-needed-badge-text);
   font-size: var(--text-title-small);
 }
 .past .title {

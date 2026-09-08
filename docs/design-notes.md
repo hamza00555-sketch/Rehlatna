@@ -65,6 +65,20 @@ composition only; their Arabic was re-typeset from the catalogue.
 
 ## Dark-mode additions
 
+- Text-role aliases (`--t-link`, `--t-success-text`, `--t-needed-text`,
+  `--t-danger-text`, `--t-warning-text`): every colour that is only legible on
+  light surfaces has a dark counterpart from the same palette. CSS modules
+  reference the alias, never the light token, when the surface is themed.
+  Fixed light surfaces (card tones, completed rows) re-scope the aliases to
+  their light values so nested components inherit the right pair.
+- `--c-hero-neutral`: the sustained no-poster hero uses a dark warm material
+  instead of the light loading gradient, so the light ink and the muted lines
+  stay above 4.5:1 at every scroll position. The loading gradient remains
+  the loading state only.
+- `scripts/contrast.mjs` walks every screenshot state in both themes and
+  reports text below WCAG AA against its nearest solid surface; the axe walk
+  in `scripts/a11y.mjs` covers the rest.
+
 - `--t-warning-text`: the warning brown (`#805124`) fails AA on dark surfaces;
   in dark the alias resolves to `accentWarmSoft`. Used for warning-coloured
   text on themed (non-fixed) surfaces only.

@@ -49,6 +49,11 @@
 }
 
 .completed {
+  /* Fixed light surface in both themes: children written against the theme
+     roles must resolve to their light-theme values here. */
+  --t-ink: var(--color-ink);
+  --t-muted: var(--color-muted);
+  --t-success-text: var(--color-success);
   background: var(--color-accent-sage-soft);
   color: var(--color-success);
   border-bottom-color: var(--c-completed-border);

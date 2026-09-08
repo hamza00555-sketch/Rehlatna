@@ -72,19 +72,10 @@
 .selected {
   background: var(--t-surface-tint);
   border: 1px solid var(--t-line-strong);
-  color: var(--color-primary);
+  color: var(--t-link);
   font-weight: var(--weight-semibold);
 }
 
-:root[data-theme="dark"] .selected {
-  color: var(--t-ink);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .selected {
-    color: var(--t-ink);
-  }
-}
 
 .medical {
   background: var(--color-accent-blue-soft);

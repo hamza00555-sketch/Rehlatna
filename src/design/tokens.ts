@@ -68,6 +68,8 @@ export const composite = {
   heroScrim: "linear-gradient(180deg,rgba(47,33,36,0.02),rgba(47,33,36,0.76))",
   heroScrimPressed: "linear-gradient(180deg,rgba(47,33,36,0.08),rgba(47,33,36,0.82))",
   heroLoading: "linear-gradient(135deg,#F3D4CB,#A76861)",
+  /** Sustained no-asset state: dark warm material so light ink stays legible everywhere. */
+  heroNeutral: "linear-gradient(160deg,#6B4E55 0%,#3A2A2E 58%,#2F2124 100%)",
   onboardingScrim:
     "linear-gradient(180deg,rgba(47,33,36,0.18) 0%,rgba(47,33,36,0.06) 45%,rgba(24,17,16,0.78) 100%)",
   onboardingLoading: "linear-gradient(135deg,#715A65,#2F2124)",

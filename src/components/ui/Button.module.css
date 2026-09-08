@@ -56,8 +56,8 @@
 /* Composition: destructive confirmation only. */
 .danger {
   background: transparent;
-  color: var(--color-danger);
-  border-color: var(--color-danger);
+  color: var(--t-danger-text);
+  border-color: var(--t-danger-text);
 }
 .danger:active {
   transform: scale(0.985);
@@ -77,10 +77,10 @@
 
 .button:disabled,
 .disabledLink {
-  opacity: 0.72;
-  color: var(--color-faint);
+  color: var(--color-muted);
   background: var(--color-line);
   border-color: var(--color-line);
+  box-shadow: none;
   transform: none;
 }
 

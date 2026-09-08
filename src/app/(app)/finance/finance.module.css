@@ -129,7 +129,7 @@
 
 .historyAmount {
   font-weight: var(--weight-semibold);
-  color: var(--color-success);
+  color: var(--t-success-text);
 }
 
 .explain {

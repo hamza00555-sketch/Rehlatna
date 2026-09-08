@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "screenshots": "node scripts/screenshots.mjs",
-    "a11y": "node scripts/a11y.mjs"
+    "a11y": "node scripts/a11y.mjs",
+    "contrast": "node scripts/contrast.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-arabic": "^5.2.5",

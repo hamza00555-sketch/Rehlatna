@@ -53,6 +53,34 @@ export const ROUTES = [
 
   // Today
   { name: "today-pregnancy", path: "/today", demo: "pregnancy", themes: both },
+  // A just-onboarded family: week ~8, nothing scheduled yet.
+  { name: "today-fresh", path: "/today", demo: "fresh", themes: both },
+  // Weeks without a development poster fall back to the neutral hero material.
+  {
+    name: "today-no-poster",
+    path: "/today",
+    demo: "fresh",
+    themes: both,
+    fullPage: false,
+    action: async (page) => {
+      await page.evaluate(() => {
+        const hero = document.querySelector('[class*="BabyHero_hero"]');
+        if (!hero) return;
+        let noMedia = null;
+        for (const sheet of document.styleSheets) {
+          try {
+            for (const rule of sheet.cssRules) {
+              const m = rule.selectorText?.match(/\.(BabyHero_noMedia__[\w-]+)/);
+              if (m) noMedia = m[1];
+            }
+          } catch {}
+        }
+        hero.querySelectorAll("img, video").forEach((el) => el.remove());
+        if (noMedia) hero.classList.add(noMedia);
+      });
+      await page.waitForTimeout(300);
+    },
+  },
   {
     name: "baby-hero-expanded",
     path: "/today",
