@@ -101,3 +101,29 @@ export function CitiesEditor({ followUpCity, deliveryCity, canEdit }: { followUp
     </>
   );
 }
+
+/** Facts that personalise guidance. Off by default; nothing is inferred. */
+export function HealthEditor({ rhNegative, canEdit }: { rhNegative: boolean; canEdit: boolean }) {
+  const router = useRouter();
+  const [value, setValue] = useState(rhNegative);
+  const [busy, setBusy] = useState(false);
+  return (
+    <Toggle
+      id="rh-negative"
+      label={m.careWindows.health.rhNegative}
+      description={m.careWindows.health.rhNegativeHelp}
+      checked={value}
+      disabled={!canEdit || busy}
+      onChange={async (next) => {
+        setValue(next);
+        setBusy(true);
+        try {
+          await api("/api/pregnancy/health", { rhNegative: next }, "PATCH");
+          router.refresh();
+        } finally {
+          setBusy(false);
+        }
+      }}
+    />
+  );
+}

@@ -19,6 +19,8 @@ interface Props {
   hospitals: Pick<Hospital, "id" | "name" | "city">[];
   defaultCity: string;
   today: string;
+  /** Pre-selected type when the form opens from a care window. */
+  defaultType?: AppointmentType;
 }
 
 interface TaskDraft {
@@ -27,9 +29,9 @@ interface TaskDraft {
   done: boolean;
 }
 
-export function AppointmentForm({ appointment, doctors, hospitals, defaultCity, today }: Props) {
+export function AppointmentForm({ appointment, doctors, hospitals, defaultCity, today, defaultType }: Props) {
   const router = useRouter();
-  const [type, setType] = useState<AppointmentType>(appointment?.type ?? "checkup");
+  const [type, setType] = useState<AppointmentType>(appointment?.type ?? defaultType ?? "checkup");
   const [date, setDate] = useState(appointment?.date ?? today);
   const [time, setTime] = useState(appointment?.time ?? "");
   const [doctorId, setDoctorId] = useState(appointment?.doctorId ?? "");

@@ -4,6 +4,9 @@ import { getContext } from "@/server/session";
 import { pregnancyProgress, MEDIA_MAX_WEEK, MEDIA_MIN_WEEK } from "@/domain/pregnancy";
 import { weeklyMedia } from "@/media/weekly";
 import { upcomingAppointments } from "@/server/view-models/today";
+import { careWindowViews } from "@/server/view-models/care";
+import { CareWindowRow } from "@/components/care/CareWindowRow";
+import { DangerSigns } from "@/components/care/DangerSigns";
 import { TopBar } from "@/components/ui/TopBar";
 import { Card } from "@/components/ui/Card";
 import { MediaFrame } from "@/components/ui/MediaFrame";
@@ -31,6 +34,8 @@ export default async function WeeklyDevelopmentPage({ searchParams }: { searchPa
   const isCurrent = week === progress.mediaWeek;
   const trimester: 1 | 2 | 3 = week < 13 ? 1 : week < 27 ? 2 : 3;
   const next = upcomingAppointments(ctx)[0];
+  const care = isCurrent ? careWindowViews(ctx).visible : [];
+  const canEditCare = ctx.viewer.permissions.includes("appointments:edit");
 
   return (
     <div className="page">
@@ -93,6 +98,20 @@ export default async function WeeklyDevelopmentPage({ searchParams }: { searchPa
           </Card>
         </section>
 
+        {isCurrent && care.length > 0 && (
+          <section>
+            <SectionTitle>{m.careWindows.sectionTitle}</SectionTitle>
+            <p className={styles.summary}>{m.careWindows.sectionHelp}</p>
+            <RowGroup>
+              {care.map((w) => (
+                <CareWindowRow key={w.key} vm={w} canEdit={canEditCare} />
+              ))}
+            </RowGroup>
+          </section>
+        )}
+
+        <DangerSigns />
+
         {isCurrent && (
           <section>
             <SectionTitle>{m.today.nextSteps}</SectionTitle>
@@ -107,7 +126,7 @@ export default async function WeeklyDevelopmentPage({ searchParams }: { searchPa
           </section>
         )}
 
-        <p className={styles.boundary}>{m.common.medicalBoundary}</p>
+        <p className={styles.boundary}>{m.careWindows.disclaimer}</p>
       </div>
     </div>
   );

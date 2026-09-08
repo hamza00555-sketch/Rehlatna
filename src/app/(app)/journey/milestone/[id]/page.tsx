@@ -6,6 +6,9 @@ import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DateText } from "@/components/ui/Num";
 import { DeleteMilestone } from "@/components/journey/DeleteMilestone";
+import { careWindowViews } from "@/server/view-models/care";
+import { CareWindowBody } from "@/components/care/CareWindowBody";
+import { CareWindowActions } from "@/components/care/CareWindowActions";
 import { fmtInt } from "@/lib/format";
 import { m } from "@/i18n";
 import styles from "./milestone.module.css";
@@ -20,6 +23,7 @@ export default async function MilestoneDetailPage({ params }: Params) {
   const item = vm.items.find((i) => i.id === decodeURIComponent(id));
   if (!item) notFound();
 
+  const careWindow = item.key ? careWindowViews(ctx).all.find((w) => w.key === item.key) ?? null : null;
   const tone = item.state === "current" ? "needed" : item.state === "past" ? "ready" : "future";
   const stateLabel = item.state === "current" ? m.journey.current : item.state === "past" ? m.journey.past : m.journey.future;
 
@@ -43,8 +47,15 @@ export default async function MilestoneDetailPage({ params }: Params) {
               {m.today.weekLabel} <span className="num">{fmtInt(item.week)}</span>
             </span>
           )}
-          {item.description && <p className={styles.description}>{item.description}</p>}
+          {item.description && !careWindow && <p className={styles.description}>{item.description}</p>}
         </Card>
+
+        {careWindow && (
+          <Card tone="surface" padding="panel">
+            <CareWindowBody vm={careWindow} />
+            <CareWindowActions vm={careWindow} canEdit={ctx.viewer.permissions.includes("appointments:edit")} />
+          </Card>
+        )}
 
         {item.origin === "user" && ctx.viewer.permissions.includes("journey:edit") && <DeleteMilestone id={item.id} />}
       </div>

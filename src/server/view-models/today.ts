@@ -7,6 +7,7 @@ import { m } from "@/i18n";
 import type { RequestContext } from "../session";
 import { serializeBaby, serializeFinanceOverview, type BabyView } from "../serializers";
 import { buildJourneyViewModel } from "./journey";
+import { careWindowViews } from "./care";
 import type { FinanceTotals } from "@/domain/finance";
 
 /**
@@ -107,6 +108,7 @@ export function buildTodayViewModel(ctx: RequestContext): TodayViewModel {
   const journey = buildJourneyViewModel(ctx);
   const upcoming = upcomingAppointments(ctx);
   const nextAppointment = upcoming[0] ?? null;
+  const care = careWindowViews(ctx);
 
   const relevantItems = data.preparationItems.filter((i) => i.status !== "not_required");
   const ready = relevantItems.filter((i) => i.status === "owned").length;
@@ -126,8 +128,20 @@ export function buildTodayViewModel(ctx: RequestContext): TodayViewModel {
         href: `/journey/appointments/${nextAppointment.id}`,
         cta: m.common.open,
       };
+    } else if (care.attention) {
+      // A recommended care window that is open (nothing scheduled) or recently missed.
+      const w = care.attention;
+      const canBook = can(viewer, "appointments:edit");
+      nextAction = {
+        title: w.title,
+        body: w.status === "needs_attention" ? m.careWindows.notRecorded : w.body,
+        href: canBook && w.appointmentType ? `/journey/appointments/new?type=${w.appointmentType}&care=${w.key}` : "/today/week",
+        cta: canBook && w.appointmentType ? m.careWindows.actions.addAppointment : m.common.open,
+      };
     } else if (upcoming.length === 0 && can(viewer, "appointments:edit")) {
       nextAction = { title: m.today.addAppointment, href: "/journey/appointments/new", cta: m.appointments.add };
+    } else if (progress.week >= 36 && !data.birthPlan?.hospitalId && can(viewer, "care:edit")) {
+      nextAction = { title: m.more.birthPlan, body: m.careWindows.birthPlanPrompt, href: "/more/birth-plan", cta: m.common.open };
     } else if (baby && baby.gender === "unknown" && progress.week >= 18 && can(viewer, "journey:edit")) {
       nextAction = { title: m.gender.title, body: m.gender.help, href: "/journey/gender", cta: m.common.open };
     } else if (data.preparationItems.length === 0 && can(viewer, "preparation:edit")) {

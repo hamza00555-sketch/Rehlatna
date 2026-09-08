@@ -95,6 +95,18 @@ export interface Pregnancy {
   createdAt: IsoDateTime;
   /** Due-date edits are never silent — each one is recorded. */
   dueDateHistory: DueDateChange[];
+  /** Mother's Rh factor is negative — the only fact that unlocks a conditional care window today. */
+  rhNegative?: boolean;
+  /** Family-recorded outcome of a recommended care window (done, discussed, skipped). */
+  careLog?: Record<string, CareLogEntry>;
+}
+
+export type CareLogState = "done" | "discussed" | "skipped";
+
+export interface CareLogEntry {
+  state: CareLogState;
+  at: IsoDate;
+  note?: string;
 }
 
 export interface Baby {
@@ -131,6 +143,11 @@ export type SystemMilestoneKey =
   | "second_trimester_begin"
   | "third_trimester_begin"
   | "hospital_bag"
+  | "early_scan"
+  | "anatomy_scan"
+  | "gdm_screen"
+  | "tdap"
+  | "gbs_screen"
   | "due_window"
   | "due_date"
   | "birth"

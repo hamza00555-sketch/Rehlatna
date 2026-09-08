@@ -8,7 +8,7 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { PrivacyNotice } from "@/components/ui/PrivacyNotice";
 import { DateText, Num } from "@/components/ui/Num";
 import { MemberEditor } from "@/components/more/MemberEditor";
-import { CitiesEditor, DueDateEditor } from "@/components/more/PregnancyEditors";
+import { CitiesEditor, DueDateEditor, HealthEditor } from "@/components/more/PregnancyEditors";
 import { m } from "@/i18n";
 import styles from "../../more.module.css";
 
@@ -58,6 +58,12 @@ export default async function MemberPage({ params }: Params) {
                 <DueDateEditor dueDate={p.dueDate} canEdit={canEditJourney} />
                 <CitiesEditor followUpCity={p.followUpCity} deliveryCity={p.deliveryCity} canEdit={canEditJourney} />
               </div>
+            )}
+            {!ctx.data.baby?.birthDate && (
+              <Card tone="surface" padding="md">
+                <span className={styles.factLabel}>{m.careWindows.health.title}</span>
+                <HealthEditor rhNegative={Boolean(p.rhNegative)} canEdit={canEditJourney} />
+              </Card>
             )}
             {p.dueDateHistory.length > 0 && (
               <Card tone="surface" padding="md">

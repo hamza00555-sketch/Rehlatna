@@ -10,16 +10,17 @@ interface Props {
   title: string;
   meta?: ReactNode;
   state?: State;
-  /** One clear action: toggle (checkbox) OR navigate (href). Never both. */
+  /** One clear action: toggle (checkbox), navigate (href) OR open (onClick). Never several. */
   onToggle?: () => void;
   href?: string;
+  onClick?: () => void;
   leading?: ReactNode;
   trailing?: ReactNode;
   className?: string;
 }
 
 /** Compact task/row primitive for small actions and consumables. */
-export function TaskRow({ title, meta, state = "open", onToggle, href, leading, trailing, className }: Props) {
+export function TaskRow({ title, meta, state = "open", onToggle, href, onClick, leading, trailing, className }: Props) {
   const classes = cx(styles.row, styles[state], className);
   const body = (
     <>
@@ -34,13 +35,21 @@ export function TaskRow({ title, meta, state = "open", onToggle, href, leading, 
         {meta && <span className={styles.meta}>{meta}</span>}
       </span>
       {trailing && <span className={styles.trailing}>{trailing}</span>}
-      {href && (
+      {(href || onClick) && (
         <span className={styles.chevron} aria-hidden="true">
           <Icon name="forward" size={20} />
         </span>
       )}
     </>
   );
+
+  if (onClick && !onToggle && !href && state !== "disabled") {
+    return (
+      <button type="button" className={classes} onClick={onClick}>
+        {body}
+      </button>
+    );
+  }
 
   if (onToggle && state !== "disabled" && trailing) {
     // A secondary control beside a toggle: split into siblings so no

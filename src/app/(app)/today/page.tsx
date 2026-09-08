@@ -6,6 +6,7 @@ import { Bento } from "@/components/ui/Card";
 import { PrivacyNotice } from "@/components/ui/PrivacyNotice";
 import { BentoModuleView, NextActionCard } from "@/components/today/TodayModules";
 import { PostpartumToday } from "@/components/today/PostpartumToday";
+import { DangerSigns } from "@/components/care/DangerSigns";
 import { m } from "@/i18n";
 import styles from "./today.module.css";
 
@@ -31,6 +32,7 @@ export default async function TodayPage() {
             <BentoModuleView key={`${module.kind}-${i}`} module={module} today={vm.todayIso} />
           ))}
         </Bento>
+        <DangerSigns />
       </div>
     </div>
   );

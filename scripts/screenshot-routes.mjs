@@ -94,6 +94,29 @@ export const ROUTES = [
   },
   { name: "today-reduced-motion", path: "/today", demo: "pregnancy", themes: light, reducedMotion: true, fullPage: false },
   { name: "weekly-development", path: "/today/week", demo: "pregnancy", themes: both },
+  {
+    name: "care-window-sheet",
+    path: "/today/week",
+    demo: "pregnancy",
+    themes: light,
+    fullPage: false,
+    action: async (page) => {
+      await page.getByRole("button", { name: /فحص التشريح/ }).first().click();
+      await page.waitForTimeout(500);
+    },
+  },
+  {
+    name: "danger-signs",
+    path: "/today/week",
+    demo: "pregnancy",
+    themes: light,
+    fullPage: false,
+    action: async (page) => {
+      await page.getByRole("button", { name: /متى نتواصل مع الطبيب/ }).first().click();
+      await page.waitForTimeout(500);
+    },
+  },
+  { name: "milestone-care-window", path: "/journey/milestone/sys%3Ademo_pregnancy%3Aanatomy_scan", demo: "pregnancy", themes: light },
   { name: "today-postpartum", path: "/today", demo: "postpartum", themes: both },
 
   // Journey

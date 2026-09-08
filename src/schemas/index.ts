@@ -67,6 +67,11 @@ export type OnboardingInput = z.infer<typeof onboardingSchema>;
 // --- Pregnancy / baby --------------------------------------------------------
 
 export const dueDateUpdateSchema = z.object({ dueDate: isoDate });
+export const careLogSchema = z.object({
+  key: z.string().min(1).max(40),
+  state: z.enum(["done", "discussed", "skipped"]).nullable(),
+});
+export const healthUpdateSchema = z.object({ rhNegative: z.boolean() });
 export const citiesUpdateSchema = z.object({ followUpCity: shortText, deliveryCity: shortText });
 export const genderUpdateSchema = z.object({ gender: genderSchema });
 export const babyNameSchema = z.object({ displayName: z.string().trim().max(60).nullable() });

@@ -1,3 +1,4 @@
+import { CARE_WINDOWS } from "./careWindows";
 import type {
   Appointment,
   Baby,
@@ -82,6 +83,14 @@ export function generateSystemMilestones(
     } else {
       push(key, key === "hospital_bag" ? "preparation" : "automatic", date);
     }
+  }
+  // Recommended care windows that deserve a place on the timeline (scans,
+  // screenings, the vaccine window). Visits stay as the family's own appointments.
+  for (const w of CARE_WINDOWS) {
+    if (!w.milestone) continue;
+    const start = dateForGestationalDay(pregnancy.dueDate, w.startWeek * 7);
+    if (!stillApplies(start)) continue;
+    push(w.key as SystemMilestoneKey, "medical", start, dateForGestationalDay(pregnancy.dueDate, w.endWeek * 7 + 6));
   }
   if (stillApplies(pregnancy.dueDate)) push("due_date", "automatic", pregnancy.dueDate);
 

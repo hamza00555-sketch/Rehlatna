@@ -34,6 +34,10 @@ Honest inventory of what this build does not do, or does approximately.
 
 ## Approximations
 
+- Care windows (`docs/care-reference.md`) describe a low-risk pregnancy only.
+  Windows are inferred from appointment types and gestational weeks; a family
+  record always overrides the inference. Nothing is diagnostic.
+
 - Pregnancy math uses a 280-day term from the due date; weeks are whole
   weeks from the derived LMP. Postpartum months are 30-day months.
 - Finance monthly requirement: `ceil(remaining / periods)`, periods being
