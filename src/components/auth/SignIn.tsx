@@ -71,7 +71,7 @@ export function SignIn() {
           }}
         >
           <p className={styles.help}>{m.auth.codeHelp(email.trim())}</p>
-          <Field id="auth-code" label={m.auth.code} error={error ?? undefined}>
+          <Field id="auth-code" label={m.auth.code} help={m.auth.codeAlt} error={error ?? undefined}>
             <TextInput id="auth-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={8} dir="ltr" numeric value={code} onChange={(e) => setCode(e.target.value)} required />
           </Field>
           <Button type="submit" fullWidth loading={busy} disabled={code.trim().length < 6}>

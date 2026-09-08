@@ -35,9 +35,11 @@ Both walkers expect a running server (`BASE_URL`, default
 
 Production identity and persistence run on Supabase:
 
-- **Auth** — passwordless email: the user enters an email, receives a
-  six-digit code, and is signed in (`/auth`, `api/auth/otp`, `api/auth/verify`).
-  Sessions live in Supabase cookies refreshed by `src/middleware.ts`.
+- **Auth** — passwordless email: the user enters an email and receives a
+  sign-in link (and a six-digit code when the email template includes
+  `{{ .Token }}`). The link returns with `?code=…`, which `src/middleware.ts`
+  exchanges for a session; the code is verified by `api/auth/verify`.
+  Sessions live in Supabase cookies refreshed by the same middleware.
 - **Database** — one JSONB snapshot per household in `public.households`;
   `public.household_members` maps auth users to households. Row-level
   security allows a household to be read or written only by its members and
@@ -47,9 +49,11 @@ Production identity and persistence run on Supabase:
   the app falls back to the JSON file store with the development cookie
   session (this is what tests and the screenshot walk use).
 
-One-time dashboard step for codes instead of links: Authentication → Email
-Templates → *Magic Link* → make the body include `{{ .Token }}`. The
-built-in mailer is rate-limited (a few emails per hour); configure a custom
+One-time dashboard step: Authentication → URL Configuration → set **Site
+URL** to the deployed origin and add `https://<domain>/**` and
+`http://localhost:3000/**` to **Redirect URLs**, so the sign-in link comes
+back to the app. The built-in mailer is rate-limited (a few emails per
+hour) and its templates cannot be edited without custom SMTP; configure an
 SMTP provider before real users.
 
 ## Configuration

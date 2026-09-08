@@ -24,7 +24,7 @@ export const ROUTES = [
       if (!page.url().includes("/auth")) return;
       await page.fill("#auth-email", "family@example.com");
       await page.route("**/api/auth/otp", (route) => route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }));
-      await page.getByRole("button", { name: "أرسلوا الرمز" }).click();
+      await page.getByRole("button", { name: "أرسلوا رابط الدخول" }).click();
       await page.waitForTimeout(400);
     },
   },

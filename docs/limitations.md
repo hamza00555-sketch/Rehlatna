@@ -10,8 +10,9 @@ Honest inventory of what this build does not do, or does approximately.
   built, so the second member is a named profile without a login.
 - **Email delivery.** The built-in Supabase mailer allows only a few messages
   per hour and is meant for development. Custom SMTP is required before
-  real users, and the Magic Link template must include `{{ .Token }}` for the
-  code flow.
+  real users. The sign-in link must be opened in the same browser that
+  requested it (PKCE); a code flow needs custom SMTP so the template can
+  include `{{ .Token }}`.
 - **Development session.** Without Supabase env vars the app uses a cookie
   session and a JSON file store; the member switcher in Settings exists only
   in that mode and in the demo.
