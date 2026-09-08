@@ -161,17 +161,27 @@ export async function demoHasData(): Promise<boolean> {
   return demoStore().size > 0;
 }
 
-/** The household a signed-in user belongs to (Supabase only). */
-export async function membershipFor(userId: string): Promise<{ householdId: string; memberId: string } | null> {
+export interface Membership {
+  householdId: string;
+  memberId: string;
+  /** The household snapshot, embedded in the same query (RLS still applies). */
+  data: HouseholdData | null;
+}
+
+/** The household a signed-in user belongs to, with its snapshot, in one round trip (Supabase only). */
+export async function membershipFor(userId: string): Promise<Membership | null> {
   if (!supabaseConfigured()) return null;
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("household_members")
-    .select("household_id, member_id")
+    .select("household_id, member_id, households(data)")
     .eq("user_id", userId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(`household_members.lookup: ${error.message}`);
-  return data ? { householdId: data.household_id as string, memberId: data.member_id as string } : null;
+  if (!data) return null;
+  const embedded = data.households as unknown as { data: HouseholdData } | { data: HouseholdData }[] | null;
+  const snapshot = Array.isArray(embedded) ? embedded[0]?.data ?? null : embedded?.data ?? null;
+  return { householdId: data.household_id as string, memberId: data.member_id as string, data: snapshot };
 }

@@ -44,7 +44,8 @@ export async function middleware(request: NextRequest) {
     next.searchParams.set("error", "link");
     response = NextResponse.redirect(next);
   } else {
-    await supabase.auth.getUser();
+    // Verifies the JWT locally (asymmetric keys) and refreshes it when expired.
+    await supabase.auth.getClaims();
     response = NextResponse.next({ request });
   }
 

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import type { HouseholdData, HouseholdMember } from "@/domain/types";
 import { viewerFromMember, type Viewer } from "@/domain/permissions";
@@ -20,6 +21,8 @@ export interface Session {
   mode: StoreMode;
   /** Supabase user id for live sessions (absent in cookie/demo sessions). */
   userId?: string;
+  /** Snapshot fetched together with the membership, so getContext needs no second query. */
+  preloaded?: HouseholdData | null;
 }
 
 export interface RequestContext {
@@ -43,7 +46,8 @@ async function cookieSession(): Promise<Session | null> {
   }
 }
 
-export async function getSession(): Promise<Session | null> {
+/** Resolved once per request: layouts, metadata and the page share one lookup. */
+export const getSession = cache(async function getSession(): Promise<Session | null> {
   const fromCookie = await cookieSession();
   if (fromCookie?.mode === "demo") return fromCookie;
   if (!supabaseConfigured()) return fromCookie;
@@ -51,8 +55,8 @@ export async function getSession(): Promise<Session | null> {
   if (!user) return null;
   const membership = await membershipFor(user.id);
   if (!membership) return null;
-  return { ...membership, mode: "live", userId: user.id };
-}
+  return { householdId: membership.householdId, memberId: membership.memberId, mode: "live", userId: user.id, preloaded: membership.data };
+});
 
 export function sessionCookie(session: Session) {
   return {
@@ -67,13 +71,14 @@ export function sessionCookie(session: Session) {
 
 export const clearedSessionCookie = { name: SESSION_COOKIE, value: "", path: "/", maxAge: 0 };
 
-/** Resolves the full request context, or null when no valid session exists. */
-export async function getContext(): Promise<RequestContext | null> {
+/** Resolves the full request context (once per request), or null when no valid session exists. */
+export const getContext = cache(async function getContext(): Promise<RequestContext | null> {
   const session = await getSession();
   if (!session) return null;
-  const data = await readHousehold(session.mode, session.householdId);
+  const data = session.preloaded ?? (await readHousehold(session.mode, session.householdId));
   if (!data) return null;
   const member = data.members.find((mm) => mm.id === session.memberId);
   if (!member) return null;
-  return { session, data, member, viewer: viewerFromMember(member), today: todayIso() };
-}
+  const { preloaded: _omit, ...lean } = session;
+  return { session: lean, data, member, viewer: viewerFromMember(member), today: todayIso() };
+});

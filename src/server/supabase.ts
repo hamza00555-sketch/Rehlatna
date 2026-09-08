@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -11,8 +12,8 @@ export function supabaseConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
-/** Request-scoped client bound to the caller's auth cookies. */
-export async function supabaseServer() {
+/** Request-scoped client bound to the caller's auth cookies (one per request). */
+export const supabaseServer = cache(async function supabaseServer() {
   const jar = await cookies();
   return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     cookies: {
@@ -26,18 +27,23 @@ export async function supabaseServer() {
       },
     },
   });
-}
+});
 
 export interface AuthUser {
   id: string;
   email: string | null;
 }
 
-/** The signed-in Supabase user, or null. Always null when Supabase is not configured. */
-export async function getAuthUser(): Promise<AuthUser | null> {
+/**
+ * The signed-in Supabase user, or null. Always null when Supabase is not
+ * configured. Verified locally from the JWT (asymmetric keys, JWKS cached),
+ * so no network round trip per request; resolved once per request.
+ */
+export const getAuthUser = cache(async function getAuthUser(): Promise<AuthUser | null> {
   if (!supabaseConfigured()) return null;
   const supabase = await supabaseServer();
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) return null;
-  return { id: data.user.id, email: data.user.email ?? null };
-}
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) return null;
+  return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : null };
+});

@@ -1,0 +1,63 @@
+.page {
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+  padding: var(--space-sm) var(--layout-gutter) var(--layout-bottom-nav-height);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.hero,
+.card,
+.tile,
+.row {
+  border-radius: var(--radius-card);
+  background: var(--t-surface-tint);
+  background-image: var(--t-shimmer);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.hero {
+  min-height: 280px;
+  border-radius: 0 0 var(--radius-hero) var(--radius-hero);
+  margin-inline: calc(-1 * var(--layout-gutter));
+}
+
+.card {
+  min-height: 96px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--layout-grid-gap);
+}
+
+.tile {
+  min-height: 140px;
+}
+
+.row {
+  min-height: 56px;
+  border-radius: var(--radius-control);
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero,
+  .card,
+  .tile,
+  .row {
+    animation: none;
+  }
+}
