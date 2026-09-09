@@ -100,7 +100,7 @@ export default async function WeeklyDevelopmentPage({ searchParams }: { searchPa
         )}
 
         <section>
-          <SectionTitle>{m.today.motherContext}</SectionTitle>
+          <SectionTitle>{ctx.member.roles.includes("mother") ? m.today.motherContext : m.today.motherContextFamily}</SectionTitle>
           <Card tone="rose" padding="md">
             <p className={styles.summary}>{m.today.motherContextByTrimester[trimester]}</p>
           </Card>

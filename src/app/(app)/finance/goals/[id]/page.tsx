@@ -70,8 +70,8 @@ export default async function GoalDetailPage({ params }: Params) {
             <span>
               <Num value={goal.ratio} format="percent" /> {goal.state === "complete" ? m.finance.complete : ""}
             </span>
-            <StatusBadge tone={goal.state === "complete" ? "ready" : goal.state === "on_track" ? "future" : "unverified"}>
-              {goal.state === "complete" ? m.finance.complete : goal.state === "on_track" ? m.finance.onTrack : goal.state === "overdue" ? m.finance.overdue : m.finance.attention}
+            <StatusBadge tone={goal.state === "complete" ? "ready" : goal.state === "on_track" || goal.state === "not_started" ? "future" : "unverified"}>
+              {goal.state === "complete" ? m.finance.complete : goal.state === "on_track" ? m.finance.onTrack : goal.state === "not_started" ? m.finance.notStarted : goal.state === "overdue" ? m.finance.overdue : m.finance.attention}
             </StatusBadge>
           </div>
         </section>

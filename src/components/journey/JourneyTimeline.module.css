@@ -137,9 +137,29 @@
   font-weight: var(--weight-medium);
 }
 
-.subtitle {
-  font-size: var(--text-body);
+.stage {
+  font-size: var(--text-label);
   font-weight: var(--weight-medium);
+  color: var(--color-muted);
+}
+
+/* "Today" marker — where the family actually stands on the rail. */
+.todayItem {
+  padding-block: 0;
+  min-height: var(--space-lg);
+}
+.todayNode {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-round);
+  background: var(--t-canvas);
+  border: 2px solid var(--color-accent-warm);
+}
+.todayText {
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+  color: var(--color-accent-warm);
+  padding-inline: var(--space-sm);
 }
 
 .meta {

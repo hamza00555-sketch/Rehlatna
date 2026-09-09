@@ -43,7 +43,8 @@ describe("funding date boundaries", () => {
   it("funding date next month → two periods (this month and next)", () => {
     expect(contributionPeriods(TODAY, "2026-10-02")).toBe(2);
     expect(monthlyRequirement({ ...base, fundingDate: "2026-10-02" }, TODAY)).toBe(600);
-    expect(goalState({ ...base, fundingDate: "2026-10-02" }, TODAY)).toBe("on_track");
+    expect(goalState({ ...base, fundingDate: "2026-10-02" }, TODAY)).toBe("not_started");
+    expect(goalState({ ...base, fundingDate: "2026-10-02", fundedAmount: 100 }, TODAY)).toBe("on_track");
   });
 
   it("funding date in the past → still one period and flagged overdue", () => {

@@ -38,14 +38,18 @@ export function monthlyRequirement(
   return Math.ceil(remaining / contributionPeriods(today, goal.fundingDate));
 }
 
-export type GoalFundingState = "complete" | "overdue" | "attention" | "on_track";
+export type GoalFundingState = "complete" | "overdue" | "attention" | "on_track" | "not_started";
 
+/**
+ * "On track" is a claim about progress, so it needs at least one contribution
+ * behind it; a goal with time left and nothing saved is simply "not started".
+ */
 export function goalState(goal: FundingGoal, today: IsoDate): GoalFundingState {
   if (remainingAmount(goal) === 0) return "complete";
   const diff = monthDiff(today, goal.fundingDate);
   if (diff < 0) return "overdue";
   if (diff === 0) return "attention";
-  return "on_track";
+  return goal.fundedAmount > 0 ? "on_track" : "not_started";
 }
 
 export interface GoalComputed {

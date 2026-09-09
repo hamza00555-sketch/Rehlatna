@@ -85,7 +85,7 @@ export default async function PostpartumJourneyPage() {
 
         {vm.sections.postpartum.length > 0 && (
           <section>
-            <JourneyTimeline items={vm.sections.postpartum} title={m.journey.postpartumSection} />
+            <JourneyTimeline items={vm.sections.postpartum} today={{ iso: ctx.today }} title={m.journey.postpartumSection} />
           </section>
         )}
 

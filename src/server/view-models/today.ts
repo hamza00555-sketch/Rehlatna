@@ -66,6 +66,8 @@ export interface TodayViewModel {
   productName: string;
   todayIso: string;
   member: { displayName: string; initials: string };
+  /** Copy addressed to the mother herself ("أنتِ") versus the family around her. */
+  audience: "mother" | "family";
   baby: BabyView | null;
   pregnancy: PregnancyHeroVM | null;
   postpartum: PostpartumHeroVM | null;
@@ -203,6 +205,7 @@ export function buildTodayViewModel(ctx: RequestContext): TodayViewModel {
     productName: data.household.settings.productName,
     todayIso: today,
     member: { displayName: member.displayName, initials: initialsOf(member.displayName) },
+    audience: member.roles.includes("mother") ? "mother" : "family",
     baby: serializeBaby(baby),
     pregnancy: isPostpartum
       ? null

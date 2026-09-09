@@ -31,6 +31,8 @@ const KEY_ICON: Record<string, IconName> = {
 interface Props {
   items: JourneyItemVM[];
   title?: string;
+  /** When given, a "today" marker sits right after the current item (with the gestational week if known). */
+  today?: { iso: string; week?: number };
 }
 
 /**
@@ -38,7 +40,7 @@ interface Props {
  * future are visually quiet. Media thumbnails sit at the start, the rail
  * between them and the copy (per the approved composition).
  */
-export function JourneyTimeline({ items, title }: Props) {
+export function JourneyTimeline({ items, title, today }: Props) {
   if (items.length === 0) return null;
   return (
     <section className={styles.section} aria-label={title}>
@@ -57,8 +59,8 @@ export function JourneyTimeline({ items, title }: Props) {
               </span>
               <Link href={item.href} className={styles.text} aria-current={item.state === "current" ? "step" : undefined}>
                 <span className="sr-only">{stateLabel}: </span>
-                <span className={styles.title}>{item.state === "current" ? m.journey.current : item.title}</span>
-                {item.state === "current" && <span className={styles.subtitle}>{item.title}</span>}
+                {item.state === "current" && <span className={styles.stage}>{m.journey.currentStage}</span>}
+                <span className={styles.title}>{item.title}</span>
                 <span className={styles.meta}>
                   {item.week !== undefined && item.type !== "birth" && (
                     <>
@@ -71,6 +73,21 @@ export function JourneyTimeline({ items, title }: Props) {
               </Link>
             </li>
           );
+        }).flatMap((node, index) => {
+          const item = items[index]!;
+          if (!today || item.state !== "current") return [node];
+          return [
+            node,
+            <li key="today-marker" className={cx(styles.item, styles.todayItem)} aria-label={m.journey.todayMarker(today.week)}>
+              <span aria-hidden="true" />
+              <span className={styles.rail} aria-hidden="true">
+                <span className={styles.todayNode} />
+              </span>
+              <span className={styles.todayText}>
+                {m.journey.todayMarker(today.week)} · <DateText iso={today.iso} style="short" />
+              </span>
+            </li>,
+          ];
         })}
       </ol>
     </section>

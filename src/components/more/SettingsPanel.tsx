@@ -23,11 +23,13 @@ interface Props {
   financeOwnerName: string | null;
   members: { id: string; displayName: string; isViewer: boolean }[];
   isDemo: boolean;
+  /** Member switcher and demo controls: only in the demo or on a local session without Supabase. */
+  showDeveloperTools: boolean;
   /** Signed-in email when Supabase auth is active; null on the local development session. */
   authEmail?: string | null;
 }
 
-export function SettingsPanel({ settings, notifications, canManage, canFinance, financeOwnerName, members, isDemo, authEmail }: Props) {
+export function SettingsPanel({ settings, notifications, canManage, canFinance, financeOwnerName, members, isDemo, showDeveloperTools, authEmail }: Props) {
   const router = useRouter();
   const [s, setS] = useState(settings);
   const [n, setN] = useState(notifications ?? { appointments: true, weeklyUpdate: true, preparation: true, finance: false });
@@ -36,20 +38,46 @@ export function SettingsPanel({ settings, notifications, canManage, canFinance, 
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Optimistic, but honest: a failed save reverts the control and says so.
   const patchSettings = async (patch: Partial<HouseholdSettings>) => {
+    const previous = s;
     setS({ ...s, ...patch });
-    await api("/api/household/settings", patch, "PATCH");
-    router.refresh();
+    setError(null);
+    try {
+      await api("/api/household/settings", patch, "PATCH");
+      router.refresh();
+    } catch {
+      setS(previous);
+      setError(m.more.saveFailed);
+    }
   };
   const patchNotif = async (patch: Partial<typeof n>) => {
+    const previous = n;
     const next = { ...n, ...patch };
     setN(next);
-    await api("/api/household/notifications", { appointments: next.appointments, weeklyUpdate: next.weeklyUpdate, preparation: next.preparation, finance: next.finance }, "PATCH");
+    setError(null);
+    try {
+      await api("/api/household/notifications", { appointments: next.appointments, weeklyUpdate: next.weeklyUpdate, preparation: next.preparation, finance: next.finance }, "PATCH");
+    } catch {
+      setN(previous);
+      setError(m.more.saveFailed);
+    }
+  };
+  const signOut = async () => {
+    await api("/api/session/exit");
+    router.push("/onboarding");
+    router.refresh();
   };
 
   return (
     <div className={styles.stack}>
+      {error && (
+        <div role="alert">
+          <PrivacyNotice variant="warning">{error}</PrivacyNotice>
+        </div>
+      )}
       <section>
         <SectionTitle>{m.more.appearance}</SectionTitle>
         <ChoiceGroup legend={m.more.themeLegend} help={m.more.appearanceHelp} columns={3}>
@@ -61,11 +89,14 @@ export function SettingsPanel({ settings, notifications, canManage, canFinance, 
       </section>
 
       <section>
-        <SectionTitle>{m.more.notifications}</SectionTitle>
-        <Toggle id="n-appointments" label={m.more.notif.appointments} checked={n.appointments} onChange={(v) => patchNotif({ appointments: v })} />
-        <Toggle id="n-weekly" label={m.more.notif.weeklyUpdate} checked={n.weeklyUpdate} onChange={(v) => patchNotif({ weeklyUpdate: v })} />
-        <Toggle id="n-prep" label={m.more.notif.preparation} checked={n.preparation} onChange={(v) => patchNotif({ preparation: v })} />
-        {canFinance && <Toggle id="n-finance" label={m.more.notif.finance} checked={n.finance} onChange={(v) => patchNotif({ finance: v })} />}
+        <SectionTitle>
+          {m.more.notifications} · {m.more.notificationsUnavailable}
+        </SectionTitle>
+        <PrivacyNotice variant="warning">{m.more.notificationsUnavailableHelp}</PrivacyNotice>
+        <Toggle id="n-appointments" label={m.more.notif.appointments} checked={n.appointments} disabled onChange={(v) => patchNotif({ appointments: v })} />
+        <Toggle id="n-weekly" label={m.more.notif.weeklyUpdate} checked={n.weeklyUpdate} disabled onChange={(v) => patchNotif({ weeklyUpdate: v })} />
+        <Toggle id="n-prep" label={m.more.notif.preparation} checked={n.preparation} disabled onChange={(v) => patchNotif({ preparation: v })} />
+        {canFinance && <Toggle id="n-finance" label={m.more.notif.finance} checked={n.finance} disabled onChange={(v) => patchNotif({ finance: v })} />}
       </section>
 
       {canFinance && (
@@ -111,6 +142,56 @@ export function SettingsPanel({ settings, notifications, canManage, canFinance, 
         </Button>
       </section>
 
+      {!isDemo && authEmail && (
+        <section className={styles.stack}>
+          <SectionTitle>{m.more.account}</SectionTitle>
+          <div className={styles.row}>
+            <span className={styles.saved}>{m.auth.signedInAs(authEmail)}</span>
+            <Button variant="quiet" onClick={signOut}>
+              {m.auth.signOut}
+            </Button>
+          </div>
+        </section>
+      )}
+
+      {!isDemo && canManage && (
+        <section className={styles.stack}>
+          <SectionTitle>{m.more.startOver}</SectionTitle>
+          <PrivacyNotice variant="warning">{m.more.deleteHouseholdHelp}</PrivacyNotice>
+          <Button variant="danger" fullWidth onClick={() => setConfirmDelete(true)}>
+            {m.more.deleteHousehold}
+          </Button>
+          <BottomSheet open={confirmDelete} onClose={() => setConfirmDelete(false)} title={m.more.deleteHousehold}>
+            <p>{m.more.deleteHouseholdConfirm}</p>
+            <Button
+              variant="danger"
+              fullWidth
+              loading={busy}
+              onClick={async () => {
+                setBusy(true);
+                setError(null);
+                try {
+                  const res = await api<{ redirect: string }>("/api/household", undefined, "DELETE");
+                  router.push(res.redirect);
+                  router.refresh();
+                } catch {
+                  setError(m.more.saveFailed);
+                  setConfirmDelete(false);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {m.more.deleteHouseholdCta}
+            </Button>
+            <Button variant="quiet" fullWidth onClick={() => setConfirmDelete(false)}>
+              {m.common.cancel}
+            </Button>
+          </BottomSheet>
+        </section>
+      )}
+
+      {showDeveloperTools && (
       <section className={styles.stack}>
         <SectionTitle>{m.more.developerTools}</SectionTitle>
         <PrivacyNotice variant="warning">{m.more.developerToolsHelp}</PrivacyNotice>
@@ -136,7 +217,7 @@ export function SettingsPanel({ settings, notifications, canManage, canFinance, 
             ))}
           </Select>
         </Field>
-        {isDemo ? (
+        {isDemo && (
           <div className={styles.row}>
             <Button
               variant="outline"
@@ -147,69 +228,13 @@ export function SettingsPanel({ settings, notifications, canManage, canFinance, 
             >
               {m.more.demoReset}
             </Button>
-            <Button
-              variant="quiet"
-              onClick={async () => {
-                await api("/api/session/exit");
-                router.push("/onboarding");
-                router.refresh();
-              }}
-            >
+            <Button variant="quiet" onClick={signOut}>
               {m.more.exitDemo}
             </Button>
           </div>
-        ) : (
-          <>
-            {authEmail && (
-              <div className={styles.row}>
-                <span className={styles.saved}>{m.auth.signedInAs(authEmail)}</span>
-                <Button
-                  variant="quiet"
-                  onClick={async () => {
-                    await api("/api/session/exit");
-                    router.push("/onboarding");
-                    router.refresh();
-                  }}
-                >
-                  {m.auth.signOut}
-                </Button>
-              </div>
-            )}
-          {canManage && (
-            <>
-              <SectionTitle>{m.more.startOver}</SectionTitle>
-              <PrivacyNotice variant="warning">{m.more.deleteHouseholdHelp}</PrivacyNotice>
-              <Button variant="danger" fullWidth onClick={() => setConfirmDelete(true)}>
-                {m.more.deleteHousehold}
-              </Button>
-              <BottomSheet open={confirmDelete} onClose={() => setConfirmDelete(false)} title={m.more.deleteHousehold}>
-                <p>{m.more.deleteHouseholdConfirm}</p>
-                <Button
-                  variant="danger"
-                  fullWidth
-                  loading={busy}
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      const res = await api<{ redirect: string }>("/api/household", undefined, "DELETE");
-                      router.push(res.redirect);
-                      router.refresh();
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  {m.more.deleteHouseholdCta}
-                </Button>
-                <Button variant="quiet" fullWidth onClick={() => setConfirmDelete(false)}>
-                  {m.common.cancel}
-                </Button>
-              </BottomSheet>
-            </>
-          )}
-          </>
         )}
       </section>
+      )}
     </div>
   );
 }

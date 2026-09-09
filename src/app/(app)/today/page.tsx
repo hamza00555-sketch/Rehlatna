@@ -23,7 +23,7 @@ export default async function TodayPage() {
 
   return (
     <div className="page page--flush">
-      <BabyHero vm={vm.pregnancy} baby={vm.baby} member={vm.member} todayIso={vm.todayIso} />
+      <BabyHero vm={vm.pregnancy} baby={vm.baby} member={vm.member} todayIso={vm.todayIso} audience={vm.audience} />
       <div className={styles.body}>
         {vm.pregnancy.recentDueDateChange && <PrivacyNotice variant="general">{m.today.weekChangedByDueDate}</PrivacyNotice>}
         {vm.nextAction && <NextActionCard action={vm.nextAction} />}

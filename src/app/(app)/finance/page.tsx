@@ -46,8 +46,8 @@ export default async function FinancePage() {
   }
 
   const currency = view.currencyCode;
-  const stateTone = (s: string) => (s === "complete" ? "ready" : s === "on_track" ? "future" : "unverified") as "ready" | "future" | "unverified";
-  const stateLabel = (s: string) => (s === "complete" ? m.finance.complete : s === "on_track" ? m.finance.onTrack : s === "overdue" ? m.finance.overdue : m.finance.attention);
+  const stateTone = (s: string) => (s === "complete" ? "ready" : s === "on_track" || s === "not_started" ? "future" : "unverified") as "ready" | "future" | "unverified";
+  const stateLabel = (s: string) => (s === "complete" ? m.finance.complete : s === "on_track" ? m.finance.onTrack : s === "not_started" ? m.finance.notStarted : s === "overdue" ? m.finance.overdue : m.finance.attention);
 
   return (
     <div className="page">

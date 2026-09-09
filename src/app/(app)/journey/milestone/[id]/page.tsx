@@ -25,7 +25,7 @@ export default async function MilestoneDetailPage({ params }: Params) {
 
   const careWindow = item.key ? careWindowViews(ctx).all.find((w) => w.key === item.key) ?? null : null;
   const tone = item.state === "current" ? "needed" : item.state === "past" ? "ready" : "future";
-  const stateLabel = item.state === "current" ? m.journey.current : item.state === "past" ? m.journey.past : m.journey.future;
+  const stateLabel = item.state === "current" ? m.journey.currentStage : item.state === "past" ? m.journey.past : m.journey.future;
 
   return (
     <div className="page">

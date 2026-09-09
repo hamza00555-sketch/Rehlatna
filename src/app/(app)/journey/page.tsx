@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getContext } from "@/server/session";
 import { buildJourneyViewModel } from "@/server/view-models/journey";
+import { pregnancyProgress } from "@/domain/pregnancy";
 import { TopBar } from "@/components/ui/TopBar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { JourneyTimeline } from "@/components/journey/JourneyTimeline";
@@ -17,6 +18,8 @@ export default async function JourneyPage() {
   const vm = buildJourneyViewModel(ctx);
   const canEdit = ctx.viewer.permissions.includes("journey:edit");
   const babyName = ctx.data.baby?.displayName ?? null;
+  const born = Boolean(ctx.data.baby?.birthDate);
+  const todayMarker = { iso: ctx.today, week: born ? undefined : pregnancyProgress(ctx.data.pregnancy.dueDate, ctx.today).week };
 
   return (
     <div className="page">
@@ -29,9 +32,9 @@ export default async function JourneyPage() {
         <EmptyState title={m.journey.title} body={m.journey.empty} icon="journey" />
       ) : (
         <div className={styles.timeline}>
-          <JourneyTimeline items={vm.sections.pregnancy} title={vm.sections.postpartum.length > 0 || vm.sections.birth.length > 0 ? m.journey.pregnancySection : undefined} />
-          <JourneyTimeline items={vm.sections.birth} title={vm.sections.birth.length > 0 ? m.journey.birthSection : undefined} />
-          <JourneyTimeline items={vm.sections.postpartum} title={vm.sections.postpartum.length > 0 ? m.journey.postpartumSection : undefined} />
+          <JourneyTimeline items={vm.sections.pregnancy} today={todayMarker} title={vm.sections.postpartum.length > 0 || vm.sections.birth.length > 0 ? m.journey.pregnancySection : undefined} />
+          <JourneyTimeline items={vm.sections.birth} today={todayMarker} title={vm.sections.birth.length > 0 ? m.journey.birthSection : undefined} />
+          <JourneyTimeline items={vm.sections.postpartum} today={todayMarker} title={vm.sections.postpartum.length > 0 ? m.journey.postpartumSection : undefined} />
         </div>
       )}
     </div>

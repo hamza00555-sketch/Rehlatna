@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getContext } from "@/server/session";
-import { getAuthUser } from "@/server/supabase";
+import { getAuthUser, supabaseConfigured } from "@/server/supabase";
 import { can } from "@/domain/permissions";
 import { TopBar } from "@/components/ui/TopBar";
 import { Card } from "@/components/ui/Card";
@@ -32,6 +32,7 @@ export default async function SettingsPage() {
           financeOwnerName={data.household.settings.financeShared ? null : planner?.displayName ?? null}
           members={data.members.map((mm) => ({ id: mm.id, displayName: mm.displayName, isViewer: mm.id === viewer.memberId }))}
           isDemo={ctx.session.mode === "demo"}
+          showDeveloperTools={ctx.session.mode === "demo" || !supabaseConfigured()}
         />
       </div>
     </div>

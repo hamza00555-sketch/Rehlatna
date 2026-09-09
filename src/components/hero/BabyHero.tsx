@@ -20,6 +20,7 @@ interface Props {
   baby: BabyView | null;
   member: { displayName: string; initials: string };
   todayIso: string;
+  audience?: "mother" | "family";
 }
 
 const EXPAND_MS = 420;
@@ -31,7 +32,7 @@ const EASE = "cubic-bezier(0.32, 0.72, 0.24, 1)";
  * never re-mounted, so playback continues. Reduced motion swaps the reveal
  * for a 120ms opacity change and keeps the poster.
  */
-export function BabyHero({ vm, baby, member, todayIso }: Props) {
+export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Props) {
   const { progress, media, totalWeeks } = vm;
   const rootRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -178,7 +179,7 @@ export function BabyHero({ vm, baby, member, todayIso }: Props) {
               {greetingForHour(hour ?? 9)}
             </h1>
             <p className={styles.greetingLead}>{m.today.journeyContinues}</p>
-            <p className={styles.greetingSub}>{m.today.lifeGrows}</p>
+            <p className={styles.greetingSub}>{audience === "mother" ? m.today.lifeGrows : m.today.lifeGrowsFamily}</p>
           </div>
 
           <div className={styles.weekBlock}>
@@ -188,7 +189,7 @@ export function BabyHero({ vm, baby, member, todayIso }: Props) {
             <div className={styles.progress} role="progressbar" aria-label={m.a11y.progress(Math.round(progress.ratio * 100))} aria-valuenow={Math.round(progress.ratio * 100)} aria-valuemin={0} aria-valuemax={100}>
               <div className={styles.progressFill} style={{ width: `${Math.round(progress.ratio * 100)}%` }} />
             </div>
-            <span className={styles.trimester}>{m.today.trimester[progress.trimester]}</span>
+            <span className={styles.trimester}>{(audience === "mother" ? m.today.trimester : m.today.trimesterFamily)[progress.trimester]}</span>
             <span className={styles.dayLine}>
               {m.today.dayOfWeek(progress.dayOfWeek)} · {remaining}
             </span>
