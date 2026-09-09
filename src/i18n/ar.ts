@@ -153,6 +153,8 @@ export const ar = {
     currentWeek: "أسبوعكم الحالي",
     sizeAndWeight: "الحجم والوزن التقريبيان",
     length: "الطول",
+    lengthMeasure: { crown_rump: "من الرأس إلى المقعد", crown_heel: "من الرأس إلى الكعب" } as Record<"crown_rump" | "crown_heel", string>,
+    earlyWeeksNote: "تُحسب أسابيع الحمل من أول يوم في آخر دورة شهرية، لذلك لا يوجد بعد ما يمكن تصويره أو قياسه في هذه الأسابيع.",
     weight: "الوزن",
     nextSteps: "الخطوات القادمة",
   },
@@ -215,6 +217,7 @@ export const ar = {
       upcoming: (w: number) => `يبدأ عادةً في الأسبوع ${w}`,
       active: "الفترة المعتادة الآن",
       scheduled: "موعد مسجَّل",
+      discussed: "نوقش مع الطبيب",
       done: "مسجَّل",
       needs_attention: "لم يُسجَّل بعد",
       optional: "اختياري",
@@ -231,7 +234,9 @@ export const ar = {
     includesIntro: "قد تشمل هذه المرحلة، حسب حالتك وتوصية الطبيب:",
     notRecorded: "لم تسجّلي إجراء هذا الفحص بعد. يمكن مناقشته مع طبيبك في الزيارة القادمة.",
     optionalNote: "فحص اختياري. لا يوحي وجوده هنا بأنه مطلوب من كل حامل.",
-    loggedAs: { done: "سجّلتم إجراءه", discussed: "سجّلتم مناقشته مع الطبيب", skipped: "سجّلتم أنه لا يناسبكم" },
+    loggedAs: { done: "سجّلتم إجراءه", discussed: "سجّلتم مناقشته مع الطبيب، ولم يُسجَّل إجراؤه بعد", skipped: "سجّلتم أنه لا يناسبكم" },
+    candidateAppointment: "لديكم موعد من هذا النوع في الفترة نفسها. إن كان هو، سجّلوا إجراءه هنا حتى لا نفترض ذلك عنكم.",
+    linkedTo: (title: string) => `مرتبط بـ: ${title}`,
     windows: {
       first_visit: {
         title: "زيارة الحمل الأولى",
@@ -394,7 +399,7 @@ export const ar = {
     postpartumSection: "بعد الولادة",
     systemMilestones: {
       setup: { title: "بداية الرحلة", description: "أول يوم سجّلتم فيه رحلتكم هنا." },
-      first_trimester_end: { title: "نهاية الثلث الأول", description: "اكتملت الأسابيع الاثنا عشر الأولى." },
+      first_trimester_end: { title: "نهاية الثلث الأول", description: "اكتملت الأسابيع الثلاثة عشر الأولى." },
       second_trimester_begin: { title: "بداية الثلث الثاني", description: "مرحلة يصفها كثيرون بأنها الأهدأ." },
       third_trimester_begin: { title: "بداية الثلث الثالث", description: "الاستعداد للوصول يبدأ فعلياً." },
       hospital_bag: { title: "تجهيز حقيبة المستشفى", description: "وقت مناسب لتجهيز الحقيبة قبل الموعد." },

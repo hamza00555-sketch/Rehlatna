@@ -83,7 +83,9 @@ export type CareWindowStatus =
   | "active"
   /** An appointment of the right kind falls in the window. */
   | "scheduled"
-  /** Done: a completed appointment in the window, or the family recorded it. */
+  /** Discussed with the doctor (decision or vaccine): recorded, but not necessarily carried out. */
+  | "discussed"
+  /** Done: the family recorded it, or a completed appointment booked for this window. */
   | "done"
   /** Window closed recently with nothing recorded. */
   | "needs_attention"
@@ -103,17 +105,45 @@ function weekOf(dueDate: IsoDate, date: IsoDate): number {
   return pregnancyProgress(dueDate, date).week;
 }
 
-function matchAppointment(window: CareWindow, pregnancy: Pregnancy, appointments: Appointment[]): Appointment | undefined {
+const byDate = (a: Appointment, b: Appointment) => (a.date < b.date ? -1 : 1);
+const preferDone = (list: Appointment[]) => list.find((a) => a.status === "done") ?? list[0]!;
+
+interface Match {
+  appointment: Appointment;
+  /** Booked for this window explicitly (from the window's own "add appointment"). */
+  explicit: boolean;
+}
+
+/**
+ * Explicitly linked appointments win. Otherwise an appointment of a fitting
+ * type inside the window is a candidate. Appointments linked to another
+ * window are never borrowed by a scan/screening/decision; visits still count
+ * them, since any contact with the care team is the point of a visit.
+ */
+function matchAppointment(window: CareWindow, pregnancy: Pregnancy, appointments: Appointment[]): Match | undefined {
+  const live = appointments.filter((a) => a.status !== "cancelled");
+  const explicit = live.filter((a) => a.careWindowKey === window.key).sort(byDate);
+  if (explicit.length > 0) return { appointment: preferDone(explicit), explicit: true };
   if (window.appointmentTypes.length === 0) return undefined;
   const slack = window.matchSlackWeeks ?? 0;
-  const inWindow = appointments
-    .filter((a) => a.status !== "cancelled" && window.appointmentTypes.includes(a.type))
+  const inWindow = live
+    .filter((a) => (!a.careWindowKey || window.kind === "visit") && window.appointmentTypes.includes(a.type))
     .filter((a) => {
       const w = weekOf(pregnancy.dueDate, a.date);
       return w >= window.startWeek - slack && w <= window.endWeek + slack;
     })
-    .sort((a, b) => (a.date < b.date ? -1 : 1));
-  return inWindow.find((a) => a.status === "done") ?? inWindow[0];
+    .sort(byDate);
+  return inWindow.length > 0 ? { appointment: preferDone(inWindow), explicit: false } : undefined;
+}
+
+/**
+ * A completed appointment completes the window only when it was booked for
+ * it, or when any contact with the care team is the point (visits). A
+ * generic completed ultrasound says nothing about whether the anatomy scan
+ * was done; the family confirms that themselves.
+ */
+function completes(window: CareWindow, match: Match): boolean {
+  return match.appointment.status === "done" && (match.explicit || window.kind === "visit");
 }
 
 export function evaluateCareWindow(window: CareWindow, pregnancy: Pregnancy, appointments: Appointment[], today: IsoDate): CareWindowState | null {
@@ -125,14 +155,16 @@ export function evaluateCareWindow(window: CareWindow, pregnancy: Pregnancy, app
 
   let status: CareWindowStatus;
   if (logged?.state === "skipped") status = "passed";
-  else if (logged || matched?.status === "done") status = "done";
-  else if (matched) status = "scheduled";
+  else if (logged?.state === "done") status = "done";
+  else if (logged?.state === "discussed") status = "discussed";
+  else if (matched && completes(window, matched)) status = "done";
+  else if (matched && matched.appointment.status === "upcoming") status = "scheduled";
   else if (week < window.startWeek) status = "upcoming";
   else if (week <= window.endWeek) status = "active";
   else if (!window.optional && week <= window.endWeek + ATTENTION_GRACE_WEEKS) status = "needs_attention";
   else status = "passed";
 
-  return { window, status, startsInWeeks, matchedAppointmentId: matched?.id, logged };
+  return { window, status, startsInWeeks, matchedAppointmentId: matched?.appointment.id, logged };
 }
 
 /** Every applicable window with its status, in gestational order. */
@@ -158,7 +190,7 @@ export function nextCareAttention(states: CareWindowState[]): CareWindowState | 
 export function visibleCareWindows(states: CareWindowState[]): CareWindowState[] {
   // Scheduled windows join the list once they are within a month; live ones always.
   const live = states.filter((s) => s.status === "active" || s.status === "needs_attention" || (s.status === "scheduled" && s.startsInWeeks <= 4));
-  const doneInWindow = states.filter((s) => s.status === "done" && s.startsInWeeks <= 0 && s.startsInWeeks > -(s.window.endWeek - s.window.startWeek + 1));
+  const doneInWindow = states.filter((s) => (s.status === "done" || s.status === "discussed") && s.startsInWeeks <= 0 && s.startsInWeeks > -(s.window.endWeek - s.window.startWeek + 1));
   const next = states.filter((s) => s.status === "upcoming").sort((a, b) => a.startsInWeeks - b.startsInWeeks)[0];
   const out = [...live, ...doneInWindow];
   if (next) out.push(next);

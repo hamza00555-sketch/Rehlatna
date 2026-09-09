@@ -38,6 +38,8 @@ function badgeFor(s: CareWindowState): { tone: BadgeTone; label: string } {
       return s.window.optional ? { tone: "medical", label: st.optional } : { tone: "needed", label: st.active };
     case "scheduled":
       return { tone: "medical", label: st.scheduled };
+    case "discussed":
+      return { tone: "medical", label: st.discussed };
     case "done":
       return { tone: "ready", label: st.done };
     case "needs_attention":

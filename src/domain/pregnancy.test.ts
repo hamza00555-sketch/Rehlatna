@@ -18,9 +18,9 @@ describe("pregnancy progress", () => {
     expect(p.remainingDays).toBe(280 - 58);
   });
 
-  it("clamps media week to 5–40", () => {
+  it("caps media week at 40 and keeps the earliest weeks as they are", () => {
     const lmp = lmpFromDueDate(due);
-    expect(pregnancyProgress(due, addDays(lmp, 10)).mediaWeek).toBe(5);
+    expect(pregnancyProgress(due, addDays(lmp, 10)).mediaWeek).toBe(1);
     expect(pregnancyProgress(due, addDays(lmp, 300)).mediaWeek).toBe(40);
     expect(pregnancyProgress(due, addDays(lmp, 22 * 7)).mediaWeek).toBe(22);
   });
@@ -31,11 +31,18 @@ describe("pregnancy progress", () => {
     expect(p.remainingDays).toBe(0);
   });
 
-  it("assigns trimesters at weeks 13 and 27", () => {
+  it("assigns trimesters at weeks 14 and 28 (completed weeks), matching the journey milestones", () => {
     const lmp = lmpFromDueDate(due);
-    expect(pregnancyProgress(due, addDays(lmp, 12 * 7 + 6)).trimester).toBe(1);
-    expect(pregnancyProgress(due, addDays(lmp, 13 * 7)).trimester).toBe(2);
-    expect(pregnancyProgress(due, addDays(lmp, 27 * 7)).trimester).toBe(3);
+    expect(pregnancyProgress(due, addDays(lmp, 13 * 7 + 6)).trimester).toBe(1);
+    expect(pregnancyProgress(due, addDays(lmp, 14 * 7)).trimester).toBe(2);
+    expect(pregnancyProgress(due, addDays(lmp, 27 * 7 + 6)).trimester).toBe(2);
+    expect(pregnancyProgress(due, addDays(lmp, 28 * 7)).trimester).toBe(3);
+  });
+
+  it("does not borrow week-5 media for the earliest weeks", () => {
+    const lmp = lmpFromDueDate(due);
+    expect(pregnancyProgress(due, addDays(lmp, 3 * 7)).mediaWeek).toBe(3);
+    expect(pregnancyProgress(due, addDays(lmp, 41 * 7)).mediaWeek).toBe(40);
   });
 });
 

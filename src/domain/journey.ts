@@ -18,7 +18,8 @@ import { dateForGestationalDay } from "./pregnancy";
 
 /** Gestational day (LMP-based) each system pregnancy milestone lands on. */
 const PREGNANCY_MILESTONE_DAYS: Partial<Record<SystemMilestoneKey, number>> = {
-  first_trimester_end: 13 * 7,
+  // Same boundaries as `trimesterOfWeek`: week 13 is the last week of the first trimester.
+  first_trimester_end: 13 * 7 + 6,
   second_trimester_begin: 14 * 7,
   third_trimester_begin: 28 * 7,
   hospital_bag: 36 * 7,

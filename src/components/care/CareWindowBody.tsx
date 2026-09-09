@@ -13,6 +13,7 @@ export function CareWindowBody({ vm }: { vm: CareWindowVM }) {
       </div>
       <p className={styles.lead}>{vm.status === "needs_attention" ? m.careWindows.notRecorded : vm.body}</p>
       {vm.logged && <p className={styles.logged}>{m.careWindows.loggedAs[vm.logged.state]}</p>}
+      {vm.matchedAppointmentId && (vm.status === "active" || vm.status === "needs_attention") && <p className={styles.note}>{m.careWindows.candidateAppointment}</p>}
       {vm.includes.length > 0 && (
         <>
           <p className={styles.includesIntro}>{vm.includesIntro}</p>

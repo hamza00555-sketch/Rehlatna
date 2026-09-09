@@ -39,6 +39,15 @@ export function dateForGestationalDay(dueDate: IsoDate, day: number): IsoDate {
   return addDays(lmpFromDueDate(dueDate), day);
 }
 
+/**
+ * The single trimester rule for the whole app: completed weeks 0–13 are the
+ * first trimester, 14–27 the second, 28+ the third. The journey milestones
+ * derive from the same boundaries (see journey.ts).
+ */
+export function trimesterOfWeek(week: number): 1 | 2 | 3 {
+  return week < 14 ? 1 : week < 28 ? 2 : 3;
+}
+
 export function pregnancyProgress(dueDate: IsoDate, today: IsoDate): PregnancyProgress {
   const gestationalDays = Math.max(0, daysBetween(lmpFromDueDate(dueDate), today));
   const week = Math.floor(gestationalDays / 7);
@@ -50,8 +59,9 @@ export function pregnancyProgress(dueDate: IsoDate, today: IsoDate): PregnancyPr
     dayOfWeek: (gestationalDays % 7) + 1,
     remainingDays,
     remainingWeeks: Math.ceil(remainingDays / 7),
-    trimester: week < 13 ? 1 : week < 27 ? 2 : 3,
-    mediaWeek: Math.min(MEDIA_MAX_WEEK, Math.max(MEDIA_MIN_WEEK, week)),
+    trimester: trimesterOfWeek(week),
+    // Weeks before the manifest starts resolve to the neutral early-weeks entry (no borrowed poster).
+    mediaWeek: Math.min(MEDIA_MAX_WEEK, week),
     ratio: Math.min(1, gestationalDays / GESTATION_DAYS),
     overdue: remainingSigned < 0,
   };

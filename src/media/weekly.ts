@@ -32,8 +32,8 @@ const SEED: Record<number, WeekSeed> = {
   9: { size: "2.3 سم", like: "حبة عنب", weight: "2 غ", summary: "تتّضح الأصابع، وتبدأ العضلات الصغيرة بالعمل.", points: ["الأصابع تنفصل", "حركات دقيقة لا تُحسّ بعد", "تتشكّل الأعضاء الأساسية"] },
   10: { size: "3.1 سم", like: "حبة فراولة", weight: "4 غ", summary: "انتهت مرحلة الجنين المبكرة؛ الأعضاء كلها موجودة وتنمو.", points: ["الأعضاء الحيوية مكتملة التكوّن الأولي", "تبدأ الأظافر بالظهور", "المفاصل تعمل"] },
   11: { size: "4.1 سم", like: "حبة تين", weight: "7 غ", summary: "الرأس ما زال كبيراً نسبياً، والجسم يستقيم تدريجياً.", points: ["الأذنان تقتربان من موضعهما", "براعم الأسنان تحت اللثة", "الحجاب الحاجز يتشكّل"] },
-  12: { size: "5.4 سم", like: "ليمونة صغيرة", weight: "14 غ", summary: "اكتمال الثلث الأول تقريباً؛ ردود الفعل تبدأ.", points: ["يفتح ويغلق الأصابع", "الأمعاء تنتقل إلى موضعها", "ينتج البول ويطرحه في السائل"] },
-  13: { size: "7.4 سم", like: "حبة خوخ", weight: "23 غ", summary: "الجسم ينمو أسرع من الرأس، والأحبال الصوتية تتشكّل.", points: ["بصمات الأصابع تظهر", "الأحبال الصوتية في التكوّن", "الأمعاء تتحرك نحو البطن"] },
+  12: { size: "5.4 سم", like: "ليمونة صغيرة", weight: "14 غ", summary: "الثلث الأول يقترب من نهايته؛ ردود الفعل تبدأ.", points: ["يفتح ويغلق الأصابع", "الأمعاء تنتقل إلى موضعها", "ينتج البول ويطرحه في السائل"] },
+  13: { size: "7.4 سم", like: "حبة خوخ", weight: "23 غ", summary: "آخر أسبوع في الثلث الأول. الجسم ينمو أسرع من الرأس، والأحبال الصوتية تتشكّل.", points: ["بصمات الأصابع تظهر", "الأحبال الصوتية في التكوّن", "الأمعاء تتحرك نحو البطن"] },
   14: { size: "8.7 سم", like: "ليمونة", weight: "43 غ", summary: "تعابير الوجه الأولى، ونمو زغب ناعم على الجسم.", points: ["يحرّك ملامح وجهه", "يظهر زغب ناعم يحمي البشرة", "الكليتان تعملان"] },
   15: { size: "10.1 سم", like: "تفاحة", weight: "70 غ", summary: "يستشعر الضوء عبر الجفون المغلقة، ويتحرك كثيراً.", points: ["الهيكل العظمي يتصلّب", "حركات أكثر لا تُحسّ عادةً بعد", "يستشعر الضوء"] },
   16: { size: "11.6 سم", like: "أفوكادو", weight: "100 غ", summary: "العينان تتحركان، وقد تبدأ الأم بالإحساس برفرفة خفيفة.", points: ["عضلات الظهر تتقوّى", "العينان تتحركان جانبياً", "أول رفرفة محتملة"] },
@@ -47,8 +47,8 @@ const SEED: Record<number, WeekSeed> = {
   24: { size: "30 سم", like: "كوز ذرة", weight: "600 غ", summary: "الرئتان تنتجان مادة تساعد على التنفس لاحقاً.", points: ["الوجه مكتمل تقريباً", "دورات نوم واستيقاظ", "يستجيب للمس"] },
   25: { size: "34.6 سم", like: "لفت", weight: "660 غ", summary: "يستجيب للصوت والضوء بوضوح، وينمو الشعر.", points: ["استجابة للأصوات المألوفة", "الأنف يبدأ بالعمل", "زيادة في الدهون"] },
   26: { size: "35.6 سم", like: "خسّة", weight: "760 غ", summary: "العينان تبدآن بالانفتاح، والرئتان تنضجان.", points: ["العينان تنفتحان", "يتنفس السائل تدريباً", "الجهاز العصبي أكثر نشاطاً"] },
-  27: { size: "36.6 سم", like: "قرنبيط", weight: "875 غ", summary: "بداية الثلث الثالث. ينام ويستيقظ بانتظام.", points: ["دورات نوم واضحة", "يفتح ويغلق عينيه", "قد يحدث الفُواق"] },
-  28: { size: "37.6 سم", like: "باذنجان كبير", weight: "1 كغ", summary: "يرمش ويحلم، والدماغ يتطوّر تلافيفه.", points: ["يرمش", "تلافيف الدماغ تتعمّق", "الرئتان أكثر نضجاً"] },
+  27: { size: "36.6 سم", like: "قرنبيط", weight: "875 غ", summary: "آخر أسبوع في الثلث الثاني. ينام ويستيقظ بانتظام.", points: ["دورات نوم واضحة", "يفتح ويغلق عينيه", "قد يحدث الفُواق"] },
+  28: { size: "37.6 سم", like: "باذنجان كبير", weight: "1 كغ", summary: "بداية الثلث الثالث. يرمش ويحلم، والدماغ يتطوّر تلافيفه.", points: ["يرمش", "تلافيف الدماغ تتعمّق", "الرئتان أكثر نضجاً"] },
   29: { size: "38.6 سم", like: "قرع عسل صغير", weight: "1.15 كغ", summary: "العضلات والرئتان تنضجان، والحركات أقوى.", points: ["ركلات أقوى", "العظام تتصلّب", "الرأس يكبر لاستيعاب الدماغ"] },
   30: { size: "39.9 سم", like: "ملفوف كبير", weight: "1.3 كغ", summary: "البشرة أنعم مع تراكم الدهون، والحركة أقل مساحةً.", points: ["الدهون تملأ البشرة", "الزغب يبدأ بالاختفاء", "يميّز الضوء والظل"] },
   31: { size: "41.1 سم", like: "جوز الهند", weight: "1.5 كغ", summary: "الحواس الخمس تعمل، والنمو يتركّز في الوزن.", points: ["الحواس الخمس تعمل", "ينمو الوزن أسرع من الطول", "يتحرك في مساحة أضيق"] },
@@ -77,6 +77,8 @@ function build(week: number, seed: WeekSeed): WeeklyBabyMedia {
     developmentSummary: seed.summary,
     developmentPoints: seed.points,
     approximateSize: seed.size,
+    // Published length figures switch from crown–rump to crown–heel around week 20.
+    lengthMeasure: week < 20 ? "crown_rump" : "crown_heel",
     approximateSizeComparison: seed.like,
     approximateWeight: seed.weight,
     // Baby sits slightly right of centre and low; text lives on the start side.
@@ -92,9 +94,29 @@ export const WEEKLY_MEDIA: ReadonlyMap<number, WeeklyBabyMedia> = new Map(
   Object.entries(SEED).map(([w, seed]) => [Number(w), build(Number(w), seed)] as const),
 );
 
+/**
+ * Weeks 0–4 (counted from the last period, before implantation is even
+ * visible) get a neutral entry: no poster, no size, plain explanation. They
+ * must never borrow the week-5 media, which would show something that is
+ * not there yet.
+ */
+export function earlyWeeksMedia(week: number): WeeklyBabyMedia {
+  return {
+    week: Math.max(0, Math.round(week)),
+    alt: "لا صورة تمثيلية للأسابيع الأولى من الحمل",
+    developmentSummary: "الأسابيع الأولى تُحسب من أول يوم في آخر دورة شهرية، أي قبل الإخصاب نفسه؛ لذلك لا يوجد بعد ما يمكن تصويره أو قياسه.",
+    developmentPoints: ["عمر الحمل يبدأ العد من آخر دورة، لا من الإخصاب", "الانغراس يحدث عادةً في الأسبوع الثالث أو الرابع", "أول ما يُرى بالسونار عادةً من الأسبوع الخامس أو السادس"],
+    focalPoint: { x: 0.5, y: 0.5 },
+    safeArea: { top: 0.28, right: 0.05, bottom: 0.3, left: 0.45 },
+    medicallyReviewed: false,
+    reviewNotes: "الأسابيع المبكرة: نص عام بلا وسائط؛ يحتاج مراجعة طبية قبل النشر.",
+  };
+}
+
 export function weeklyMedia(week: number): WeeklyBabyMedia {
-  const clamped = Math.min(MEDIA_MAX_WEEK, Math.max(MEDIA_MIN_WEEK, Math.round(week)));
-  return WEEKLY_MEDIA.get(clamped)!;
+  const rounded = Math.round(week);
+  if (rounded < MEDIA_MIN_WEEK) return earlyWeeksMedia(rounded);
+  return WEEKLY_MEDIA.get(Math.min(MEDIA_MAX_WEEK, rounded))!;
 }
 
 export function adjacentWeeks(week: number): number[] {

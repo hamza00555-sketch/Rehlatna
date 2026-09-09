@@ -21,6 +21,8 @@ interface Props {
   today: string;
   /** Pre-selected type when the form opens from a care window. */
   defaultType?: AppointmentType;
+  /** The care window this appointment is booked for (shown, and stored on the appointment). */
+  careWindow?: { key: string; title: string };
 }
 
 interface TaskDraft {
@@ -29,7 +31,7 @@ interface TaskDraft {
   done: boolean;
 }
 
-export function AppointmentForm({ appointment, doctors, hospitals, defaultCity, today, defaultType }: Props) {
+export function AppointmentForm({ appointment, doctors, hospitals, defaultCity, today, defaultType, careWindow }: Props) {
   const router = useRouter();
   const [type, setType] = useState<AppointmentType>(appointment?.type ?? defaultType ?? "checkup");
   const [date, setDate] = useState(appointment?.date ?? today);
@@ -67,6 +69,7 @@ export function AppointmentForm({ appointment, doctors, hospitals, defaultCity, 
       notes: notes.trim() || undefined,
       preparationTasks: tasks.filter((t) => t.title.trim()),
       reminder,
+      careWindowKey: appointment?.careWindowKey ?? careWindow?.key,
     };
     try {
       if (appointment) {
@@ -91,6 +94,7 @@ export function AppointmentForm({ appointment, doctors, hospitals, defaultCity, 
         void submit();
       }}
     >
+      {careWindow && <p className={styles.linked}>{m.careWindows.linkedTo(careWindow.title)}</p>}
       <Field id="apt-type" label={m.appointments.type}>
         <Select id="apt-type" value={type} onChange={(e) => setType(e.target.value as AppointmentType)}>
           {TYPES.map((t) => (

@@ -32,6 +32,7 @@ export default async function AppointmentDetailPage({ params }: Params) {
   const week = pregnancyProgress(ctx.data.pregnancy.dueDate, appt.date).week;
   const day = parseIso(appt.date).getUTCDate();
   const badgeTone = appt.status === "done" ? "ready" : appt.status === "cancelled" ? "future" : "needed";
+  const linkedWindow = appt.careWindowKey ? m.careWindows.windows[appt.careWindowKey as keyof typeof m.careWindows.windows] : undefined;
 
   return (
     <div className="page">
@@ -60,6 +61,7 @@ export default async function AppointmentDetailPage({ params }: Params) {
               <StatusBadge tone="future">
                 {m.today.weekLabel} <span className="num">{fmtInt(week)}</span>
               </StatusBadge>
+              {linkedWindow && <StatusBadge tone="medical">{linkedWindow.title}</StatusBadge>}
             </div>
           </div>
         </section>

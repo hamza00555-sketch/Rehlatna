@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CARE_WINDOWS, type CareWindowKey } from "@/domain/careWindows";
 import { isValidIsoDate } from "@/domain/dates";
 
 /**
@@ -109,6 +110,8 @@ export const milestoneCreateSchema = z.object({
 
 // --- Appointments ------------------------------------------------------------
 
+export const careWindowKeySchema = z.enum(CARE_WINDOWS.map((w) => w.key) as [CareWindowKey, ...CareWindowKey[]]);
+
 export const appointmentTypeSchema = z.enum([
   "checkup",
   "ultrasound",
@@ -136,6 +139,7 @@ export const appointmentInputSchema = z.object({
   notes: optionalText,
   preparationTasks: z.array(checklistTaskSchema).default([]),
   reminder: z.boolean().default(false),
+  careWindowKey: careWindowKeySchema.optional().or(z.literal("").transform(() => undefined)),
 });
 export const appointmentStatusSchema = z.object({ status: z.enum(["upcoming", "done", "cancelled"]) });
 

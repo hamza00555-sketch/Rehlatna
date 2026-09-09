@@ -37,3 +37,9 @@
   font-size: var(--text-body-small);
   font-weight: var(--weight-medium);
 }
+
+.linked {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--t-muted);
+}

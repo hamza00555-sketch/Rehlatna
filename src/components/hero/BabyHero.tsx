@@ -229,7 +229,7 @@ export function BabyHero({ vm, baby, member, todayIso }: Props) {
                 </p>
                 <div className={styles.stats}>
                   {media.approximateSize && (
-                    <span className={styles.stat}>
+                    <span className={styles.stat} title={media.lengthMeasure ? m.today.lengthMeasure[media.lengthMeasure] : undefined}>
                       <Icon name="ruler" size={16} />
                       <span className="num">{media.approximateSize}</span>
                     </span>

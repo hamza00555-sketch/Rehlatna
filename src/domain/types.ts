@@ -207,6 +207,13 @@ export interface Appointment {
   preparationTasks: ChecklistTask[];
   status: AppointmentStatus;
   reminder: boolean;
+  /**
+   * The recommended care window this appointment was booked for (set when
+   * the form opens from a window). Only an explicit link lets a completed
+   * appointment mark a scan/screening window as done; type-and-week
+   * matching alone only ever counts as "scheduled".
+   */
+  careWindowKey?: string;
 }
 
 export interface UltrasoundRecord {
@@ -444,6 +451,8 @@ export interface WeeklyBabyMedia {
   developmentSummary: string;
   developmentPoints: string[];
   approximateSize?: string;
+  /** What the length figure measures: crown–rump before ~20 weeks, crown–heel after. */
+  lengthMeasure?: "crown_rump" | "crown_heel";
   approximateSizeComparison?: string;
   approximateWeight?: string;
   focalPoint: { x: number; y: number };

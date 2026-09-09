@@ -39,8 +39,13 @@ export function CareWindowActions({ vm, canEdit, onDone }: { vm: CareWindowVM; c
       )}
       {canEdit && vm.status !== "upcoming" && vm.status !== "done" && !vm.logged && (
         <div className={styles.row}>
-          <Button variant="outline" onClick={() => log(vm.kind === "decision" || vm.kind === "vaccine" ? "discussed" : "done")} disabled={busy}>
-            {vm.kind === "decision" || vm.kind === "vaccine" ? a.markDiscussed : a.markDone}
+          {(vm.kind === "decision" || vm.kind === "vaccine") && (
+            <Button variant="outline" onClick={() => log("discussed")} disabled={busy}>
+              {a.markDiscussed}
+            </Button>
+          )}
+          <Button variant={vm.kind === "decision" || vm.kind === "vaccine" ? "quiet" : "outline"} onClick={() => log("done")} disabled={busy}>
+            {a.markDone}
           </Button>
           {(vm.optional || vm.conditional) && (
             <Button variant="quiet" onClick={() => log("skipped")} disabled={busy}>
@@ -48,6 +53,11 @@ export function CareWindowActions({ vm, canEdit, onDone }: { vm: CareWindowVM; c
             </Button>
           )}
         </div>
+      )}
+      {canEdit && vm.status === "discussed" && (
+        <Button variant="outline" onClick={() => log("done")} disabled={busy}>
+          {a.markDone}
+        </Button>
       )}
       {canEdit && vm.logged && (
         <Button variant="quiet" onClick={() => log(null)} disabled={busy}>

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getContext } from "@/server/session";
-import { pregnancyProgress, MEDIA_MAX_WEEK, MEDIA_MIN_WEEK } from "@/domain/pregnancy";
+import { pregnancyProgress, trimesterOfWeek, MEDIA_MAX_WEEK, MEDIA_MIN_WEEK } from "@/domain/pregnancy";
 import { weeklyMedia } from "@/media/weekly";
 import { upcomingAppointments } from "@/server/view-models/today";
 import { careWindowViews } from "@/server/view-models/care";
@@ -29,10 +29,13 @@ export default async function WeeklyDevelopmentPage({ searchParams }: { searchPa
   if (!ctx || !ctx.data.pregnancy) redirect("/onboarding");
   const progress = pregnancyProgress(ctx.data.pregnancy.dueDate, ctx.today);
   const requested = Number(weekParam);
-  const week = Number.isFinite(requested) && requested >= MEDIA_MIN_WEEK && requested <= MEDIA_MAX_WEEK ? requested : progress.mediaWeek;
+  // Before week 5 the manifest has a single neutral entry, so browsing starts at the current week.
+  const minWeek = Math.min(MEDIA_MIN_WEEK, progress.mediaWeek);
+  const week = Number.isFinite(requested) && requested >= minWeek && requested <= MEDIA_MAX_WEEK ? requested : progress.mediaWeek;
   const media = weeklyMedia(week);
   const isCurrent = week === progress.mediaWeek;
-  const trimester: 1 | 2 | 3 = week < 13 ? 1 : week < 27 ? 2 : 3;
+  const trimester = trimesterOfWeek(week);
+  const early = week < MEDIA_MIN_WEEK;
   const next = upcomingAppointments(ctx)[0];
   const care = isCurrent ? careWindowViews(ctx).visible : [];
   const canEditCare = ctx.viewer.permissions.includes("appointments:edit");
@@ -46,7 +49,7 @@ export default async function WeeklyDevelopmentPage({ searchParams }: { searchPa
         {!media.medicallyReviewed && media.posterWebp && <StatusBadge tone="unverified">{m.today.devReviewBadge}</StatusBadge>}
 
         <nav className={styles.browse} aria-label={m.today.browseWeeks}>
-          <Link href={`/today/week?week=${week - 1}`} className={cx(styles.browseLink, week <= MEDIA_MIN_WEEK && styles.browseDisabled)} aria-disabled={week <= MEDIA_MIN_WEEK || undefined}>
+          <Link href={`/today/week?week=${week - 1}`} className={cx(styles.browseLink, week <= minWeek && styles.browseDisabled)} aria-disabled={week <= minWeek || undefined}>
             <Icon name="back" size={20} />
             {m.today.previousWeek}
           </Link>
@@ -74,6 +77,9 @@ export default async function WeeklyDevelopmentPage({ searchParams }: { searchPa
           </ul>
         </section>
 
+        {early ? (
+          <p className={styles.summary}>{m.today.earlyWeeksNote}</p>
+        ) : (
         <section>
           <SectionTitle>{m.today.sizeAndWeight}</SectionTitle>
           <div className={styles.stats}>
@@ -82,6 +88,7 @@ export default async function WeeklyDevelopmentPage({ searchParams }: { searchPa
               <span className={styles.statLabel}>{m.today.length}</span>
               <span className={cx(styles.statValue, "num")}>{media.approximateSize ?? "—"}</span>
               {media.approximateSizeComparison && <span className={styles.statHint}>{m.today.sizeLike(media.approximateSizeComparison)}</span>}
+              {media.lengthMeasure && <span className={styles.statHint}>{m.today.lengthMeasure[media.lengthMeasure]}</span>}
             </Card>
             <Card tone="tint" padding="md" className={styles.stat}>
               <Icon name="scale" size={20} />
@@ -90,6 +97,7 @@ export default async function WeeklyDevelopmentPage({ searchParams }: { searchPa
             </Card>
           </div>
         </section>
+        )}
 
         <section>
           <SectionTitle>{m.today.motherContext}</SectionTitle>
