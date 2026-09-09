@@ -15,7 +15,7 @@ export async function DELETE() {
     assertCan(ctx.viewer, "household:manage");
     if (ctx.session.mode === "demo") return fail("demo_household", 409);
     try {
-      await getStore("live").remove(ctx.session.householdId);
+      await getStore("live").remove(ctx.session.householdId, ctx.session.userId);
     } catch (err) {
       if (err instanceof Error && err.message.includes("not_owner")) return fail("not_owner", 403);
       throw err;

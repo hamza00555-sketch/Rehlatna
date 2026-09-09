@@ -3,7 +3,7 @@ import type { ZodType, ZodTypeDef } from "zod";
 import type { HouseholdData } from "@/domain/types";
 import { PermissionError } from "@/domain/permissions";
 import { getContext, type RequestContext } from "./session";
-import { writeHousehold } from "./store";
+import { ConflictError, readHouseholdVersioned, writeHouseholdIf } from "./store";
 
 /**
  * Route-handler helpers: session resolution, Zod parsing, permission errors
@@ -25,6 +25,7 @@ export async function withContext(fn: (ctx: RequestContext) => Promise<Response>
     return await fn(ctx);
   } catch (err) {
     if (err instanceof PermissionError) return fail("forbidden", 403, { permission: err.permission });
+    if (err instanceof ConflictError) return fail("conflict", 409);
     throw err;
   }
 }
@@ -46,9 +47,28 @@ export async function parseBody<T>(
   return { ok: true, data: parsed.data };
 }
 
-/** Applies a pure mutation to the household snapshot and persists it. */
+const COMMIT_ATTEMPTS = 3;
+
+/**
+ * Applies a pure mutation to the household snapshot and persists it with
+ * compare-and-set: the snapshot is re-read at its current version, mutated,
+ * and written only if nobody wrote in between. A concurrent write (partner
+ * editing at the same time) triggers a re-read and re-apply, so the second
+ * edit lands on top of the first instead of erasing it. Persistent
+ * contention surfaces as ConflictError (409).
+ */
 export async function commit(ctx: RequestContext, mutate: (data: HouseholdData) => HouseholdData): Promise<HouseholdData> {
-  const next = mutate(structuredClone(ctx.data));
-  await writeHousehold(ctx.session.mode, next);
-  return next;
+  const id = ctx.session.householdId;
+  for (let attempt = 1; ; attempt++) {
+    const current = await readHouseholdVersioned(ctx.session.mode, id);
+    if (!current) throw new Error(`commit: household ${id} disappeared`);
+    const next = mutate(structuredClone(current.data));
+    try {
+      await writeHouseholdIf(ctx.session.mode, next, current.version);
+      ctx.data = next;
+      return next;
+    } catch (err) {
+      if (!(err instanceof ConflictError) || attempt >= COMMIT_ATTEMPTS) throw err;
+    }
+  }
 }

@@ -216,3 +216,42 @@ export function stripFinance(data: HouseholdData, viewer: Viewer): HouseholdData
   if (can(viewer, "finance:view")) return data;
   return { ...data, fundingGoals: [], fundingContributions: [], recalculations: [] };
 }
+
+/**
+ * The household as the viewer is allowed to see it — the export boundary.
+ * Every domain is gated by the same permission that gates its screen, goals
+ * follow `visibleGoals` (private goals of other owners stay private even
+ * for finance viewers), and other members' permissions are shown only to
+ * household managers, exactly as `serializeMember` does.
+ */
+export function exportHouseholdView(data: HouseholdData, viewer: Viewer): HouseholdData {
+  const manages = can(viewer, "household:manage");
+  const journey = can(viewer, "journey:view");
+  const appointments = can(viewer, "appointments:view");
+  const care = can(viewer, "care:view");
+  const preparation = can(viewer, "preparation:view");
+  const goals = visibleGoals(data, viewer);
+  const goalIds = new Set(goals.map((g) => g.id));
+  return {
+    ...data,
+    members: data.members.map((mm) => (manages || mm.id === viewer.memberId ? mm : { ...mm, permissions: [] })),
+    pregnancy: journey ? data.pregnancy : null,
+    baby: journey ? data.baby : null,
+    milestones: journey ? data.milestones : [],
+    ultrasounds: journey ? data.ultrasounds : [],
+    birthPlan: journey ? data.birthPlan : null,
+    feedingPreference: journey ? data.feedingPreference : null,
+    postpartumTasks: journey ? data.postpartumTasks : [],
+    appointments: appointments ? data.appointments : [],
+    careProviders: care ? data.careProviders : [],
+    hospitals: care ? data.hospitals : [],
+    insurance: care ? data.insurance : [],
+    verificationTasks: care ? data.verificationTasks : [],
+    preparationItems: preparation ? data.preparationItems : [],
+    travelPlans: preparation ? data.travelPlans : [],
+    fundingGoals: goals,
+    fundingContributions: data.fundingContributions.filter((c) => goalIds.has(c.goalId)),
+    recalculations: data.recalculations.filter((r) => goalIds.has(r.goalId)),
+    notificationPreferences: data.notificationPreferences.filter((n) => n.memberId === viewer.memberId),
+  };
+}

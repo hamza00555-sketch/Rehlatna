@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 /**
@@ -28,6 +29,20 @@ export const supabaseServer = cache(async function supabaseServer() {
     },
   });
 });
+
+/**
+ * Trusted server client (service role). Identity is still taken from the
+ * caller's verified JWT; every data access then filters explicitly by that
+ * identity and the app's own permission checks. When the key is absent the
+ * store falls back to the caller-scoped client under row-level security.
+ */
+const adminRegistry = (globalThis as unknown as { __rjAdmin?: SupabaseClient }) as { __rjAdmin?: SupabaseClient };
+export function supabaseAdmin(): SupabaseClient | null {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key || !process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
+  adminRegistry.__rjAdmin ??= createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  return adminRegistry.__rjAdmin;
+}
 
 export interface AuthUser {
   id: string;

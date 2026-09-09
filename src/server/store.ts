@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import type { HouseholdData } from "@/domain/types";
 import { todayIso } from "@/domain/dates";
 import { demoHouseholds } from "@/fixtures/demo";
-import { supabaseConfigured, supabaseServer } from "./supabase";
+import { supabaseAdmin, supabaseConfigured, supabaseServer } from "./supabase";
 
 /**
  * Storage adapters keyed by household. Production: Supabase Postgres (one
@@ -13,20 +13,40 @@ import { supabaseConfigured, supabaseServer } from "./supabase";
 
 export type StoreMode = "live" | "demo";
 
+/** A snapshot with the version it was read at (compare-and-set token). */
+export interface Versioned {
+  data: HouseholdData;
+  version: number;
+}
+
+/** Thrown by `putIf` when the stored version moved on since the read. */
+export class ConflictError extends Error {
+  constructor(id: string) {
+    super(`households.putIf: version conflict on ${id}`);
+    this.name = "ConflictError";
+  }
+}
+
 export interface StoreAdapter {
   get(id: string): Promise<HouseholdData | null>;
-  /** Persists an existing household. */
+  getVersioned(id: string): Promise<Versioned | null>;
+  /** Persists an existing household unconditionally (last write wins). */
   put(data: HouseholdData): Promise<void>;
+  /** Persists only when the stored version still equals `version`; otherwise throws ConflictError. */
+  putIf(data: HouseholdData, version: number): Promise<void>;
   /** Creates a household and records the creator's membership. */
   create(data: HouseholdData, owner: { userId: string; memberId: string }): Promise<void>;
-  remove(id: string): Promise<void>;
+  /** Deletes a household; when `requesterUserId` is given, only its owner may delete. */
+  remove(id: string, requesterUserId?: string): Promise<void>;
 }
 
 interface AppState {
   version: 1;
   households: Record<string, HouseholdData>;
+  /** Per-household write counters (compare-and-set token). */
+  versions?: Record<string, number>;
 }
-const emptyState = (): AppState => ({ version: 1, households: {} });
+const emptyState = (): AppState => ({ version: 1, households: {}, versions: {} });
 
 class FileStore implements StoreAdapter {
   private cache: AppState | null = null;
@@ -48,9 +68,21 @@ class FileStore implements StoreAdapter {
   async get(id: string) {
     return (await this.read()).households[id] ?? null;
   }
+  async getVersioned(id: string) {
+    const state = await this.read();
+    const data = state.households[id];
+    return data ? { data, version: state.versions?.[id] ?? 0 } : null;
+  }
   async put(data: HouseholdData) {
     const state = await this.read();
-    await this.write({ ...state, households: { ...state.households, [data.household.id]: data } });
+    const id = data.household.id;
+    const version = (state.versions?.[id] ?? 0) + 1;
+    await this.write({ ...state, households: { ...state.households, [id]: data }, versions: { ...state.versions, [id]: version } });
+  }
+  async putIf(data: HouseholdData, version: number) {
+    const state = await this.read();
+    if ((state.versions?.[data.household.id] ?? 0) !== version) throw new ConflictError(data.household.id);
+    await this.put(data);
   }
   async create(data: HouseholdData) {
     await this.put(data);
@@ -64,6 +96,7 @@ class FileStore implements StoreAdapter {
 
 class MemoryStore implements StoreAdapter {
   private households = new Map<string, HouseholdData>();
+  private versions = new Map<string, number>();
   /**
    * Serverless hosts run many isolated instances; a demo entered on one must
    * still resolve on another. Fixtures are deterministic for a given day, so
@@ -74,40 +107,78 @@ class MemoryStore implements StoreAdapter {
     if (this.households.size === 0) this.reset(demoHouseholds(todayIso()));
     return this.households.get(id) ?? null;
   }
+  async getVersioned(id: string) {
+    const data = await this.get(id);
+    return data ? { data, version: this.versions.get(id) ?? 0 } : null;
+  }
   async put(data: HouseholdData) {
-    this.households.set(data.household.id, data);
+    const id = data.household.id;
+    this.households.set(id, data);
+    this.versions.set(id, (this.versions.get(id) ?? 0) + 1);
+  }
+  async putIf(data: HouseholdData, version: number) {
+    if ((this.versions.get(data.household.id) ?? 0) !== version) throw new ConflictError(data.household.id);
+    await this.put(data);
   }
   async create(data: HouseholdData) {
-    this.households.set(data.household.id, data);
+    await this.put(data);
   }
   async remove(id: string) {
     this.households.delete(id);
+    this.versions.delete(id);
   }
   reset(list: HouseholdData[]) {
     this.households = new Map(list.map((h) => [h.household.id, h]));
+    this.versions = new Map();
   }
   get size() {
     return this.households.size;
   }
 }
 
+/**
+ * Server-side data access. With SUPABASE_SERVICE_ROLE_KEY set, queries run
+ * through the service client (RLS bypassed) and this module is the only
+ * authority on who may touch which household — every call below therefore
+ * scopes explicitly by household id, membership or owner. Without the key
+ * (local development), the user's own session client is used and RLS
+ * enforces the same rules a second time.
+ */
+async function db() {
+  return supabaseAdmin() ?? (await supabaseServer());
+}
+
 class SupabaseStore implements StoreAdapter {
   async get(id: string) {
-    const supabase = await supabaseServer();
-    const { data, error } = await supabase.from("households").select("data").eq("id", id).maybeSingle();
+    return (await this.getVersioned(id))?.data ?? null;
+  }
+  async getVersioned(id: string) {
+    const supabase = await db();
+    const { data, error } = await supabase.from("households").select("data, version").eq("id", id).maybeSingle();
     if (error) throw new Error(`households.get: ${error.message}`);
-    return (data?.data as HouseholdData | undefined) ?? null;
+    if (!data) return null;
+    return { data: data.data as HouseholdData, version: (data.version as number | null) ?? 0 };
   }
   async put(data: HouseholdData) {
-    const supabase = await supabaseServer();
+    const supabase = await db();
     const { error, count } = await supabase.from("households").update({ data }, { count: "exact" }).eq("id", data.household.id);
     if (error) throw new Error(`households.put: ${error.message}`);
     if (count === 0) throw new Error("households.put: no row updated (membership missing?)");
   }
+  async putIf(data: HouseholdData, version: number) {
+    const supabase = await db();
+    const { error, count } = await supabase
+      .from("households")
+      .update({ data, version: version + 1 }, { count: "exact" })
+      .eq("id", data.household.id)
+      .eq("version", version);
+    if (error) throw new Error(`households.putIf: ${error.message}`);
+    if (count !== 1) throw new ConflictError(data.household.id);
+  }
   async create(data: HouseholdData, owner: { userId: string; memberId: string }) {
-    const supabase = await supabaseServer();
+    const supabase = await db();
     const id = data.household.id;
-    const inserted = await supabase.from("households").insert({ id, data, owner_user_id: owner.userId });
+    const inserted = await supabase.from("households").insert({ id, data, owner_user_id: owner.userId, version: 1 });
     if (inserted.error) throw new Error(`households.create: ${inserted.error.message}`);
     const member = await supabase.from("household_members").insert({ household_id: id, user_id: owner.userId, member_id: owner.memberId });
     if (member.error) {
@@ -115,9 +186,11 @@ class SupabaseStore implements StoreAdapter {
       throw new Error(`household_members.create: ${member.error.message}`);
     }
   }
-  async remove(id: string) {
-    const supabase = await supabaseServer();
-    const { error, count } = await supabase.from("households").delete({ count: "exact" }).eq("id", id);
+  async remove(id: string, requesterUserId?: string) {
+    const supabase = await db();
+    let query = supabase.from("households").delete({ count: "exact" }).eq("id", id);
+    if (requesterUserId) query = query.eq("owner_user_id", requesterUserId);
+    const { error, count } = await query;
     if (error) throw new Error(`households.remove: ${error.message}`);
     if (count === 0) throw new Error("households.remove: not_owner");
   }
@@ -152,6 +225,14 @@ export async function writeHousehold(mode: StoreMode, data: HouseholdData): Prom
   await getStore(mode).put(data);
 }
 
+export async function readHouseholdVersioned(mode: StoreMode, id: string): Promise<Versioned | null> {
+  return getStore(mode).getVersioned(id);
+}
+
+export async function writeHouseholdIf(mode: StoreMode, data: HouseholdData, version: number): Promise<void> {
+  await getStore(mode).putIf(data, version);
+}
+
 /** Replaces the whole demo state (used by demo seed/reset). */
 export function resetDemoState(households: HouseholdData[]): void {
   demoStore().reset(households);
@@ -171,7 +252,7 @@ export interface Membership {
 /** The household a signed-in user belongs to, with its snapshot, in one round trip (Supabase only). */
 export async function membershipFor(userId: string): Promise<Membership | null> {
   if (!supabaseConfigured()) return null;
-  const supabase = await supabaseServer();
+  const supabase = await db();
   const { data, error } = await supabase
     .from("household_members")
     .select("household_id, member_id, households(data)")
