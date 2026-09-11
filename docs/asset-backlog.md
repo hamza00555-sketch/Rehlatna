@@ -63,7 +63,7 @@ assets: no medical review, no photography sign-off. The hero shows the
 
 | Slot | Status |
 | --- | --- |
-| Weekly posters | 11 of 36 weeks: 5, 8, 12, 16, 20, 22, 24, 28, 32, 36, 40 (poster 1080×1350 + thumb 480×480). Weeks 12, 20 and 22 are abstract glass forms rather than stage-legible shapes and should be redone first. No loops (mp4/webm) exist; the hero stays poster-only. |
+| Weekly posters | 11 of 36 weeks: 5, 8, 12, 16, 20, 22, 24, 28, 32, 36, 40 (poster 1080×1350 + thumb 480×480). Weeks 20, 22 and 24 are now sourced from the reviewed Drive library (Rehlatna-Warm-Visual-Library) instead of the earlier abstract-glass placeholders — legible, stage-plausible, still `medicallyReviewed: false`. Week 12 is still abstract and should be redone next. No loops (mp4/webm) exist; the hero stays poster-only. |
 | Story welcome | present (silhouette, 9:16) |
 | Birth confirmed backdrop | present (linen and light, 9:16) |
 | Postpartum neutral fallback | present (linen and light, 4:5) |
