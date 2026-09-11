@@ -158,7 +158,7 @@
 .todayText {
   font-size: var(--text-body-small);
   font-weight: var(--weight-medium);
-  color: var(--color-accent-warm);
+  color: var(--t-needed-text);
   padding-inline: var(--space-sm);
 }
 
