@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getContext } from "@/server/session";
+import { getContext, readAppearanceCookie, resolveAppearance } from "@/server/session";
 import { getAuthUser, supabaseConfigured } from "@/server/supabase";
 import { can } from "@/domain/permissions";
 import { TopBar } from "@/components/ui/TopBar";
@@ -15,6 +15,10 @@ export default async function SettingsPage() {
   if (!ctx) redirect("/onboarding");
   const { data, viewer } = ctx;
   const planner = data.members.find((mm) => mm.roles.includes("financial_planner"));
+  // Same effective theme/reduceMotion RootLayout renders with — otherwise
+  // the radios can show a stale value the cookie already overrides.
+  const appearance = resolveAppearance(data.household.settings, await readAppearanceCookie());
+  const settings = { ...data.household.settings, ...appearance };
   return (
     <div className="page">
       <TopBar title={`${m.more.settings} · ${m.more.privacy}`} subtitle={m.more.settingsSubtitle} backHref="/more" />
@@ -25,7 +29,7 @@ export default async function SettingsPage() {
         </Card>
         <SettingsPanel
           authEmail={(await getAuthUser())?.email ?? null}
-          settings={data.household.settings}
+          settings={settings}
           notifications={data.notificationPreferences.find((n) => n.memberId === viewer.memberId) ?? null}
           canManage={can(viewer, "household:manage")}
           canFinance={can(viewer, "finance:edit")}

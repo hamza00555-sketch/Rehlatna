@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { settingsSchema } from "@/schemas";
 import { assertCan } from "@/domain/permissions";
 import { commit, parseBody, withContext } from "@/server/http";
-import { appearanceCookie } from "@/server/session";
+import { appearanceCookie, readAppearanceCookie, resolveAppearance } from "@/server/session";
 
 /**
  * Household settings. Appearance/motion/product name need household:manage;
@@ -15,18 +15,20 @@ export async function PATCH(req: Request) {
     const input = parsed.data;
     if (input.financeEnabled !== undefined || input.financeShared !== undefined) assertCan(ctx.viewer, "finance:edit");
     if (input.productName !== undefined || input.currencyCode !== undefined) assertCan(ctx.viewer, "household:manage");
+    // Read the incoming appearance cookie before commit(): on a stale store
+    // instance (see appearanceCookie's doc comment), the household's own
+    // theme/reduceMotion can lag behind what the browser already carries.
+    // Merging a partial change onto that stale snapshot would silently
+    // revert the untouched field; merging onto the cookie itself cannot.
+    const currentAppearance = (await readAppearanceCookie()) ?? undefined;
     const next = await commit(ctx, (data) => {
       Object.assign(data.household.settings, input);
       return data;
     });
     const res = NextResponse.json({ ok: true });
-    // Appearance is a device preference (see appearanceCookie): re-stamp it
-    // on every save so the very next request reflects it regardless of
-    // which store instance answers the household read.
     if (input.theme !== undefined || input.reduceMotion !== undefined) {
-      res.cookies.set(
-        appearanceCookie({ theme: next.household.settings.theme, reduceMotion: Boolean(next.household.settings.reduceMotion) }),
-      );
+      const base = currentAppearance ?? resolveAppearance(next.household.settings, null);
+      res.cookies.set(appearanceCookie({ theme: input.theme ?? base.theme, reduceMotion: input.reduceMotion ?? base.reduceMotion }));
     }
     return res;
   });

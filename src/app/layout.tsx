@@ -9,7 +9,7 @@ import "./tokens.css";
 import "./globals.css";
 import { appConfig } from "@/config/app";
 import { color } from "@/design/tokens";
-import { getContext, readAppearanceCookie } from "@/server/session";
+import { getContext, readAppearanceCookie, resolveAppearance } from "@/server/session";
 
 export async function generateMetadata(): Promise<Metadata> {
   const ctx = await getContext();
@@ -35,9 +35,9 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [ctx, appearance] = await Promise.all([getContext(), readAppearanceCookie()]);
   // The cookie (a device preference) wins when present: it is unaffected by
-  // which demo store instance answers this request. See appearanceCookie().
-  const theme = appearance?.theme ?? ctx?.data.household.settings.theme ?? "system";
-  const reduceMotion = (appearance?.reduceMotion ?? ctx?.data.household.settings.reduceMotion) ? "reduced" : undefined;
+  // which demo store instance answers this request. See resolveAppearance().
+  const { theme, reduceMotion: reduceMotionOn } = resolveAppearance(ctx?.data.household.settings ?? { theme: "system" }, appearance);
+  const reduceMotion = reduceMotionOn ? "reduced" : undefined;
   return (
     <html lang="ar" dir="rtl" data-theme={theme === "system" ? undefined : theme} data-motion={reduceMotion}>
       <body>{children}</body>

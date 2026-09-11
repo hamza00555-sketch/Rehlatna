@@ -6,15 +6,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * The only thing mocked is the cookie jar: each test picks the acting member.
  */
 let cookieValue: string | null = null;
+let appearanceCookieValue: string | null = null;
 vi.mock("next/headers", () => ({
   cookies: async () => ({
-    get: (name: string) => (name === "rj_session" && cookieValue ? { value: cookieValue } : undefined),
+    get: (name: string) => {
+      if (name === "rj_session" && cookieValue) return { value: cookieValue };
+      if (name === "rj_appearance" && appearanceCookieValue) return { value: appearanceCookieValue };
+      return undefined;
+    },
   }),
 }));
 
 import { ensureDemoSeeded } from "@/server/demo";
 import { DEMO_HOUSEHOLD_PREGNANCY, DEMO_HOUSEHOLD_POSTPARTUM } from "@/fixtures/demo";
-import { readHousehold } from "@/server/store";
+import { readHousehold, writeHousehold } from "@/server/store";
+import { readAppearanceCookie, resolveAppearance } from "@/server/session";
+import { PATCH as patchSettings } from "@/app/api/household/settings/route";
 import { POST as createTask } from "@/app/api/postpartum-tasks/route";
 import { PATCH as toggleTask } from "@/app/api/postpartum-tasks/[id]/route";
 import { PUT as putFeeding } from "@/app/api/feeding/route";
@@ -33,7 +40,16 @@ const params = (id: string) => ({ params: Promise.resolve({ id }) });
 beforeEach(async () => {
   await ensureDemoSeeded(true);
   cookieValue = null;
+  appearanceCookieValue = null;
 });
+
+/** Pulls one cookie's decoded value out of a Set-Cookie header, the way a real cookie jar would hand it to the next request. */
+function setCookieValue(res: Response, name: string): string | null {
+  const header = res.headers.get("set-cookie");
+  if (!header) return null;
+  const match = header.split(";")[0]?.match(new RegExp(`^${name}=(.*)$`));
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
 
 describe("session", () => {
   it("rejects requests without a session", async () => {
@@ -161,5 +177,54 @@ describe("preparation stays money-free", () => {
     const data = await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY);
     const item = data!.preparationItems.find((i) => i.title === "سرير")!;
     expect(JSON.stringify(item)).not.toContain("1200");
+  });
+});
+
+describe("appearance survives a stale store instance", () => {
+  // Regression coverage for the demo's per-serverless-instance MemoryStore:
+  // a theme/reduceMotion save on one instance must not be lost, and a
+  // later partial save (possibly on a different instance, whose copy of
+  // household.settings can be stale) must not erase the other field.
+
+  it("resolveAppearance prefers the cookie over a household snapshot that disagrees with it", () => {
+    // This is the exact contract RootLayout and the settings page both
+    // rely on to agree with each other: whichever store instance answered
+    // this request, a saved device preference is not second-guessed.
+    const stale = { theme: "light" as const, reduceMotion: false };
+    const deviceChoice = { theme: "dark" as const, reduceMotion: true };
+    expect(resolveAppearance(stale, deviceChoice)).toEqual(deviceChoice);
+    expect(resolveAppearance(stale, null)).toEqual(stale);
+  });
+
+  it("does not coerce a malformed reduceMotion (untrusted cookie content) — typeof, not Boolean()", async () => {
+    // Boolean("false") is true; a hand-edited or corrupted cookie must not
+    // flip reduceMotion on because of that.
+    appearanceCookieValue = JSON.stringify({ theme: "dark", reduceMotion: "false" });
+    expect(await readAppearanceCookie()).toEqual({ theme: "dark", reduceMotion: false });
+  });
+
+  it("a partial save on a stale instance keeps the field it didn't touch", async () => {
+    act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
+
+    // "Instance A": save theme=dark. Captures the cookie the browser now carries.
+    const first = await patchSettings(json({ theme: "dark" }));
+    expect(first.status).toBe(200);
+    const afterFirst = setCookieValue(first, "rj_appearance");
+    expect(JSON.parse(afterFirst!)).toEqual({ theme: "dark", reduceMotion: false });
+
+    // Simulate a different instance's copy of the household never having
+    // seen that write (or having reverted some other way) — the bug this
+    // guards against reads straight from this stale snapshot instead of
+    // from the cookie the browser is actually holding.
+    const stale = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
+    stale.household.settings.theme = "system";
+    await writeHousehold("demo", stale);
+
+    // The browser's next request still carries the cookie from the first save.
+    appearanceCookieValue = afterFirst;
+    const second = await patchSettings(json({ reduceMotion: true }));
+    expect(second.status).toBe(200);
+    const afterSecond = setCookieValue(second, "rj_appearance");
+    expect(JSON.parse(afterSecond!)).toEqual({ theme: "dark", reduceMotion: true });
   });
 });

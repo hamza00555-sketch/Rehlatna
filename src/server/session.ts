@@ -107,12 +107,25 @@ export async function readAppearanceCookie(): Promise<Appearance | null> {
   const raw = jar.get(APPEARANCE_COOKIE)?.value;
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as Partial<Appearance>;
+    const parsed = JSON.parse(raw) as Partial<Record<keyof Appearance, unknown>>;
     if (parsed.theme !== "system" && parsed.theme !== "light" && parsed.theme !== "dark") return null;
-    return { theme: parsed.theme, reduceMotion: Boolean(parsed.reduceMotion) };
+    // Untrusted input (a cookie can be edited by hand): coerce-free — a
+    // malformed reduceMotion falls back to false rather than `Boolean(x)`
+    // turning e.g. the string "false" into true.
+    return { theme: parsed.theme, reduceMotion: typeof parsed.reduceMotion === "boolean" ? parsed.reduceMotion : false };
   } catch {
     return null;
   }
+}
+
+/**
+ * The appearance every reader (RootLayout, the settings page) must agree
+ * on: the cookie wins as a whole when present — it is the one value that
+ * cannot have gone stale on a different store instance — otherwise the
+ * household's own stored settings.
+ */
+export function resolveAppearance(stored: { theme: Appearance["theme"]; reduceMotion?: boolean }, cookie: Appearance | null): Appearance {
+  return cookie ?? { theme: stored.theme, reduceMotion: Boolean(stored.reduceMotion) };
 }
 
 /** Resolves the full request context (once per request), or null when no valid session exists. */
