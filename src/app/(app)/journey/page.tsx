@@ -5,6 +5,7 @@ import { pregnancyProgress } from "@/domain/pregnancy";
 import { TopBar } from "@/components/ui/TopBar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { JourneyTimeline } from "@/components/journey/JourneyTimeline";
+import { JumpToCurrent } from "@/components/journey/JumpToCurrent";
 import { JourneyActions } from "@/components/journey/JourneyActions";
 import { m } from "@/i18n";
 import styles from "./journey.module.css";
@@ -37,6 +38,7 @@ export default async function JourneyPage() {
           <JourneyTimeline items={vm.sections.postpartum} today={todayMarker} title={vm.sections.postpartum.length > 0 ? m.journey.postpartumSection : undefined} />
         </div>
       )}
+      <JumpToCurrent />
     </div>
   );
 }

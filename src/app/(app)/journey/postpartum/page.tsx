@@ -12,6 +12,7 @@ import { TaskRow, RowGroup } from "@/components/ui/TaskRow";
 import { DateText } from "@/components/ui/Num";
 import { Icon } from "@/components/icons/Icon";
 import { JourneyTimeline } from "@/components/journey/JourneyTimeline";
+import { JumpToCurrent } from "@/components/journey/JumpToCurrent";
 import { PostpartumTaskManager } from "@/components/postpartum/PostpartumTaskManager";
 import { m, ageWord, days } from "@/i18n";
 import { cx } from "@/lib/cx";
@@ -117,6 +118,7 @@ export default async function PostpartumJourneyPage() {
           </RowGroup>
         </section>
       </div>
+      <JumpToCurrent />
     </div>
   );
 }

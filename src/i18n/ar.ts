@@ -387,6 +387,7 @@ export const ar = {
     title: "الرحلة",
     current: "الآن",
     currentStage: "المرحلة الحالية",
+    jumpToCurrent: "الانتقال إلى المرحلة الحالية",
     todayMarker: (week: number | undefined) => (week === undefined ? "اليوم" : `اليوم · الأسبوع ${week}`),
     next: "التالي",
     nextIn: (n: number) => `بعد ${days(n, true)}`,
