@@ -71,6 +71,50 @@ export function sessionCookie(session: Session) {
 
 export const clearedSessionCookie = { name: SESSION_COOKIE, value: "", path: "/", maxAge: 0 };
 
+/**
+ * Appearance (theme, reduced motion) is a device preference, not household
+ * data — it lives in its own cookie, separate from `rj_session`, so it
+ * survives regardless of which store instance answers a given request. In
+ * demo mode the household snapshot lives in a per-serverless-instance
+ * MemoryStore (see store.ts); a setting saved on one instance is invisible
+ * to the next request if it lands elsewhere, which made the theme radio
+ * revert to "system" after navigating away. This cookie is the fix: it
+ * travels with the browser, so the very next request (any instance) still
+ * carries the choice, while household.settings stays the record other
+ * members and devices see through the normal store.
+ */
+export const APPEARANCE_COOKIE = "rj_appearance";
+
+export interface Appearance {
+  theme: "system" | "light" | "dark";
+  reduceMotion: boolean;
+}
+
+export function appearanceCookie(appearance: Appearance) {
+  return {
+    name: APPEARANCE_COOKIE,
+    value: JSON.stringify(appearance),
+    httpOnly: true,
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 60 * 60 * 24 * 400,
+  };
+}
+
+/** Reads the device's appearance override, if one was ever saved. */
+export async function readAppearanceCookie(): Promise<Appearance | null> {
+  const jar = await cookies();
+  const raw = jar.get(APPEARANCE_COOKIE)?.value;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<Appearance>;
+    if (parsed.theme !== "system" && parsed.theme !== "light" && parsed.theme !== "dark") return null;
+    return { theme: parsed.theme, reduceMotion: Boolean(parsed.reduceMotion) };
+  } catch {
+    return null;
+  }
+}
+
 /** Resolves the full request context (once per request), or null when no valid session exists. */
 export const getContext = cache(async function getContext(): Promise<RequestContext | null> {
   const session = await getSession();
