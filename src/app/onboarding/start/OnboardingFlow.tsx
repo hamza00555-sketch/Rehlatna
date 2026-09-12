@@ -7,9 +7,8 @@ import { addDays } from "@/domain/dates";
 import { pregnancyProgress, dueDateFromLmp, GESTATION_DAYS, LMP_MAX_PAST_DAYS } from "@/domain/pregnancy";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
-import { CalendarPicker } from "@/components/ui/CalendarPicker";
 import { ChoiceCard, ChoiceGroup } from "@/components/ui/ChoiceCard";
-import { Field, TextInput } from "@/components/ui/Field";
+import { Field, DateInput, TextInput } from "@/components/ui/Field";
 import { DateText } from "@/components/ui/Num";
 import { Toggle } from "@/components/ui/Toggle";
 import { PrivacyNotice } from "@/components/ui/PrivacyNotice";
@@ -145,26 +144,40 @@ export function OnboardingFlow({ today }: { today: string }) {
         <section className={styles.step}>
           <header className={styles.header}>
             <h1 className={styles.title}>{form.datingMethod === "lmp" ? m.onboarding.lmpTitle : m.onboarding.dueDateTitle}</h1>
-            <p className={styles.help}>{form.datingMethod === "lmp" ? m.onboarding.lmpHelp : m.onboarding.dueDateHelp}</p>
           </header>
+          <ChoiceGroup legend={m.onboarding.datingMethodLabel} columns={2}>
+            <ChoiceCard name="onboarding-dating-method" value="lmp" checked={form.datingMethod === "lmp"} onChange={() => set("datingMethod", "lmp")} title={m.onboarding.lmpTabLabel} />
+            <ChoiceCard
+              name="onboarding-dating-method"
+              value="clinician"
+              checked={form.datingMethod === "clinician"}
+              onChange={() => set("datingMethod", "clinician")}
+              title={m.onboarding.clinicianTabLabel}
+              description={m.onboarding.clinicianTabHelp}
+            />
+          </ChoiceGroup>
           {form.datingMethod === "lmp" ? (
-            <CalendarPicker
-              value={form.lastPeriodStartDate}
-              onChange={(iso) => set("lastPeriodStartDate", iso)}
-              min={addDays(today, -LMP_MAX_PAST_DAYS)}
-              max={today}
-              today={today}
-              label={m.onboarding.lmpLabel}
-            />
+            <Field id="onboarding-lmp" label={m.onboarding.lmpLabel} help={m.onboarding.lmpHelp}>
+              <DateInput
+                id="onboarding-lmp"
+                value={form.lastPeriodStartDate ?? ""}
+                onChange={(e) => set("lastPeriodStartDate", e.target.value)}
+                min={addDays(today, -LMP_MAX_PAST_DAYS)}
+                max={today}
+                aria-describedby="onboarding-lmp-help"
+              />
+            </Field>
           ) : (
-            <CalendarPicker
-              value={form.dueDate}
-              onChange={(iso) => set("dueDate", iso)}
-              min={today}
-              max={addDays(today, GESTATION_DAYS + 14)}
-              today={today}
-              label={m.onboarding.dueDateLabel}
-            />
+            <Field id="onboarding-due" label={m.onboarding.dueDateLabel} help={m.onboarding.dueDateHelp}>
+              <DateInput
+                id="onboarding-due"
+                value={form.dueDate ?? ""}
+                onChange={(e) => set("dueDate", e.target.value)}
+                min={today}
+                max={addDays(today, GESTATION_DAYS + 14)}
+                aria-describedby="onboarding-due-help"
+              />
+            </Field>
           )}
           <div className={styles.preview} aria-live="polite">
             {progress && resolvedDueDate ? (
@@ -175,9 +188,6 @@ export function OnboardingFlow({ today }: { today: string }) {
               <span className={styles.previewHint}>{form.datingMethod === "lmp" ? m.onboarding.lmpLabel : m.onboarding.dueDateLabel}</span>
             )}
           </div>
-          <Button variant="quiet" onClick={() => set("datingMethod", form.datingMethod === "lmp" ? "clinician" : "lmp")}>
-            {form.datingMethod === "lmp" ? m.onboarding.useClinicianDate : m.onboarding.useLmpDate}
-          </Button>
         </section>
       )}
 

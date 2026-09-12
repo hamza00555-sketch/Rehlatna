@@ -39,20 +39,40 @@ export const permissionSchema = z.enum([
 ]);
 export const genderSchema = z.enum(["boy", "girl", "unknown", "undisclosed"]);
 
+/** A bare `{ dueDate }` (pre-LMP wire shape) always meant a clinician-confirmed date. */
+function legacyDueDateToClinicianDating(raw: unknown): unknown {
+  if (raw && typeof raw === "object" && !("datingMethod" in raw) && "dueDate" in raw) {
+    return { datingMethod: "clinician", dueDate: (raw as { dueDate: unknown }).dueDate };
+  }
+  return raw;
+}
+
 /**
  * How a pregnancy's due date is established. The client sends the raw
  * method + value; the server always re-derives `dueDate` itself (see
- * resolveDating in @/domain/pregnancy) — a client-computed due date is never trusted.
+ * resolveDating in @/domain/pregnancy) — a client-computed due date is never
+ * trusted. Accepts the pre-LMP `{ dueDate }` wire shape too, normalized to
+ * "clinician" — old clients and the old onboarding/PATCH payloads keep working.
  */
-export const datingInputSchema = z.discriminatedUnion("datingMethod", [
-  z.object({ datingMethod: z.literal("lmp"), lastPeriodStartDate: isoDate }),
-  z.object({ datingMethod: z.literal("clinician"), dueDate: isoDate }),
-]);
+export const datingInputSchema = z.preprocess(
+  legacyDueDateToClinicianDating,
+  z.discriminatedUnion("datingMethod", [
+    z.object({ datingMethod: z.literal("lmp"), lastPeriodStartDate: isoDate }),
+    z.object({ datingMethod: z.literal("clinician"), dueDate: isoDate }),
+  ]),
+);
 export type DatingInput = z.infer<typeof datingInputSchema>;
 
 // --- Onboarding --------------------------------------------------------------
 
-export const onboardingSchema = z.object({
+/** Old onboarding clients send a top-level `dueDate` instead of `dating`. */
+export const onboardingSchema = z.preprocess((raw) => {
+  if (raw && typeof raw === "object" && !("dating" in raw) && "dueDate" in raw) {
+    const { dueDate, ...rest } = raw as Record<string, unknown>;
+    return { ...rest, dating: { dueDate } };
+  }
+  return raw;
+}, z.object({
   dating: datingInputSchema,
   creator: z.object({
     displayName: shortText,
@@ -73,7 +93,7 @@ export const onboardingSchema = z.object({
   followUpCity: shortText,
   deliveryCity: shortText,
   productName: z.string().trim().max(40).optional(),
-});
+}));
 export type OnboardingInput = z.infer<typeof onboardingSchema>;
 
 // --- Pregnancy / baby --------------------------------------------------------

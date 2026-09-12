@@ -71,6 +71,22 @@ export function resolveDating(input: DatingInput, today: IsoDate): { ok: true; v
   };
 }
 
+/**
+ * Editing an EXISTING pregnancy's clinician-confirmed date allows a little
+ * slack into the past (it may already be slightly overdue) but not onboarding,
+ * which is always dating a pregnancy starting today or later.
+ */
+export const CLINICIAN_DUE_DATE_PAST_SLACK_DAYS = 14;
+export const CLINICIAN_DUE_DATE_MAX_FUTURE_DAYS = LMP_MAX_PAST_DAYS;
+
+export type ClinicianDateError = "due_date_too_early" | "due_date_too_late";
+
+export function validateClinicianDueDate(dueDate: IsoDate, today: IsoDate): ClinicianDateError | null {
+  if (dueDate < addDays(today, -CLINICIAN_DUE_DATE_PAST_SLACK_DAYS)) return "due_date_too_early";
+  if (dueDate > addDays(today, CLINICIAN_DUE_DATE_MAX_FUTURE_DAYS)) return "due_date_too_late";
+  return null;
+}
+
 export function dateForGestationalDay(dueDate: IsoDate, day: number): IsoDate {
   return addDays(lmpFromDueDate(dueDate), day);
 }

@@ -75,3 +75,8 @@
   font-size: var(--text-body-small);
   color: var(--t-muted);
 }
+.compare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}

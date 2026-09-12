@@ -1,18 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DatingMethod } from "@/domain/types";
 import { addDays } from "@/domain/dates";
-import { pregnancyProgress, dueDateFromLmp, GESTATION_DAYS, LMP_MAX_PAST_DAYS } from "@/domain/pregnancy";
+import {
+  pregnancyProgress,
+  dueDateFromLmp,
+  validateLmpDate,
+  validateClinicianDueDate,
+  LMP_MAX_PAST_DAYS,
+  CLINICIAN_DUE_DATE_PAST_SLACK_DAYS,
+  CLINICIAN_DUE_DATE_MAX_FUTURE_DAYS,
+} from "@/domain/pregnancy";
 import { Button } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/ui/Sheet";
-import { CalendarPicker } from "@/components/ui/CalendarPicker";
 import { ChoiceCard, ChoiceGroup } from "@/components/ui/ChoiceCard";
-import { Field, TextInput } from "@/components/ui/Field";
+import { Field, DateInput, TextInput } from "@/components/ui/Field";
 import { PrivacyNotice } from "@/components/ui/PrivacyNotice";
 import { Toggle } from "@/components/ui/Toggle";
-import { DateText, Num } from "@/components/ui/Num";
+import { DateText } from "@/components/ui/Num";
 import { api, ApiError } from "@/lib/api";
 import { m } from "@/i18n";
 import styles from "./Editors.module.css";
@@ -25,10 +32,40 @@ interface PregnancyDatingEditorProps {
   canEdit: boolean;
 }
 
+function datingErrorMessage(code: string): string {
+  if (code === "lmp_in_future") return m.onboarding.lmpFutureError;
+  if (code === "lmp_too_old") return m.onboarding.lmpTooOldError;
+  if (code === "due_date_too_early") return m.onboarding.clinicianDueDateTooEarlyError;
+  if (code === "due_date_too_late") return m.onboarding.clinicianDueDateTooLateError;
+  return m.common.error;
+}
+
+/** One line summarizing a dating snapshot: method, LMP (if any), due date, gestational age. */
+function DatingSummary({ method, lastPeriodStartDate, dueDate, today }: { method: DatingMethod; lastPeriodStartDate?: string; dueDate: string; today: string }) {
+  const progress = pregnancyProgress(dueDate, today);
+  return (
+    <>
+      {method === "lmp" ? m.onboarding.lmpTabLabel : m.onboarding.clinicianTabLabel}
+      {lastPeriodStartDate && (
+        <>
+          {" · "}
+          {m.onboarding.lmpLabel}: <DateText iso={lastPeriodStartDate} style="short" />
+        </>
+      )}
+      {" · "}
+      {m.onboarding.dueDatePreviewLabel}: <DateText iso={dueDate} style="short" />
+      {" · "}
+      {m.onboarding.gestationalAgePreview(progress.week, progress.gestationalDays % 7)}
+    </>
+  );
+}
+
 /**
  * Pregnancy dating edits are explained: the displayed week changes; stored
  * appointments and records do not. Old records without an LMP value open on
  * the clinician-confirmed tab — they are never shown as if LMP was entered.
+ * State resets from props every time the sheet opens, since the underlying
+ * <dialog> stays mounted (toggled, not remounted) between opens.
  */
 export function PregnancyDatingEditor({ dueDate, datingMethod, lastPeriodStartDate, today, canEdit }: PregnancyDatingEditorProps) {
   const router = useRouter();
@@ -39,13 +76,41 @@ export function PregnancyDatingEditor({ dueDate, datingMethod, lastPeriodStartDa
   const [clinicianDate, setClinicianDate] = useState(dueDate);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ weekBefore: number; weekAfter: number } | null>(null);
+  const [result, setResult] = useState<{ saved: boolean; weekBefore?: number; weekAfter?: number } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setMethod(startsOnLmp ? "lmp" : "clinician");
+    setLmp(startsOnLmp ? lastPeriodStartDate! : "");
+    setClinicianDate(dueDate);
+    setError(null);
+    setResult(null);
+    // Reopening re-seeds every field from the latest saved props; it deliberately ignores whatever was left mid-edit last time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   if (!canEdit) return null;
 
+  const changeMethod = (next: DatingMethod) => {
+    setMethod(next);
+    setResult(null);
+    setError(null);
+  };
+  const changeLmp = (iso: string) => {
+    setLmp(iso);
+    setResult(null);
+    setError(null);
+  };
+  const changeClinicianDate = (iso: string) => {
+    setClinicianDate(iso);
+    setResult(null);
+    setError(null);
+  };
+
   const resolvedDueDate = method === "lmp" ? (lmp ? dueDateFromLmp(lmp) : undefined) : clinicianDate || undefined;
-  const progress = resolvedDueDate ? pregnancyProgress(resolvedDueDate, today) : null;
+  const localError = method === "lmp" ? (lmp ? validateLmpDate(lmp, today) : null) : clinicianDate ? validateClinicianDueDate(clinicianDate, today) : null;
   const unchanged = method === "lmp" ? startsOnLmp && lmp === lastPeriodStartDate : !startsOnLmp && clinicianDate === dueDate;
-  const canSave = Boolean(resolvedDueDate) && !unchanged;
+  const canSave = Boolean(resolvedDueDate) && !unchanged && !localError;
 
   return (
     <>
@@ -54,25 +119,58 @@ export function PregnancyDatingEditor({ dueDate, datingMethod, lastPeriodStartDa
       </Button>
       <BottomSheet open={open} onClose={() => setOpen(false)} title={m.family.editPregnancyDating}>
         <ChoiceGroup legend={m.onboarding.datingMethodLabel} columns={2}>
-          <ChoiceCard name="dating-method" value="lmp" checked={method === "lmp"} onChange={() => setMethod("lmp")} title={m.onboarding.lmpTabLabel} />
-          <ChoiceCard name="dating-method" value="clinician" checked={method === "clinician"} onChange={() => setMethod("clinician")} title={m.onboarding.clinicianTabLabel} />
+          <ChoiceCard name="dating-method" value="lmp" checked={method === "lmp"} onChange={() => changeMethod("lmp")} title={m.onboarding.lmpTabLabel} />
+          <ChoiceCard name="dating-method" value="clinician" checked={method === "clinician"} onChange={() => changeMethod("clinician")} title={m.onboarding.clinicianTabLabel} />
         </ChoiceGroup>
+        <p className={styles.headMeta}>{m.family.dateEditNotice}</p>
         {method === "lmp" ? (
-          <>
-            <CalendarPicker value={lmp || undefined} onChange={setLmp} min={addDays(today, -LMP_MAX_PAST_DAYS)} max={today} today={today} label={m.onboarding.lmpLabel} />
-            <p className={styles.headMeta}>{m.onboarding.lmpHelp}</p>
-          </>
+          <Field id="dating-lmp" label={m.onboarding.lmpLabel} help={m.onboarding.lmpHelp} error={localError ? datingErrorMessage(localError) : undefined}>
+            <DateInput
+              id="dating-lmp"
+              value={lmp}
+              onChange={(e) => changeLmp(e.target.value)}
+              min={addDays(today, -LMP_MAX_PAST_DAYS)}
+              max={today}
+              invalid={Boolean(localError)}
+              aria-describedby={localError ? "dating-lmp-error" : "dating-lmp-help"}
+            />
+          </Field>
         ) : (
-          <CalendarPicker value={clinicianDate || undefined} onChange={setClinicianDate} min={addDays(today, -LMP_MAX_PAST_DAYS)} max={addDays(today, GESTATION_DAYS + 14)} today={today} label={m.onboarding.dueDateLabel} />
+          <Field id="dating-due" label={m.onboarding.dueDateLabel} error={localError ? datingErrorMessage(localError) : undefined}>
+            <DateInput
+              id="dating-due"
+              value={clinicianDate}
+              onChange={(e) => changeClinicianDate(e.target.value)}
+              min={addDays(today, -CLINICIAN_DUE_DATE_PAST_SLACK_DAYS)}
+              max={addDays(today, CLINICIAN_DUE_DATE_MAX_FUTURE_DAYS)}
+              invalid={Boolean(localError)}
+              aria-describedby={localError ? "dating-due-error" : undefined}
+            />
+          </Field>
         )}
-        {progress && resolvedDueDate && (
+        <div aria-live="polite" className={styles.compare}>
           <PrivacyNotice variant="general">
-            {m.onboarding.gestationalAgePreview(progress.week, progress.gestationalDays % 7)} · {m.onboarding.dueDatePreviewLabel}: <DateText iso={resolvedDueDate} style="long" />
+            <strong>{m.family.currentData}</strong>
+            {": "}
+            <DatingSummary method={startsOnLmp ? "lmp" : "clinician"} lastPeriodStartDate={startsOnLmp ? lastPeriodStartDate : undefined} dueDate={dueDate} today={today} />
           </PrivacyNotice>
-        )}
+          {resolvedDueDate && !localError && (
+            <PrivacyNotice variant="general">
+              <strong>{m.family.afterEdit}</strong>
+              {": "}
+              <DatingSummary method={method} lastPeriodStartDate={method === "lmp" ? lmp : undefined} dueDate={resolvedDueDate} today={today} />
+            </PrivacyNotice>
+          )}
+        </div>
         {result && (
           <PrivacyNotice variant="general">
-            {m.family.dueDateChanged} {m.today.weekLabel} <Num value={result.weekBefore} /> → <Num value={result.weekAfter} />
+            {result.weekBefore !== undefined && result.weekAfter !== undefined ? (
+              <>
+                {m.family.dueDateChanged} {m.today.weekLabel} {result.weekBefore} → {result.weekAfter}
+              </>
+            ) : (
+              m.forms.saved
+            )}
           </PrivacyNotice>
         )}
         {error && (
@@ -87,15 +185,14 @@ export function PregnancyDatingEditor({ dueDate, datingMethod, lastPeriodStartDa
           onClick={async () => {
             setBusy(true);
             setError(null);
+            setResult(null);
             try {
               const body = method === "lmp" ? { datingMethod: "lmp" as const, lastPeriodStartDate: lmp } : { datingMethod: "clinician" as const, dueDate: clinicianDate };
-              const res = await api<{ changed: boolean; weekBefore?: number; weekAfter?: number }>("/api/pregnancy", body, "PATCH");
-              if (res.changed && res.weekBefore !== undefined && res.weekAfter !== undefined) setResult({ weekBefore: res.weekBefore, weekAfter: res.weekAfter });
+              const res = await api<{ saved: boolean; dueDateChanged: boolean; weekBefore?: number; weekAfter?: number }>("/api/pregnancy", body, "PATCH");
+              if (res.saved) setResult({ saved: true, weekBefore: res.weekBefore, weekAfter: res.weekAfter });
               router.refresh();
             } catch (err) {
-              if (err instanceof ApiError && err.code === "lmp_in_future") setError(m.onboarding.lmpFutureError);
-              else if (err instanceof ApiError && err.code === "lmp_too_old") setError(m.onboarding.lmpTooOldError);
-              else setError(m.common.error);
+              setError(err instanceof ApiError ? datingErrorMessage(err.code) : m.common.error);
             } finally {
               setBusy(false);
             }

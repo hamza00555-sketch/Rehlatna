@@ -44,8 +44,9 @@ export const ROUTES = [
     themes: light,
     action: async (page) => {
       await page.getByRole("button", { name: "متابعة" }).click();
-      const day = page.locator("button[aria-pressed]").nth(20);
-      await day.click();
+      // Default dueDate step asks for the LMP date; any date well inside -294..0 days works.
+      const lmp = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
+      await page.fill("#onboarding-lmp", lmp);
       await page.getByRole("button", { name: "متابعة" }).click();
       await page.waitForTimeout(200);
     },

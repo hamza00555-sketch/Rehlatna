@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueDateFromLmp, lmpFromDueDate, postpartumAge, pregnancyProgress, resolveDating, validateLmpDate } from "./pregnancy";
+import { dueDateFromLmp, lmpFromDueDate, postpartumAge, pregnancyProgress, resolveDating, validateClinicianDueDate, validateLmpDate } from "./pregnancy";
 import { addDays } from "./dates";
 
 describe("pregnancy progress", () => {
@@ -80,6 +80,24 @@ describe("validateLmpDate", () => {
     const boundaryToday = "2028-03-01";
     expect(validateLmpDate("2027-05-12", boundaryToday)).toBeNull();
     expect(validateLmpDate("2027-05-11", boundaryToday)).toBe("lmp_too_old");
+  });
+});
+
+describe("validateClinicianDueDate", () => {
+  const today = "2027-03-20";
+
+  it("accepts exactly 14 days in the past and rejects 15", () => {
+    expect(validateClinicianDueDate(addDays(today, -14), today)).toBeNull();
+    expect(validateClinicianDueDate(addDays(today, -15), today)).toBe("due_date_too_early");
+  });
+
+  it("accepts exactly 294 days ahead and rejects 295", () => {
+    expect(validateClinicianDueDate(addDays(today, 294), today)).toBeNull();
+    expect(validateClinicianDueDate(addDays(today, 295), today)).toBe("due_date_too_late");
+  });
+
+  it("accepts today itself", () => {
+    expect(validateClinicianDueDate(today, today)).toBeNull();
   });
 });
 

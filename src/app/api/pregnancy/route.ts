@@ -1,6 +1,6 @@
 import { datingInputSchema } from "@/schemas";
 import { assertCan } from "@/domain/permissions";
-import { pregnancyProgress, resolveDating } from "@/domain/pregnancy";
+import { pregnancyProgress, resolveDating, validateClinicianDueDate } from "@/domain/pregnancy";
 import { commit, fail, ok, parseBody, withContext } from "@/server/http";
 import { nowIso } from "@/server/ids";
 
@@ -18,28 +18,43 @@ export async function PATCH(req: Request) {
     if (!parsed.ok) return parsed.res;
     if (!ctx.data.pregnancy) return fail("no_pregnancy", 404);
 
+    // A pregnancy already underway may edit its clinician-confirmed date within
+    // -14..+294 days of today (onboarding, dating a pregnancy from scratch, is stricter).
+    if (parsed.data.datingMethod === "clinician") {
+      const clinicianError = validateClinicianDueDate(parsed.data.dueDate, ctx.today);
+      if (clinicianError) return fail(clinicianError, 400);
+    }
+
     const resolved = resolveDating(parsed.data, ctx.today);
     if (!resolved.ok) return fail(resolved.error, 400);
-
-    const pregnancy = ctx.data.pregnancy;
-    const previous = pregnancy.dueDate;
     const { dueDate: next, datingMethod, lastPeriodStartDate } = resolved.value;
-    const dueDateChanged = previous !== next;
-    const metadataChanged = pregnancy.datingMethod !== datingMethod || pregnancy.lastPeriodStartDate !== lastPeriodStartDate;
-    if (!dueDateChanged && !metadataChanged) return ok({ ok: true, changed: false });
 
+    // previous/dueDateChanged/saved are recomputed on every compare-and-set retry
+    // (see commit()) from whichever read actually won, never from a stale
+    // snapshot taken before the loop — otherwise a concurrent edit A→B landing
+    // mid-retry would make this request record A→C in history instead of B→C.
+    let previous = "";
+    let dueDateChanged = false;
+    let saved = false;
     await commit(ctx, (data) => {
-      data.pregnancy!.dueDate = next;
-      data.pregnancy!.datingMethod = datingMethod;
-      data.pregnancy!.lastPeriodStartDate = lastPeriodStartDate;
-      if (dueDateChanged) data.pregnancy!.dueDateHistory.push({ previous, next, changedAt: nowIso() });
+      const pregnancy = data.pregnancy!;
+      previous = pregnancy.dueDate;
+      dueDateChanged = previous !== next;
+      const metadataChanged = pregnancy.datingMethod !== datingMethod || pregnancy.lastPeriodStartDate !== lastPeriodStartDate;
+      saved = dueDateChanged || metadataChanged;
+      if (!saved) return data;
+      pregnancy.dueDate = next;
+      pregnancy.datingMethod = datingMethod;
+      pregnancy.lastPeriodStartDate = lastPeriodStartDate;
+      if (dueDateChanged) pregnancy.dueDateHistory.push({ previous, next, changedAt: nowIso() });
       return data;
     });
 
-    if (!dueDateChanged) return ok({ ok: true, changed: false });
+    if (!saved) return ok({ saved: false, dueDateChanged: false });
+    if (!dueDateChanged) return ok({ saved: true, dueDateChanged: false });
     return ok({
-      ok: true,
-      changed: true,
+      saved: true,
+      dueDateChanged: true,
       weekBefore: pregnancyProgress(previous, ctx.today).week,
       weekAfter: pregnancyProgress(next, ctx.today).week,
     });

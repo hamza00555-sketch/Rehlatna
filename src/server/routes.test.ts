@@ -290,7 +290,8 @@ describe("pregnancy dating — PATCH /api/pregnancy", () => {
     const res = await patchPregnancy(json({ datingMethod: "clinician", dueDate: nextDue }));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.changed).toBe(true);
+    expect(body.saved).toBe(true);
+    expect(body.dueDateChanged).toBe(true);
     expect(body.weekBefore).toBeDefined();
     expect(body.weekAfter).toBeDefined();
     const after = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
@@ -300,7 +301,7 @@ describe("pregnancy dating — PATCH /api/pregnancy", () => {
     expect(after.pregnancy!.dueDateHistory.at(-1)).toMatchObject({ previous: previousDue, next: nextDue });
   });
 
-  it("fills in dating metadata for an old record without shifting its due date, appointments, or history", async () => {
+  it("fills in dating metadata for an old record without shifting its due date, appointments, or history — reported as saved with no week change", async () => {
     act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
     const before = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
     expect(before.pregnancy!.datingMethod).toBeUndefined();
@@ -308,12 +309,79 @@ describe("pregnancy dating — PATCH /api/pregnancy", () => {
     const appointmentsBefore = before.appointments.length;
     const res = await patchPregnancy(json({ datingMethod: "clinician", dueDate: before.pregnancy!.dueDate }));
     expect(res.status).toBe(200);
-    expect((await res.json()).changed).toBe(false);
+    const body = await res.json();
+    expect(body.saved).toBe(true);
+    expect(body.dueDateChanged).toBe(false);
     const after = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
     expect(after.pregnancy!.dueDate).toBe(before.pregnancy!.dueDate);
     expect(after.pregnancy!.datingMethod).toBe("clinician");
     expect(after.pregnancy!.dueDateHistory.length).toBe(historyLengthBefore);
     expect(after.appointments.length).toBe(appointmentsBefore);
+  });
+
+  it("reports a true no-op (identical method and date) as not saved", async () => {
+    act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
+    // First call fills in datingMethod: "clinician" for this old record.
+    await patchPregnancy(json({ datingMethod: "clinician", dueDate: (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!.pregnancy!.dueDate }));
+    const before = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
+    const res = await patchPregnancy(json({ datingMethod: "clinician", dueDate: before.pregnancy!.dueDate }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.saved).toBe(false);
+    expect(body.dueDateChanged).toBe(false);
+  });
+
+  it("accepts an existing pregnancy's clinician date from 14 days in the past to 294 days ahead, and rejects just outside that", async () => {
+    act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
+    const earliest = await patchPregnancy(json({ datingMethod: "clinician", dueDate: addDays(todayIso(), -14) }));
+    expect(earliest.status).toBe(200);
+    const latest = await patchPregnancy(json({ datingMethod: "clinician", dueDate: addDays(todayIso(), 294) }));
+    expect(latest.status).toBe(200);
+    const tooEarly = await patchPregnancy(json({ datingMethod: "clinician", dueDate: addDays(todayIso(), -15) }));
+    expect(tooEarly.status).toBe(400);
+    expect((await tooEarly.json()).error).toBe("due_date_too_early");
+    const tooLate = await patchPregnancy(json({ datingMethod: "clinician", dueDate: addDays(todayIso(), 295) }));
+    expect(tooLate.status).toBe(400);
+    expect((await tooLate.json()).error).toBe("due_date_too_late");
+  });
+
+  it("accepts the legacy bare { dueDate } wire shape as a clinician-confirmed date", async () => {
+    act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
+    const before = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
+    const nextDue = addDays(before.pregnancy!.dueDate, 2);
+    const res = await patchPregnancy(json({ dueDate: nextDue }));
+    expect(res.status).toBe(200);
+    const after = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
+    expect(after.pregnancy!.dueDate).toBe(nextDue);
+    expect(after.pregnancy!.datingMethod).toBe("clinician");
+  });
+
+  it("computes previous/dueDateChanged from the write that actually wins a compare-and-set retry, not a stale pre-loop read", async () => {
+    act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
+    const before = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
+    const dueA = before.pregnancy!.dueDate;
+    const dueB = addDays(dueA, 5); // a concurrent edit that lands mid-retry: A → B
+    const dueC = addDays(dueA, 9); // this request asks for dueC; the true transition is B → C, not A → C
+
+    const storeModule = await import("@/server/store");
+    const spy = vi.spyOn(storeModule, "writeHouseholdIf").mockImplementationOnce(async () => {
+      const concurrent = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
+      concurrent.pregnancy!.dueDate = dueB;
+      await writeHousehold("demo", concurrent);
+      throw new storeModule.ConflictError(DEMO_HOUSEHOLD_PREGNANCY);
+    });
+
+    const res = await patchPregnancy(json({ datingMethod: "clinician", dueDate: dueC }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.dueDateChanged).toBe(true);
+
+    const after = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
+    expect(after.pregnancy!.dueDate).toBe(dueC);
+    const lastEntry = after.pregnancy!.dueDateHistory.at(-1)!;
+    expect(lastEntry.previous).toBe(dueB);
+    expect(lastEntry.next).toBe(dueC);
+    spy.mockRestore();
   });
 });
 
@@ -351,5 +419,16 @@ describe("onboarding creates a household from either dating method", () => {
     const res = await onboardHousehold(json({ ...baseInput, dating: { datingMethod: "lmp", lastPeriodStartDate: addDays(todayIso(), -400) } }));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("lmp_too_old");
+  });
+
+  it("accepts the legacy top-level { dueDate } wire shape (pre-LMP onboarding clients) as a clinician-confirmed date", async () => {
+    const dueDate = addDays(todayIso(), 150);
+    const res = await onboardHousehold(json({ ...baseInput, dueDate }));
+    expect(res.status).toBe(200);
+    const { householdId } = await res.json();
+    const data = await readHousehold("live", householdId);
+    expect(data!.pregnancy!.dueDate).toBe(dueDate);
+    expect(data!.pregnancy!.datingMethod).toBe("clinician");
+    expect(data!.pregnancy!.lastPeriodStartDate).toBeUndefined();
   });
 });
