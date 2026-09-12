@@ -7,6 +7,7 @@ import { addDays } from "@/domain/dates";
 import {
   pregnancyProgress,
   dueDateFromLmp,
+  validateLmpDate,
   validateClinicianDueDate,
   LMP_MAX_PAST_DAYS,
   CLINICIAN_DUE_DATE_PAST_SLACK_DAYS,
@@ -81,11 +82,12 @@ export function OnboardingFlow({ today }: { today: string }) {
   const progress = useMemo(() => (resolvedDueDate ? pregnancyProgress(resolvedDueDate, today) : null), [resolvedDueDate, today]);
   // The "continue" button lives in a shared footer outside this step's Field, so
   // native date-input validity alone can't gate it — the range must be checked here too.
+  const lmpError = form.datingMethod === "lmp" && form.lastPeriodStartDate ? validateLmpDate(form.lastPeriodStartDate, today) : null;
   const clinicianError = form.datingMethod === "clinician" && form.dueDate ? validateClinicianDueDate(form.dueDate, today) : null;
 
   const canContinue =
     step === "story" ||
-    (step === "dueDate" && Boolean(resolvedDueDate) && !clinicianError) ||
+    (step === "dueDate" && Boolean(resolvedDueDate) && !lmpError && !clinicianError) ||
     (step === "household" && form.creatorName.trim().length > 0 && (!form.hasPartner || form.partnerName.trim().length > 0)) ||
     step === "finance" ||
     (step === "cities" && form.followUpCity.trim().length > 0 && (form.sameCity || form.deliveryCity.trim().length > 0));
@@ -167,14 +169,20 @@ export function OnboardingFlow({ today }: { today: string }) {
             />
           </ChoiceGroup>
           {form.datingMethod === "lmp" ? (
-            <Field id="onboarding-lmp" label={m.onboarding.lmpLabel} help={m.onboarding.lmpHelp}>
+            <Field
+              id="onboarding-lmp"
+              label={m.onboarding.lmpLabel}
+              help={m.onboarding.lmpHelp}
+              error={lmpError ? m.onboarding.datingErrorMessage(lmpError) : undefined}
+            >
               <DateInput
                 id="onboarding-lmp"
                 value={form.lastPeriodStartDate ?? ""}
                 onChange={(e) => set("lastPeriodStartDate", e.target.value)}
                 min={addDays(today, -LMP_MAX_PAST_DAYS)}
                 max={today}
-                aria-describedby="onboarding-lmp-help"
+                invalid={Boolean(lmpError)}
+                aria-describedby={lmpError ? "onboarding-lmp-error" : "onboarding-lmp-help"}
               />
             </Field>
           ) : (
@@ -196,7 +204,7 @@ export function OnboardingFlow({ today }: { today: string }) {
             </Field>
           )}
           <div className={styles.preview} aria-live="polite">
-            {progress && resolvedDueDate && !clinicianError ? (
+            {progress && resolvedDueDate && !lmpError && !clinicianError ? (
               <span className={styles.previewChip}>
                 {m.onboarding.gestationalAgePreview(progress.week, progress.gestationalDays % 7)} · {m.onboarding.dueDatePreviewLabel}: <DateText iso={resolvedDueDate} style="long" />
               </span>

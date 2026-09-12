@@ -85,7 +85,7 @@
   padding: var(--comp-chip-padding-y) var(--space-md);
   border-radius: var(--radius-round);
   background: var(--color-accent-warm-soft);
-  color: var(--color-accent-warm);
+  color: var(--color-ink);
   font-weight: var(--weight-semibold);
   font-size: var(--text-body);
 }

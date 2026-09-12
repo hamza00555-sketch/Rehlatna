@@ -64,6 +64,20 @@
   object-position: var(--fx) var(--fy);
 }
 
+/* Expanded mode is a viewer for the complete frame. Weekly posters are 4:5,
+   while phone viewports are usually much taller; `cover` would crop the
+   source. A warm backdrop makes the remaining space feel intentional without
+   adding a second blurred image layer or extra GPU work. */
+.expanded .mediaLayer {
+  background: radial-gradient(ellipse at 62% 48%, rgba(145, 76, 57, 0.46) 0%, rgba(47, 25, 29, 0.78) 58%, var(--color-dark-canvas) 100%);
+}
+
+.expanded .poster,
+.expanded .video {
+  object-fit: contain;
+  object-position: center;
+}
+
 .video {
   opacity: 0;
   transition: opacity var(--motion-slow) var(--motion-ease);
