@@ -63,7 +63,7 @@ assets: no medical review, no photography sign-off. The hero shows the
 
 | Slot | Status |
 | --- | --- |
-| Weekly posters | 27 of 36 weeks: 5, 8, 12, 16, 18–40 (poster 1080×1350 + thumb 480×480). Weeks 18–40 are one continuous run sourced from the same Drive library (Rehlatna-Warm-Visual-Library) instead of generated placeholders — weeks 28, 32, 36 and 40 replace their earlier generated versions with this same warm set; still `medicallyReviewed: false`, no medical sign-off, not diagnostic. Weeks 5, 8, 12, 16 remain the older generated placeholders (week 12 the weakest of those). No loops (mp4/webm) exist; the hero stays poster-only. |
+| Weekly posters | 36 of 36 weeks: 5–40 (poster 1080×1350 + thumb 480×480). One continuous warm run sourced from the same Drive library (Rehlatna-Warm-Visual-Library) instead of generated placeholders — weeks 5, 8, 12, 16, 28, 32, 36 and 40 replace their earlier generated versions with this same set; still `medicallyReviewed: false`, no medical sign-off, not diagnostic. No loops (mp4/webm) exist; the hero stays poster-only. |
 | Story welcome | present (silhouette, 9:16) |
 | Birth confirmed backdrop | present (linen and light, 9:16) |
 | Postpartum neutral fallback | present (linen and light, 4:5) |
