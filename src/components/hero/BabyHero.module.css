@@ -26,17 +26,9 @@
 }
 
 /* No poster for this week: a dark warm material instead of the light loading
-   gradient, so the light ink and the muted lines read at any scroll position. */
+   gradient. */
 .noMedia {
   background: var(--c-hero-neutral);
-}
-.noMedia .date,
-.noMedia .greetingSub,
-.noMedia .ofWeeks,
-.noMedia .dayLine,
-.noMedia .sizeSub {
-  color: var(--color-dark-ink);
-  opacity: 0.86;
 }
 
 .error {
@@ -85,7 +77,11 @@
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: var(--c-hero-scrim);
+  /* A local, stronger ramp than --c-hero-scrim: measured against the actual
+     posters, the shared curve left the mid-height band (where the week/day
+     line sits) too light on bright crops. Same warm maroon, more of it,
+     scoped to this component only. */
+  background: linear-gradient(180deg, rgba(47, 33, 36, 0.04) 0%, rgba(47, 33, 36, 0.48) 42%, rgba(47, 33, 36, 0.68) 62%, rgba(47, 33, 36, 0.86) 100%);
   pointer-events: none;
 }
 .hero:has(.trigger:active) .scrim {
@@ -135,14 +131,17 @@
   visibility: hidden;
 }
 
-/* Text protection for the date/greeting on light media (approved over-media gradient). */
+/* Text protection for the date/greeting on light media. A local, warm-toned
+   gradient rather than the shared --c-top-bar-over-media (that one is cool
+   navy, tuned for TopBar elsewhere) — measured against the actual posters,
+   it needed to be both darker and reach further down than the shared one. */
 .topScrim {
   position: absolute;
   inset-inline: 0;
   top: 0;
   height: 45%;
   z-index: 1;
-  background: var(--c-top-bar-over-media);
+  background: linear-gradient(180deg, rgba(36, 24, 22, 0.86) 0%, rgba(36, 24, 22, 0.52) 55%, rgba(36, 24, 22, 0) 100%);
   pointer-events: none;
 }
 
@@ -153,9 +152,24 @@
   gap: var(--space-sm);
 }
 
+/* Ink at reduced opacity, not the muted token: over a real poster this text
+   sits on whatever the photo happens to be behind the scrim, which can be
+   much brighter than the neutral no-media gradient the muted token was
+   tuned for — it needs the same headroom the noMedia case already had. A
+   small warm-dark text-shadow (measured against real posters, not guessed)
+   covers the brightest crops, where the scrim alone still isn't enough. */
+.date,
+.greetingSub,
+.ofWeeks,
+.dayLine,
+.sizeSub {
+  text-shadow: 0 1px 3px rgba(53, 43, 43, 0.6);
+}
+
 .date {
   font-size: var(--text-body-small);
-  color: var(--color-dark-muted);
+  color: var(--color-dark-ink);
+  opacity: 0.86;
 }
 
 .avatar {
@@ -193,7 +207,8 @@
 
 .greetingSub {
   font-size: var(--text-body-small);
-  color: var(--color-dark-muted);
+  color: var(--color-dark-ink);
+  opacity: 0.86;
 }
 
 /* Week block hugs the inline-end edge, leaving the focal area free. */
@@ -227,7 +242,8 @@
 
 .ofWeeks {
   font-size: var(--text-body-small);
-  color: var(--color-dark-muted);
+  color: var(--color-dark-ink);
+  opacity: 0.86;
 }
 
 .progress {
@@ -253,7 +269,8 @@
 
 .dayLine {
   font-size: var(--text-label);
-  color: var(--color-dark-muted);
+  color: var(--color-dark-ink);
+  opacity: 0.86;
 }
 
 .bottomRow {
@@ -279,7 +296,8 @@
 
 .sizeSub {
   font-size: var(--text-body-small);
-  color: var(--color-dark-muted);
+  color: var(--color-dark-ink);
+  opacity: 0.86;
 }
 
 .watch {
