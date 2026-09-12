@@ -370,13 +370,18 @@
   }
 }
 
-.chrome {
+/* Only the close button by default — the baby stays fully visible. */
+.minimalChrome {
+  display: flex;
+  justify-content: flex-end;
+  padding: calc(var(--space-md) + env(safe-area-inset-top)) var(--layout-gutter) 0;
+}
+
+.detailsHead {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-sm);
-  padding: calc(var(--space-md) + env(safe-area-inset-top)) var(--layout-gutter) var(--space-sm);
-  background: var(--c-top-bar-over-media);
 }
 
 .chromeTitle {
@@ -455,7 +460,15 @@
   padding-inline: var(--space-xl);
 }
 
+/* Week details: hidden below the screen by default (transform, not
+   display), so the baby stays fully visible until the arrow reveals it.
+   inert (set in the markup) keeps it out of tab order and the a11y tree
+   while closed; the transform alone already keeps it un-clickable. */
 .sheet {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 5;
   background: var(--c-sheet-dark-bg);
   color: var(--color-dark-ink);
   border: var(--border-dark);
@@ -464,19 +477,64 @@
   backdrop-filter: var(--c-nav-blur);
   -webkit-backdrop-filter: var(--c-nav-blur);
   padding: var(--space-sm) var(--layout-gutter) calc(var(--space-lg) + env(safe-area-inset-bottom));
-  max-height: 46vh;
+  max-height: 60vh;
   overflow: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
+  transform: translateY(100%);
+  transition: transform var(--motion-slow) var(--motion-ease);
+}
+.sheetOpen {
+  transform: translateY(0);
 }
 
+/* content-box (overriding the project-wide border-box reset) so the
+   padding enlarges the drag target without growing the visible bar —
+   background-clip keeps the padding itself transparent. */
 .handle {
+  box-sizing: content-box;
   width: 40px;
   height: 4px;
+  padding-block: 10px;
+  background-clip: content-box;
   border-radius: var(--radius-round);
   background: var(--color-dark-line);
   margin: 0 auto var(--space-2xs);
+  touch-action: none;
+}
+
+/* Small, safe, always-reachable toggle for the week details sheet. */
+.detailsToggle {
+  position: absolute;
+  inset-inline: 0;
+  bottom: calc(var(--space-md) + env(safe-area-inset-bottom));
+  margin-inline: auto;
+  z-index: 6;
+  width: var(--comp-target-min);
+  height: var(--comp-target-min);
+  border-radius: var(--radius-round);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-icon-button-over-media-bg);
+  border: 1px solid var(--c-icon-button-over-media-border);
+  backdrop-filter: var(--c-icon-button-blur);
+  -webkit-backdrop-filter: var(--c-icon-button-blur);
+  color: var(--color-dark-ink);
+}
+.detailsToggle:focus-visible {
+  outline: var(--border-focus);
+  outline-offset: 2px;
+}
+
+.detailsToggleIcon {
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+/* Closed: chevron points up, inviting the reveal. Open: it points down,
+   at the sheet's own top edge, inviting the collapse. */
+.detailsToggleIconClosed {
+  transform: rotate(180deg);
 }
 
 .sheetTitle {

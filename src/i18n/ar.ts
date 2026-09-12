@@ -140,6 +140,7 @@ export const ar = {
     devReviewBadge: "غير مُراجَع طبياً — للتطوير فقط",
     expandHero: "افتح تطور هذا الأسبوع",
     weeklyDevelopment: "تطور الأسبوع",
+    weekDetailsToggle: "عرض تفاصيل الأسبوع",
     developing: "ما الذي يتطور الآن",
     changedThisWeek: "ما الذي تغيّر هذا الأسبوع",
     motherContext: "وأنتِ؟",

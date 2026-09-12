@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
 import type { PregnancyHeroVM } from "@/server/view-models/today";
 import type { BabyView } from "@/server/serializers";
@@ -39,6 +39,9 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
   const closeRef = useRef<HTMLButtonElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [animating, setAnimating] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsRef = useRef<HTMLDivElement>(null);
+  const dragStartY = useRef<number | null>(null);
   const mediaCtl = useWeeklyMedia(media);
   const [hour, setHour] = useState<number | null>(null);
   useEffect(() => setHour(new Date().getHours()), []);
@@ -70,6 +73,7 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
     const finish = () => {
       setExpanded(false);
       setAnimating(false);
+      setDetailsOpen(false);
       triggerRef.current?.focus();
     };
     if (mediaCtl.reducedMotion) return finish();
@@ -92,14 +96,33 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
     document.body.style.overflow = "hidden";
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") collapse();
+      if (e.key !== "Escape") return;
+      if (detailsOpen) setDetailsOpen(false);
+      else collapse();
     };
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prevOverflow;
       document.removeEventListener("keydown", onKey);
     };
-  }, [expanded, collapse]);
+  }, [expanded, collapse, detailsOpen]);
+
+  const onHandlePointerDown = useCallback((e: ReactPointerEvent) => {
+    dragStartY.current = e.clientY;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, []);
+  const onHandlePointerMove = useCallback((e: ReactPointerEvent) => {
+    if (dragStartY.current == null || !detailsRef.current) return;
+    const delta = Math.max(0, e.clientY - dragStartY.current);
+    detailsRef.current.style.transform = delta > 0 ? `translateY(${delta}px)` : "";
+  }, []);
+  const onHandlePointerUp = useCallback((e: ReactPointerEvent) => {
+    if (dragStartY.current == null || !detailsRef.current) return;
+    const delta = Math.max(0, e.clientY - dragStartY.current);
+    dragStartY.current = null;
+    detailsRef.current.style.transform = "";
+    if (delta > 70) setDetailsOpen(false);
+  }, []);
 
   const share = useCallback(async () => {
     const text = `${m.today.weekLabel} ${fmtInt(progress.week)} — ${media.developmentSummary}`;
@@ -216,33 +239,11 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
           )}
         </div>
 
-        {/* Expanded content ------------------------------------------------- */}
+        {/* Expanded content — minimal by default so the baby stays fully
+            visible; week details live in a sheet the arrow toggles. ------ */}
         {expanded && (
           <div className={styles.expandedLayer}>
-            <div className={styles.chrome}>
-              <IconButton icon="share" label={m.common.share} variant="overMedia" onClick={share} />
-              <div className={styles.chromeTitle}>
-                <h2 className={styles.chromeWeek}>
-                  {m.today.weekLabel} <span className="num">{fmtInt(progress.week)}</span>
-                </h2>
-                <p className={styles.chromeSub}>
-                  {babyLabel} · {m.today.dayOfWeek(progress.dayOfWeek)}
-                </p>
-                <div className={styles.stats}>
-                  {media.approximateSize && (
-                    <span className={styles.stat} title={media.lengthMeasure ? m.today.lengthMeasure[media.lengthMeasure] : undefined}>
-                      <Icon name="ruler" size={16} />
-                      <span className="num">{media.approximateSize}</span>
-                    </span>
-                  )}
-                  {media.approximateWeight && (
-                    <span className={styles.stat}>
-                      <Icon name="scale" size={16} />
-                      <span className="num">{media.approximateWeight}</span>
-                    </span>
-                  )}
-                </div>
-              </div>
+            <div className={styles.minimalChrome}>
               <IconButton icon="close" label={m.common.close} variant="overMedia" onClick={collapse} ref={closeRef} />
             </div>
 
@@ -258,8 +259,50 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
               {!hasMedia && <p className={styles.mediaNoteCenter}>{m.today.mediaPlaceholder}</p>}
             </div>
 
-            <div className={styles.sheet}>
-              <div className={styles.handle} aria-hidden="true" />
+            <button
+              type="button"
+              className={styles.detailsToggle}
+              onClick={() => setDetailsOpen((v) => !v)}
+              aria-label={m.today.weekDetailsToggle}
+              aria-expanded={detailsOpen}
+            >
+              <Icon name="chevronDown" size={20} className={cx(styles.detailsToggleIcon, !detailsOpen && styles.detailsToggleIconClosed)} />
+            </button>
+
+            <div ref={detailsRef} className={cx(styles.sheet, detailsOpen && styles.sheetOpen)} inert={!detailsOpen} aria-hidden={!detailsOpen}>
+              <div
+                className={styles.handle}
+                aria-hidden="true"
+                onPointerDown={onHandlePointerDown}
+                onPointerMove={onHandlePointerMove}
+                onPointerUp={onHandlePointerUp}
+                onPointerCancel={onHandlePointerUp}
+              />
+              <div className={styles.detailsHead}>
+                <IconButton icon="share" label={m.common.share} variant="quiet" onClick={share} />
+                <div className={styles.chromeTitle}>
+                  <h2 className={styles.chromeWeek}>
+                    {m.today.weekLabel} <span className="num">{fmtInt(progress.week)}</span>
+                  </h2>
+                  <p className={styles.chromeSub}>
+                    {babyLabel} · {m.today.dayOfWeek(progress.dayOfWeek)}
+                  </p>
+                  <div className={styles.stats}>
+                    {media.approximateSize && (
+                      <span className={styles.stat} title={media.lengthMeasure ? m.today.lengthMeasure[media.lengthMeasure] : undefined}>
+                        <Icon name="ruler" size={16} />
+                        <span className="num">{media.approximateSize}</span>
+                      </span>
+                    )}
+                    {media.approximateWeight && (
+                      <span className={styles.stat}>
+                        <Icon name="scale" size={16} />
+                        <span className="num">{media.approximateWeight}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
               <h3 className={styles.sheetTitle}>{m.today.weeklyDevelopment}</h3>
               <p className={styles.sheetSummary}>{media.developmentSummary}</p>
               <ul className={styles.points}>
