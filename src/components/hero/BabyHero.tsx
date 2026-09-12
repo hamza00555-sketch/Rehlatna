@@ -96,9 +96,29 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
     document.body.style.overflow = "hidden";
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (detailsOpen) setDetailsOpen(false);
-      else collapse();
+      if (e.key === "Escape") {
+        if (detailsOpen) setDetailsOpen(false);
+        else collapse();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      // Focus trap: the hero is a custom (non-<dialog>) modal, so Tab must
+      // not leak to the page underneath while it's expanded.
+      const root = rootRef.current;
+      if (!root) return;
+      const focusables = Array.from(root.querySelectorAll<HTMLElement>('button, a[href], [tabindex]:not([tabindex="-1"])')).filter(
+        (el) => !el.closest("[inert]") && el.offsetParent !== null,
+      );
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (!first || !last) return;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => {
@@ -110,6 +130,9 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
   const onHandlePointerDown = useCallback((e: ReactPointerEvent) => {
     dragStartY.current = e.clientY;
     e.currentTarget.setPointerCapture(e.pointerId);
+    // Drag must track the finger 1:1 — the open/close transition would
+    // otherwise lag every intermediate frame behind the pointer.
+    if (detailsRef.current) detailsRef.current.style.transition = "none";
   }, []);
   const onHandlePointerMove = useCallback((e: ReactPointerEvent) => {
     if (dragStartY.current == null || !detailsRef.current) return;
@@ -121,6 +144,7 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
     const delta = Math.max(0, e.clientY - dragStartY.current);
     dragStartY.current = null;
     detailsRef.current.style.transform = "";
+    detailsRef.current.style.transition = "";
     if (delta > 70) setDetailsOpen(false);
   }, []);
 
@@ -259,66 +283,75 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
               {!hasMedia && <p className={styles.mediaNoteCenter}>{m.today.mediaPlaceholder}</p>}
             </div>
 
-            <button
-              type="button"
-              className={styles.detailsToggle}
-              onClick={() => setDetailsOpen((v) => !v)}
-              aria-label={m.today.weekDetailsToggle}
-              aria-expanded={detailsOpen}
-            >
-              <Icon name="chevronDown" size={20} className={cx(styles.detailsToggleIcon, !detailsOpen && styles.detailsToggleIconClosed)} />
-            </button>
+            {/* The toggle sits in its own row above the sheet panel, never
+                inside it, so it can never overlap the sheet's own content
+                (CTA/boundary) once open — only the row's fixed height peeks
+                above the panel while closed. */}
+            <div className={cx(styles.sheetWrap, detailsOpen && styles.sheetWrapOpen)}>
+              <div className={styles.detailsToggleRow}>
+                <button
+                  type="button"
+                  className={styles.detailsToggle}
+                  onClick={() => setDetailsOpen((v) => !v)}
+                  aria-label={detailsOpen ? m.today.weekDetailsHide : m.today.weekDetailsToggle}
+                  aria-expanded={detailsOpen}
+                  aria-controls="baby-hero-details"
+                >
+                  <Icon name="chevronDown" size={20} className={cx(styles.detailsToggleIcon, !detailsOpen && styles.detailsToggleIconClosed)} />
+                </button>
+              </div>
 
-            <div ref={detailsRef} className={cx(styles.sheet, detailsOpen && styles.sheetOpen)} inert={!detailsOpen} aria-hidden={!detailsOpen}>
-              <div
-                className={styles.handle}
-                aria-hidden="true"
-                onPointerDown={onHandlePointerDown}
-                onPointerMove={onHandlePointerMove}
-                onPointerUp={onHandlePointerUp}
-                onPointerCancel={onHandlePointerUp}
-              />
-              <div className={styles.detailsHead}>
-                <IconButton icon="share" label={m.common.share} variant="quiet" onClick={share} />
-                <div className={styles.chromeTitle}>
-                  <h2 className={styles.chromeWeek}>
-                    {m.today.weekLabel} <span className="num">{fmtInt(progress.week)}</span>
-                  </h2>
-                  <p className={styles.chromeSub}>
-                    {babyLabel} · {m.today.dayOfWeek(progress.dayOfWeek)}
-                  </p>
-                  <div className={styles.stats}>
-                    {media.approximateSize && (
-                      <span className={styles.stat} title={media.lengthMeasure ? m.today.lengthMeasure[media.lengthMeasure] : undefined}>
-                        <Icon name="ruler" size={16} />
-                        <span className="num">{media.approximateSize}</span>
-                      </span>
-                    )}
-                    {media.approximateWeight && (
-                      <span className={styles.stat}>
-                        <Icon name="scale" size={16} />
-                        <span className="num">{media.approximateWeight}</span>
-                      </span>
-                    )}
+              <div id="baby-hero-details" ref={detailsRef} className={styles.sheet} inert={!detailsOpen} aria-hidden={!detailsOpen}>
+                <div
+                  className={styles.handle}
+                  aria-hidden="true"
+                  onPointerDown={onHandlePointerDown}
+                  onPointerMove={onHandlePointerMove}
+                  onPointerUp={onHandlePointerUp}
+                  onPointerCancel={onHandlePointerUp}
+                />
+                <div className={styles.detailsHead}>
+                  <IconButton icon="share" label={m.common.share} variant="overMedia" onClick={share} />
+                  <div className={styles.chromeTitle}>
+                    <h2 className={styles.chromeWeek}>
+                      {m.today.weekLabel} <span className="num">{fmtInt(progress.week)}</span>
+                    </h2>
+                    <p className={styles.chromeSub}>
+                      {babyLabel} · {m.today.dayOfWeek(progress.dayOfWeek)}
+                    </p>
+                    <div className={styles.stats}>
+                      {media.approximateSize && (
+                        <span className={styles.stat} title={media.lengthMeasure ? m.today.lengthMeasure[media.lengthMeasure] : undefined}>
+                          <Icon name="ruler" size={16} />
+                          <span className="num">{media.approximateSize}</span>
+                        </span>
+                      )}
+                      {media.approximateWeight && (
+                        <span className={styles.stat}>
+                          <Icon name="scale" size={16} />
+                          <span className="num">{media.approximateWeight}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
+                <h3 className={styles.sheetTitle}>{m.today.weeklyDevelopment}</h3>
+                <p className={styles.sheetSummary}>{media.developmentSummary}</p>
+                <ul className={styles.points}>
+                  {media.developmentPoints.map((p, i) => (
+                    <li key={i} className={styles.point}>
+                      <span className={styles.pointIcon} aria-hidden="true">
+                        <Icon name={i === 0 ? "sprout" : i === 1 ? "heart" : "wave"} size={20} />
+                      </span>
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button href="/today/week" variant="lightOverMedia" fullWidth>
+                  {m.today.weeklyDevelopment}
+                </Button>
+                <p className={styles.boundary}>{m.common.medicalBoundary}</p>
               </div>
-              <h3 className={styles.sheetTitle}>{m.today.weeklyDevelopment}</h3>
-              <p className={styles.sheetSummary}>{media.developmentSummary}</p>
-              <ul className={styles.points}>
-                {media.developmentPoints.map((p, i) => (
-                  <li key={i} className={styles.point}>
-                    <span className={styles.pointIcon} aria-hidden="true">
-                      <Icon name={i === 0 ? "sprout" : i === 1 ? "heart" : "wave"} size={20} />
-                    </span>
-                    <span>{p}</span>
-                  </li>
-                ))}
-              </ul>
-              <Button href="/today/week" variant="lightOverMedia" fullWidth>
-                {m.today.weeklyDevelopment}
-              </Button>
-              <p className={styles.boundary}>{m.common.medicalBoundary}</p>
             </div>
           </div>
         )}

@@ -141,6 +141,7 @@ export const ar = {
     expandHero: "افتح تطور هذا الأسبوع",
     weeklyDevelopment: "تطور الأسبوع",
     weekDetailsToggle: "عرض تفاصيل الأسبوع",
+    weekDetailsHide: "إخفاء تفاصيل الأسبوع",
     developing: "ما الذي يتطور الآن",
     changedThisWeek: "ما الذي تغيّر هذا الأسبوع",
     motherContext: "وأنتِ؟",

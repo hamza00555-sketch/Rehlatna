@@ -460,57 +460,35 @@
   padding-inline: var(--space-xl);
 }
 
-/* Week details: hidden below the screen by default (transform, not
-   display), so the baby stays fully visible until the arrow reveals it.
-   inert (set in the markup) keeps it out of tab order and the a11y tree
-   while closed; the transform alone already keeps it un-clickable. */
-.sheet {
+/* Week details wrapper: the toggle row and the sheet panel slide together
+   as one unit. Closed, translateY(100% - <row height>) leaves only the
+   toggle row's own height visible above the media — the sheet panel
+   itself (and its CTA/boundary) is entirely below that row, so the two
+   never occupy the same space, open or closed. `100%` here is this
+   element's own rendered height (row + panel), so this holds regardless
+   of how tall the panel's content makes it. */
+.sheetWrap {
   position: absolute;
   inset-inline: 0;
   bottom: 0;
   z-index: 5;
-  background: var(--c-sheet-dark-bg);
-  color: var(--color-dark-ink);
-  border: var(--border-dark);
-  border-bottom: none;
-  border-radius: var(--radius-hero) var(--radius-hero) 0 0;
-  backdrop-filter: var(--c-nav-blur);
-  -webkit-backdrop-filter: var(--c-nav-blur);
-  padding: var(--space-sm) var(--layout-gutter) calc(var(--space-lg) + env(safe-area-inset-bottom));
-  max-height: 60vh;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  transform: translateY(100%);
+  transform: translateY(calc(100% - 64px));
   transition: transform var(--motion-slow) var(--motion-ease);
 }
-.sheetOpen {
+.sheetWrapOpen {
   transform: translateY(0);
 }
 
-/* content-box (overriding the project-wide border-box reset) so the
-   padding enlarges the drag target without growing the visible bar —
-   background-clip keeps the padding itself transparent. */
-.handle {
-  box-sizing: content-box;
-  width: 40px;
-  height: 4px;
-  padding-block: 10px;
-  background-clip: content-box;
-  border-radius: var(--radius-round);
-  background: var(--color-dark-line);
-  margin: 0 auto var(--space-2xs);
-  touch-action: none;
+.detailsToggleRow {
+  height: 64px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom));
 }
 
 /* Small, safe, always-reachable toggle for the week details sheet. */
 .detailsToggle {
-  position: absolute;
-  inset-inline: 0;
-  bottom: calc(var(--space-md) + env(safe-area-inset-bottom));
-  margin-inline: auto;
-  z-index: 6;
   width: var(--comp-target-min);
   height: var(--comp-target-min);
   border-radius: var(--radius-round);
@@ -535,6 +513,40 @@
    at the sheet's own top edge, inviting the collapse. */
 .detailsToggleIconClosed {
   transform: rotate(180deg);
+}
+
+/* Week details panel: a normal-flow sibling of the toggle row above (see
+   .sheetWrap) — inert (set in the markup) keeps it out of tab order and
+   the a11y tree while closed. */
+.sheet {
+  background: var(--c-sheet-dark-bg);
+  color: var(--color-dark-ink);
+  border: var(--border-dark);
+  border-bottom: none;
+  border-radius: var(--radius-hero) var(--radius-hero) 0 0;
+  backdrop-filter: var(--c-nav-blur);
+  -webkit-backdrop-filter: var(--c-nav-blur);
+  padding: var(--space-sm) var(--layout-gutter) calc(var(--space-lg) + env(safe-area-inset-bottom));
+  max-height: 60vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* content-box (overriding the project-wide border-box reset) so the
+   padding enlarges the drag target without growing the visible bar —
+   background-clip keeps the padding itself transparent. */
+.handle {
+  box-sizing: content-box;
+  width: 40px;
+  height: 4px;
+  padding-block: 10px;
+  background-clip: content-box;
+  border-radius: var(--radius-round);
+  background: var(--color-dark-line);
+  margin: 0 auto var(--space-2xs);
+  touch-action: none;
 }
 
 .sheetTitle {
