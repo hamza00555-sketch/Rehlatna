@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WeeklyBabyMedia } from "@/domain/types";
-import { adjacentWeeks, weeklyMedia } from "@/media/weekly";
 import { useConnectionQuality, useReducedMotion } from "@/lib/useMediaPreferences";
 
 export type MediaState = "placeholder" | "poster" | "loading" | "playing" | "paused" | "error";
@@ -14,11 +13,10 @@ export type MediaState = "placeholder" | "poster" | "loading" | "playing" | "pau
  * - Pauses when the hero leaves the viewport or the tab hides; resumes
  *   without resetting the timestamp.
  * - Failed video keeps the poster and offers a quiet retry.
- * - Prefetches only the previous/next week posters on good connections.
  */
 export function useWeeklyMedia(media: WeeklyBabyMedia) {
   const reducedMotion = useReducedMotion();
-  const { saveData, goodConnection } = useConnectionQuality();
+  const { saveData } = useConnectionQuality();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const userPausedRef = useRef(false);
@@ -86,22 +84,6 @@ export function useWeeklyMedia(media: WeeklyBabyMedia) {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [wantsVideo, tryPlay]);
-
-  useEffect(() => {
-    if (!goodConnection) return;
-    const links: HTMLLinkElement[] = [];
-    for (const w of adjacentWeeks(media.week)) {
-      const poster = weeklyMedia(w).posterWebp;
-      if (!poster) continue;
-      const link = document.createElement("link");
-      link.rel = "prefetch";
-      link.as = "image";
-      link.href = poster;
-      document.head.appendChild(link);
-      links.push(link);
-    }
-    return () => links.forEach((l) => l.remove());
-  }, [media.week, goodConnection]);
 
   const toggle = useCallback(() => {
     const v = videoRef.current;

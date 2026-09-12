@@ -17,7 +17,17 @@
   opacity: 0.92;
 }
 
+/* Sits entirely inside the nav bar's own painted box, flush with its top
+   edge, in the ~18px gap above the icon row (measured) — not floating
+   above it in the ordinary scrollable viewport, where in-flow content
+   passes underneath a fixed element at every scroll position. Shrunk to
+   fit that gap without dipping into the icons/labels. z-index above the
+   nav's own (40) so it paints over the nav's background, never under it. */
 .aboveNav {
   top: auto;
-  bottom: calc(var(--layout-bottom-nav-height) + var(--space-xs) + env(safe-area-inset-bottom));
+  bottom: calc(var(--layout-bottom-nav-height) - 15px + env(safe-area-inset-bottom));
+  z-index: 41;
+  padding-block: 1px;
+  font-size: 10px;
+  line-height: 1.2;
 }
