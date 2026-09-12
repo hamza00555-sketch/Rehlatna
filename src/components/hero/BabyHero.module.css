@@ -352,6 +352,7 @@
 /* ---- Expanded content ---------------------------------------------------- */
 
 .expandedLayer {
+  --toggle-row-h: 64px;
   position: relative;
   z-index: 3;
   flex: 1;
@@ -428,7 +429,11 @@
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-sm);
-  padding-block-end: var(--space-lg);
+  /* .sheetWrap is position:absolute (out of flow), so this flex:1 area
+     would otherwise extend all the way to the real screen bottom and
+     .playBig would sit right under the closed details toggle. Clear the
+     toggle row's own height on top of the usual breathing room. */
+  padding-block-end: calc(var(--toggle-row-h) + var(--space-lg));
 }
 
 .playBig {
@@ -472,7 +477,7 @@
   inset-inline: 0;
   bottom: 0;
   z-index: 5;
-  transform: translateY(calc(100% - 64px));
+  transform: translateY(calc(100% - var(--toggle-row-h)));
   transition: transform var(--motion-slow) var(--motion-ease);
 }
 .sheetWrapOpen {
@@ -480,7 +485,7 @@
 }
 
 .detailsToggleRow {
-  height: 64px;
+  height: var(--toggle-row-h);
   display: flex;
   align-items: flex-end;
   justify-content: center;

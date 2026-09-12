@@ -41,7 +41,9 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
   const [animating, setAnimating] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const sheetWrapRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const dragStartY = useRef<number | null>(null);
+  const dragCleanupRef = useRef<{ timeoutId: ReturnType<typeof setTimeout>; clear: () => void } | null>(null);
   const mediaCtl = useWeeklyMedia(media);
   const [hour, setHour] = useState<number | null>(null);
   useEffect(() => setHour(new Date().getHours()), []);
@@ -114,8 +116,13 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
     const isVisible = (el: HTMLElement) => !el.closest('[aria-hidden="true"]') && getComputedStyle(el).visibility !== "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (detailsOpen) setDetailsOpen(false);
-        else collapse();
+        if (detailsOpen) {
+          setDetailsOpen(false);
+          // Whatever was focused inside the sheet is about to go inert —
+          // move focus to the (never-inert) toggle now, synchronously,
+          // rather than leaving it orphaned on a soon-to-be-inert node.
+          toggleRef.current?.focus();
+        } else collapse();
         return;
       }
       if (e.key !== "Tab") return;
@@ -141,14 +148,29 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
     return () => document.removeEventListener("keydown", onKey);
   }, [expanded, collapse, detailsOpen]);
 
-  const onHandlePointerDown = useCallback((e: ReactPointerEvent) => {
-    dragStartY.current = e.clientY;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    // Drag the wrap (arrow row + sheet) as one unit, tracking the finger
-    // 1:1 — the open/close transition would otherwise lag every
-    // intermediate frame behind the pointer.
-    if (sheetWrapRef.current) sheetWrapRef.current.style.transition = "none";
+  // Cancels a still-pending cleanup (transitionend listener + fallback
+  // timer) from a previous drag release, so it can't fire mid-way through
+  // a new drag and yank the transform/transition out from under it.
+  const cancelDragCleanup = useCallback(() => {
+    const pending = dragCleanupRef.current;
+    if (!pending) return;
+    clearTimeout(pending.timeoutId);
+    sheetWrapRef.current?.removeEventListener("transitionend", pending.clear);
+    dragCleanupRef.current = null;
   }, []);
+
+  const onHandlePointerDown = useCallback(
+    (e: ReactPointerEvent) => {
+      cancelDragCleanup();
+      dragStartY.current = e.clientY;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      // Drag the wrap (arrow row + sheet) as one unit, tracking the finger
+      // 1:1 — the open/close transition would otherwise lag every
+      // intermediate frame behind the pointer.
+      if (sheetWrapRef.current) sheetWrapRef.current.style.transition = "none";
+    },
+    [cancelDragCleanup],
+  );
   const onHandlePointerMove = useCallback((e: ReactPointerEvent) => {
     if (dragStartY.current == null || !sheetWrapRef.current) return;
     const delta = Math.max(0, e.clientY - dragStartY.current);
@@ -167,18 +189,23 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
     // override is cleared once that animation settles, handing control
     // back to the class-driven style with no visible change.
     wrap.style.transition = "";
-    wrap.style.transform = closing ? "translateY(calc(100% - 64px))" : "translateY(0)";
-    let cleared = false;
+    wrap.style.transform = closing ? "translateY(calc(100% - var(--toggle-row-h)))" : "translateY(0)";
     const clear = () => {
-      if (cleared) return;
-      cleared = true;
       wrap.style.transition = "";
       wrap.style.transform = "";
       wrap.removeEventListener("transitionend", clear);
+      dragCleanupRef.current = null;
     };
     wrap.addEventListener("transitionend", clear);
-    setTimeout(clear, 500);
-    if (closing) setDetailsOpen(false);
+    const timeoutId = setTimeout(clear, 500);
+    dragCleanupRef.current = { timeoutId, clear };
+    if (closing) {
+      setDetailsOpen(false);
+      // Same reasoning as the Escape branch: focus was possibly inside the
+      // sheet (e.g. the drag started on the handle right after a Tab into
+      // it); move it to the toggle before the sheet goes inert.
+      toggleRef.current?.focus();
+    }
   }, []);
 
   const share = useCallback(async () => {
@@ -323,6 +350,7 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
             <div ref={sheetWrapRef} className={cx(styles.sheetWrap, detailsOpen && styles.sheetWrapOpen)}>
               <div className={styles.detailsToggleRow}>
                 <button
+                  ref={toggleRef}
                   type="button"
                   className={styles.detailsToggle}
                   onClick={() => setDetailsOpen((v) => !v)}
