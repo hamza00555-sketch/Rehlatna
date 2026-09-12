@@ -190,14 +190,22 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
     // back to the class-driven style with no visible change.
     wrap.style.transition = "";
     wrap.style.transform = closing ? "translateY(calc(100% - var(--toggle-row-h)))" : "translateY(0)";
+    let settled = false;
+    let timeoutId: ReturnType<typeof setTimeout>;
+    // Whichever of transitionend/timeout fires first must cancel the
+    // other — otherwise the loser fires later, mid a possible new drag,
+    // and stomps its live transform out from under it.
     const clear = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
       wrap.style.transition = "";
       wrap.style.transform = "";
       wrap.removeEventListener("transitionend", clear);
       dragCleanupRef.current = null;
     };
     wrap.addEventListener("transitionend", clear);
-    const timeoutId = setTimeout(clear, 500);
+    timeoutId = setTimeout(clear, 500);
     dragCleanupRef.current = { timeoutId, clear };
     if (closing) {
       setDetailsOpen(false);
