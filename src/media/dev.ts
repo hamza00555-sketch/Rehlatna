@@ -13,7 +13,7 @@ const ROOT = "/media/dev";
 
 export const DEV_MEDIA = {
   /** Weekly posters that exist as development placeholders (week → path). */
-  weeklyPosters: Object.fromEntries([5, 8, 12, 16, 18, 19, 20, 21, 22, 23, 24, 25, 26, 28, 32, 36, 40].map((w) => [w, `${ROOT}/weekly/week-${String(w).padStart(2, "0")}.poster.webp`])) as Record<number, string>,
+  weeklyPosters: Object.fromEntries([5, 8, 12, 16, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 36, 40].map((w) => [w, `${ROOT}/weekly/week-${String(w).padStart(2, "0")}.poster.webp`])) as Record<number, string>,
   storyWelcome: `${ROOT}/story/welcome.webp` as string | undefined,
   birthConfirmed: `${ROOT}/birth/confirmed.webp` as string | undefined,
   postpartumNeutral: `${ROOT}/postpartum/neutral-fallback.webp` as string | undefined,
