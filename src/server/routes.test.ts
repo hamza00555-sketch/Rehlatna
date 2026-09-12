@@ -22,7 +22,7 @@ vi.mock("next/headers", () => ({
 
 import { ensureDemoSeeded } from "@/server/demo";
 import { DEMO_HOUSEHOLD_PREGNANCY, DEMO_HOUSEHOLD_POSTPARTUM } from "@/fixtures/demo";
-import { readHousehold, writeHousehold } from "@/server/store";
+import { readHousehold, readHouseholdVersioned, writeHousehold } from "@/server/store";
 import { readAppearanceCookie, resolveAppearance } from "@/server/session";
 import { todayIso, addDays } from "@/domain/dates";
 import { PATCH as patchSettings } from "@/app/api/household/settings/route";
@@ -319,16 +319,25 @@ describe("pregnancy dating — PATCH /api/pregnancy", () => {
     expect(after.appointments.length).toBe(appointmentsBefore);
   });
 
-  it("reports a true no-op (identical method and date) as not saved", async () => {
+  it("reports a true no-op (identical method and date) as not saved, and never writes or bumps the version", async () => {
     act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
     // First call fills in datingMethod: "clinician" for this old record.
     await patchPregnancy(json({ datingMethod: "clinician", dueDate: (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!.pregnancy!.dueDate }));
-    const before = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
-    const res = await patchPregnancy(json({ datingMethod: "clinician", dueDate: before.pregnancy!.dueDate }));
+    const before = await readHouseholdVersioned("demo", DEMO_HOUSEHOLD_PREGNANCY);
+
+    const storeModule = await import("@/server/store");
+    const writeSpy = vi.spyOn(storeModule, "writeHouseholdIf");
+
+    const res = await patchPregnancy(json({ datingMethod: "clinician", dueDate: before!.data.pregnancy!.dueDate }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.saved).toBe(false);
     expect(body.dueDateChanged).toBe(false);
+    expect(writeSpy).not.toHaveBeenCalled();
+
+    const after = await readHouseholdVersioned("demo", DEMO_HOUSEHOLD_PREGNANCY);
+    expect(after!.version).toBe(before!.version);
+    writeSpy.mockRestore();
   });
 
   it("accepts an existing pregnancy's clinician date from 14 days in the past to 294 days ahead, and rejects just outside that", async () => {
@@ -430,5 +439,30 @@ describe("onboarding creates a household from either dating method", () => {
     expect(data!.pregnancy!.dueDate).toBe(dueDate);
     expect(data!.pregnancy!.datingMethod).toBe("clinician");
     expect(data!.pregnancy!.lastPeriodStartDate).toBeUndefined();
+  });
+
+  it("accepts a clinician due date from 14 days in the past to 294 days ahead", async () => {
+    const earliest = await onboardHousehold(json({ ...baseInput, dating: { datingMethod: "clinician", dueDate: addDays(todayIso(), -14) } }));
+    expect(earliest.status).toBe(200);
+    const latest = await onboardHousehold(json({ ...baseInput, dating: { datingMethod: "clinician", dueDate: addDays(todayIso(), 294) } }));
+    expect(latest.status).toBe(200);
+  });
+
+  it("rejects a clinician due date 15 days in the past or 295 days ahead, without creating a household", async () => {
+    const tooEarly = await onboardHousehold(json({ ...baseInput, dating: { datingMethod: "clinician", dueDate: addDays(todayIso(), -15) } }));
+    expect(tooEarly.status).toBe(400);
+    expect((await tooEarly.json()).error).toBe("due_date_too_early");
+    const tooLate = await onboardHousehold(json({ ...baseInput, dating: { datingMethod: "clinician", dueDate: addDays(todayIso(), 295) } }));
+    expect(tooLate.status).toBe(400);
+    expect((await tooLate.json()).error).toBe("due_date_too_late");
+  });
+
+  it("rejects an out-of-range legacy top-level { dueDate } payload the same way", async () => {
+    const tooEarly = await onboardHousehold(json({ ...baseInput, dueDate: addDays(todayIso(), -15) }));
+    expect(tooEarly.status).toBe(400);
+    expect((await tooEarly.json()).error).toBe("due_date_too_early");
+    const tooLate = await onboardHousehold(json({ ...baseInput, dueDate: addDays(todayIso(), 295) }));
+    expect(tooLate.status).toBe(400);
+    expect((await tooLate.json()).error).toBe("due_date_too_late");
   });
 });

@@ -4,7 +4,14 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DatingMethod, HouseholdRole } from "@/domain/types";
 import { addDays } from "@/domain/dates";
-import { pregnancyProgress, dueDateFromLmp, GESTATION_DAYS, LMP_MAX_PAST_DAYS } from "@/domain/pregnancy";
+import {
+  pregnancyProgress,
+  dueDateFromLmp,
+  validateClinicianDueDate,
+  LMP_MAX_PAST_DAYS,
+  CLINICIAN_DUE_DATE_PAST_SLACK_DAYS,
+  CLINICIAN_DUE_DATE_MAX_FUTURE_DAYS,
+} from "@/domain/pregnancy";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { ChoiceCard, ChoiceGroup } from "@/components/ui/ChoiceCard";
@@ -72,10 +79,13 @@ export function OnboardingFlow({ today }: { today: string }) {
 
   const resolvedDueDate = form.datingMethod === "lmp" ? (form.lastPeriodStartDate ? dueDateFromLmp(form.lastPeriodStartDate) : undefined) : form.dueDate;
   const progress = useMemo(() => (resolvedDueDate ? pregnancyProgress(resolvedDueDate, today) : null), [resolvedDueDate, today]);
+  // The "continue" button lives in a shared footer outside this step's Field, so
+  // native date-input validity alone can't gate it — the range must be checked here too.
+  const clinicianError = form.datingMethod === "clinician" && form.dueDate ? validateClinicianDueDate(form.dueDate, today) : null;
 
   const canContinue =
     step === "story" ||
-    (step === "dueDate" && Boolean(resolvedDueDate)) ||
+    (step === "dueDate" && Boolean(resolvedDueDate) && !clinicianError) ||
     (step === "household" && form.creatorName.trim().length > 0 && (!form.hasPartner || form.partnerName.trim().length > 0)) ||
     step === "finance" ||
     (step === "cities" && form.followUpCity.trim().length > 0 && (form.sameCity || form.deliveryCity.trim().length > 0));
@@ -168,19 +178,25 @@ export function OnboardingFlow({ today }: { today: string }) {
               />
             </Field>
           ) : (
-            <Field id="onboarding-due" label={m.onboarding.dueDateLabel} help={m.onboarding.dueDateHelp}>
+            <Field
+              id="onboarding-due"
+              label={m.onboarding.dueDateLabel}
+              help={m.onboarding.dueDateHelp}
+              error={clinicianError ? m.onboarding.datingErrorMessage(clinicianError) : undefined}
+            >
               <DateInput
                 id="onboarding-due"
                 value={form.dueDate ?? ""}
                 onChange={(e) => set("dueDate", e.target.value)}
-                min={today}
-                max={addDays(today, GESTATION_DAYS + 14)}
-                aria-describedby="onboarding-due-help"
+                min={addDays(today, -CLINICIAN_DUE_DATE_PAST_SLACK_DAYS)}
+                max={addDays(today, CLINICIAN_DUE_DATE_MAX_FUTURE_DAYS)}
+                invalid={Boolean(clinicianError)}
+                aria-describedby={clinicianError ? "onboarding-due-error" : "onboarding-due-help"}
               />
             </Field>
           )}
           <div className={styles.preview} aria-live="polite">
-            {progress && resolvedDueDate ? (
+            {progress && resolvedDueDate && !clinicianError ? (
               <span className={styles.previewChip}>
                 {m.onboarding.gestationalAgePreview(progress.week, progress.gestationalDays % 7)} · {m.onboarding.dueDatePreviewLabel}: <DateText iso={resolvedDueDate} style="long" />
               </span>

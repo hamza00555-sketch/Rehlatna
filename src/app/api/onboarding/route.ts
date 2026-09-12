@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { onboardingSchema } from "@/schemas";
 import { createHouseholdFromOnboarding } from "@/fixtures/empty";
 import { todayIso } from "@/domain/dates";
-import { resolveDating } from "@/domain/pregnancy";
+import { resolveDating, validateClinicianDueDate } from "@/domain/pregnancy";
 import { parseBody } from "@/server/http";
 import { newId, nowIso } from "@/server/ids";
 import { clearedSessionCookie, sessionCookie } from "@/server/session";
@@ -14,7 +14,14 @@ import { fail } from "@/server/http";
 export async function POST(req: Request) {
   const parsed = await parseBody(req, onboardingSchema);
   if (!parsed.ok) return parsed.res;
-  const dating = resolveDating(parsed.data.dating, todayIso());
+  const today = todayIso();
+  // The legacy { dueDate } wire shape is normalized to "clinician" by the schema,
+  // so this also covers old onboarding clients — never trust a client-computed date.
+  if (parsed.data.dating.datingMethod === "clinician") {
+    const clinicianError = validateClinicianDueDate(parsed.data.dating.dueDate, today);
+    if (clinicianError) return fail(clinicianError, 400);
+  }
+  const dating = resolveDating(parsed.data.dating, today);
   if (!dating.ok) return fail(dating.error, 400);
   const user = await getAuthUser();
   if (supabaseConfigured() && !user) return fail("unauthenticated", 401);

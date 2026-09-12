@@ -369,6 +369,13 @@ export const ar = {
     lmpTooOldError: "هذا التاريخ أبعد من أن نحسب عليه حملاً حالياً. تحققي منه أو استخدمي موعد الولادة المعتمد من الطبيبة",
     clinicianDueDateTooEarlyError: "موعد الولادة قديم جدًا؛ لا يمكن أن يسبق اليوم بأكثر من 14 يومًا",
     clinicianDueDateTooLateError: "موعد الولادة بعيد جدًا؛ الحد الأقصى 294 يومًا من اليوم",
+    datingErrorMessage: (code: string): string => {
+      if (code === "lmp_in_future") return ar.onboarding.lmpFutureError;
+      if (code === "lmp_too_old") return ar.onboarding.lmpTooOldError;
+      if (code === "due_date_too_early") return ar.onboarding.clinicianDueDateTooEarlyError;
+      if (code === "due_date_too_late") return ar.onboarding.clinicianDueDateTooLateError;
+      return ar.common.error;
+    },
     householdTitle: "من يشارككم الرحلة؟",
     householdHelp: "أضيفوا الأسماء كما تحبون أن تظهر في التطبيق.",
     yourName: "اسمك",

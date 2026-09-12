@@ -7,6 +7,7 @@ import { addDays } from "@/domain/dates";
 import {
   pregnancyProgress,
   dueDateFromLmp,
+  isDatingUnchanged,
   validateLmpDate,
   validateClinicianDueDate,
   LMP_MAX_PAST_DAYS,
@@ -30,14 +31,6 @@ interface PregnancyDatingEditorProps {
   lastPeriodStartDate?: string;
   today: string;
   canEdit: boolean;
-}
-
-function datingErrorMessage(code: string): string {
-  if (code === "lmp_in_future") return m.onboarding.lmpFutureError;
-  if (code === "lmp_too_old") return m.onboarding.lmpTooOldError;
-  if (code === "due_date_too_early") return m.onboarding.clinicianDueDateTooEarlyError;
-  if (code === "due_date_too_late") return m.onboarding.clinicianDueDateTooLateError;
-  return m.common.error;
 }
 
 /** One line summarizing a dating snapshot: method, LMP (if any), due date, gestational age. */
@@ -109,7 +102,7 @@ export function PregnancyDatingEditor({ dueDate, datingMethod, lastPeriodStartDa
 
   const resolvedDueDate = method === "lmp" ? (lmp ? dueDateFromLmp(lmp) : undefined) : clinicianDate || undefined;
   const localError = method === "lmp" ? (lmp ? validateLmpDate(lmp, today) : null) : clinicianDate ? validateClinicianDueDate(clinicianDate, today) : null;
-  const unchanged = method === "lmp" ? startsOnLmp && lmp === lastPeriodStartDate : !startsOnLmp && clinicianDate === dueDate;
+  const unchanged = isDatingUnchanged({ dueDate, datingMethod, lastPeriodStartDate }, { method, lastPeriodStartDate: lmp, dueDate: clinicianDate });
   const canSave = Boolean(resolvedDueDate) && !unchanged && !localError;
 
   return (
@@ -124,7 +117,7 @@ export function PregnancyDatingEditor({ dueDate, datingMethod, lastPeriodStartDa
         </ChoiceGroup>
         <p className={styles.headMeta}>{m.family.dateEditNotice}</p>
         {method === "lmp" ? (
-          <Field id="dating-lmp" label={m.onboarding.lmpLabel} help={m.onboarding.lmpHelp} error={localError ? datingErrorMessage(localError) : undefined}>
+          <Field id="dating-lmp" label={m.onboarding.lmpLabel} help={m.onboarding.lmpHelp} error={localError ? m.onboarding.datingErrorMessage(localError) : undefined}>
             <DateInput
               id="dating-lmp"
               value={lmp}
@@ -136,7 +129,7 @@ export function PregnancyDatingEditor({ dueDate, datingMethod, lastPeriodStartDa
             />
           </Field>
         ) : (
-          <Field id="dating-due" label={m.onboarding.dueDateLabel} error={localError ? datingErrorMessage(localError) : undefined}>
+          <Field id="dating-due" label={m.onboarding.dueDateLabel} help={m.onboarding.dueDateHelp} error={localError ? m.onboarding.datingErrorMessage(localError) : undefined}>
             <DateInput
               id="dating-due"
               value={clinicianDate}
@@ -144,7 +137,7 @@ export function PregnancyDatingEditor({ dueDate, datingMethod, lastPeriodStartDa
               min={addDays(today, -CLINICIAN_DUE_DATE_PAST_SLACK_DAYS)}
               max={addDays(today, CLINICIAN_DUE_DATE_MAX_FUTURE_DAYS)}
               invalid={Boolean(localError)}
-              aria-describedby={localError ? "dating-due-error" : undefined}
+              aria-describedby={localError ? "dating-due-error" : "dating-due-help"}
             />
           </Field>
         )}
@@ -192,7 +185,7 @@ export function PregnancyDatingEditor({ dueDate, datingMethod, lastPeriodStartDa
               if (res.saved) setResult({ saved: true, weekBefore: res.weekBefore, weekAfter: res.weekAfter });
               router.refresh();
             } catch (err) {
-              setError(err instanceof ApiError ? datingErrorMessage(err.code) : m.common.error);
+              setError(err instanceof ApiError ? m.onboarding.datingErrorMessage(err.code) : m.common.error);
             } finally {
               setBusy(false);
             }

@@ -72,9 +72,9 @@ export function resolveDating(input: DatingInput, today: IsoDate): { ok: true; v
 }
 
 /**
- * Editing an EXISTING pregnancy's clinician-confirmed date allows a little
- * slack into the past (it may already be slightly overdue) but not onboarding,
- * which is always dating a pregnancy starting today or later.
+ * A clinician-confirmed date — at onboarding or editing an existing pregnancy
+ * alike — allows a little slack into the past (a pregnancy may already be
+ * slightly overdue when first recorded) up to the same forward horizon as LMP.
  */
 export const CLINICIAN_DUE_DATE_PAST_SLACK_DAYS = 14;
 export const CLINICIAN_DUE_DATE_MAX_FUTURE_DAYS = LMP_MAX_PAST_DAYS;
@@ -85,6 +85,31 @@ export function validateClinicianDueDate(dueDate: IsoDate, today: IsoDate): Clin
   if (dueDate < addDays(today, -CLINICIAN_DUE_DATE_PAST_SLACK_DAYS)) return "due_date_too_early";
   if (dueDate > addDays(today, CLINICIAN_DUE_DATE_MAX_FUTURE_DAYS)) return "due_date_too_late";
   return null;
+}
+
+export interface DatingSnapshot {
+  dueDate: IsoDate;
+  datingMethod?: DatingMethod;
+  lastPeriodStartDate?: IsoDate;
+}
+
+export interface DatingDraft {
+  method: DatingMethod;
+  /** Empty string while the field is still unfilled. */
+  lastPeriodStartDate: IsoDate | "";
+  dueDate: IsoDate | "";
+}
+
+/**
+ * Whether an editor draft is identical to the stored record — including the
+ * method itself, not just the date value. A record with no `datingMethod`
+ * recorded yet (pre-LMP data) is never "unchanged" against a clinician draft
+ * that merely matches its `dueDate`: saving still persists the method for
+ * the first time, and that save must not be blocked as a no-op.
+ */
+export function isDatingUnchanged(record: DatingSnapshot, draft: DatingDraft): boolean {
+  if (draft.method === "lmp") return record.datingMethod === "lmp" && draft.lastPeriodStartDate === (record.lastPeriodStartDate ?? "");
+  return record.datingMethod === "clinician" && draft.dueDate === record.dueDate;
 }
 
 export function dateForGestationalDay(dueDate: IsoDate, day: number): IsoDate {

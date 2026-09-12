@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueDateFromLmp, lmpFromDueDate, postpartumAge, pregnancyProgress, resolveDating, validateClinicianDueDate, validateLmpDate } from "./pregnancy";
+import { dueDateFromLmp, isDatingUnchanged, lmpFromDueDate, postpartumAge, pregnancyProgress, resolveDating, validateClinicianDueDate, validateLmpDate } from "./pregnancy";
 import { addDays } from "./dates";
 
 describe("pregnancy progress", () => {
@@ -98,6 +98,32 @@ describe("validateClinicianDueDate", () => {
 
   it("accepts today itself", () => {
     expect(validateClinicianDueDate(today, today)).toBeNull();
+  });
+});
+
+describe("isDatingUnchanged", () => {
+  const record = { dueDate: "2027-03-20", datingMethod: "clinician" as const };
+
+  it("is unchanged when the clinician draft matches the record exactly", () => {
+    expect(isDatingUnchanged(record, { method: "clinician", lastPeriodStartDate: "", dueDate: "2027-03-20" })).toBe(true);
+  });
+
+  it("is changed when the clinician draft's date differs", () => {
+    expect(isDatingUnchanged(record, { method: "clinician", lastPeriodStartDate: "", dueDate: "2027-03-21" })).toBe(false);
+  });
+
+  it("is NOT unchanged for a record with no recorded method, even if the clinician draft matches its dueDate — saving still persists the method for the first time", () => {
+    const legacyRecord = { dueDate: "2027-03-20" };
+    expect(isDatingUnchanged(legacyRecord, { method: "clinician", lastPeriodStartDate: "", dueDate: "2027-03-20" })).toBe(false);
+  });
+
+  it("is unchanged when the LMP draft matches the record's method and last-period date", () => {
+    const lmpRecord = { dueDate: "2027-03-20", datingMethod: "lmp" as const, lastPeriodStartDate: "2026-06-05" };
+    expect(isDatingUnchanged(lmpRecord, { method: "lmp", lastPeriodStartDate: "2026-06-05", dueDate: "" })).toBe(true);
+  });
+
+  it("is changed when switching from clinician to LMP even with a plausible last-period date", () => {
+    expect(isDatingUnchanged(record, { method: "lmp", lastPeriodStartDate: "2026-06-05", dueDate: "" })).toBe(false);
   });
 });
 

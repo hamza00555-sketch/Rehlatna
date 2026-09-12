@@ -29,9 +29,16 @@ export async function PATCH(req: Request) {
     if (!resolved.ok) return fail(resolved.error, 400);
     const { dueDate: next, datingMethod, lastPeriodStartDate } = resolved.value;
 
-    // previous/dueDateChanged/saved are recomputed on every compare-and-set retry
-    // (see commit()) from whichever read actually won, never from a stale
-    // snapshot taken before the loop — otherwise a concurrent edit A→B landing
+    // Fast path: a true no-op (checked against the snapshot this request already
+    // holds) skips the write entirely — no version bump, no history entry.
+    const snapshot = ctx.data.pregnancy;
+    if (snapshot.dueDate === next && snapshot.datingMethod === datingMethod && snapshot.lastPeriodStartDate === lastPeriodStartDate) {
+      return ok({ saved: false, dueDateChanged: false });
+    }
+
+    // For an actual write, previous/dueDateChanged/saved are recomputed on every
+    // compare-and-set retry (see commit()) from whichever read actually won,
+    // never from the snapshot above — otherwise a concurrent edit A→B landing
     // mid-retry would make this request record A→C in history instead of B→C.
     let previous = "";
     let dueDateChanged = false;
