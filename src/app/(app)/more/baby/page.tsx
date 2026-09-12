@@ -10,6 +10,7 @@ import { TaskRow, RowGroup } from "@/components/ui/TaskRow";
 import { PrivacyNotice } from "@/components/ui/PrivacyNotice";
 import { DateText, Num, TimeText } from "@/components/ui/Num";
 import { Icon } from "@/components/icons/Icon";
+import { PregnancyDatingEditor } from "@/components/more/PregnancyEditors";
 import { m, days } from "@/i18n";
 import styles from "../more.module.css";
 
@@ -73,6 +74,10 @@ export default async function BabyProfilePage() {
             )}
           </div>
         </div>
+
+        {!born && canEdit && (
+          <PregnancyDatingEditor dueDate={pregnancy.dueDate} datingMethod={pregnancy.datingMethod} lastPeriodStartDate={pregnancy.lastPeriodStartDate} today={ctx.today} canEdit={canEdit} />
+        )}
 
         <RowGroup>
           <TaskRow title={m.family.babyName} meta={baby.displayName ?? m.name.keepNeutral} href={canEdit ? "/journey/name" : undefined} leading={<Icon name="edit" size={20} />} />

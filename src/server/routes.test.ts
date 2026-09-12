@@ -1,5 +1,8 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { rmSync } from "node:fs";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * Route handlers are exercised end to end against the in-memory demo store.
@@ -21,6 +24,7 @@ import { ensureDemoSeeded } from "@/server/demo";
 import { DEMO_HOUSEHOLD_PREGNANCY, DEMO_HOUSEHOLD_POSTPARTUM } from "@/fixtures/demo";
 import { readHousehold, writeHousehold } from "@/server/store";
 import { readAppearanceCookie, resolveAppearance } from "@/server/session";
+import { todayIso, addDays } from "@/domain/dates";
 import { PATCH as patchSettings } from "@/app/api/household/settings/route";
 import { POST as createTask } from "@/app/api/postpartum-tasks/route";
 import { PATCH as toggleTask } from "@/app/api/postpartum-tasks/[id]/route";
@@ -30,6 +34,21 @@ import { POST as confirmBirth } from "@/app/api/birth/route";
 import { POST as createGoal } from "@/app/api/finance/goals/route";
 import { POST as createPreparation } from "@/app/api/preparation/route";
 import { PATCH as patchMember } from "@/app/api/household/members/[id]/route";
+import { PATCH as patchPregnancy } from "@/app/api/pregnancy/route";
+import { POST as onboardHousehold } from "@/app/api/onboarding/route";
+
+// Onboarding always writes through the "live" file store (never the demo
+// cookie's mode) — point it at a scratch file so these tests never touch
+// the repo's own .data/store.json.
+const liveStoreFile = join(tmpdir(), `rehlatna-onboarding-test-${process.pid}.json`);
+process.env.DATA_FILE = liveStoreFile;
+afterAll(() => {
+  try {
+    rmSync(liveStoreFile, { force: true });
+  } catch {
+    /* best effort cleanup */
+  }
+});
 
 const act = (householdId: string, memberId: string) => {
   cookieValue = JSON.stringify({ householdId, memberId, mode: "demo" });
@@ -226,5 +245,111 @@ describe("appearance survives a stale store instance", () => {
     expect(second.status).toBe(200);
     const afterSecond = setCookieValue(second, "rj_appearance");
     expect(JSON.parse(afterSecond!)).toEqual({ theme: "dark", reduceMotion: true });
+  });
+});
+
+describe("pregnancy dating — PATCH /api/pregnancy", () => {
+  it("derives dueDate from LMP server-side and records the method, ignoring any client-computed date", async () => {
+    act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
+    const lastPeriodStartDate = addDays(todayIso(), -60);
+    const res = await patchPregnancy(json({ datingMethod: "lmp", lastPeriodStartDate, dueDate: "1999-01-01" }));
+    expect(res.status).toBe(200);
+    const data = await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY);
+    expect(data!.pregnancy!.dueDate).toBe(addDays(lastPeriodStartDate, 280));
+    expect(data!.pregnancy!.datingMethod).toBe("lmp");
+    expect(data!.pregnancy!.lastPeriodStartDate).toBe(lastPeriodStartDate);
+  });
+
+  it("rejects a future LMP date with a clear error code", async () => {
+    act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
+    const res = await patchPregnancy(json({ datingMethod: "lmp", lastPeriodStartDate: addDays(todayIso(), 1) }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("lmp_in_future");
+  });
+
+  it("rejects an LMP date more than 294 days in the past", async () => {
+    act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
+    const res = await patchPregnancy(json({ datingMethod: "lmp", lastPeriodStartDate: addDays(todayIso(), -295) }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("lmp_too_old");
+  });
+
+  it("accepts an LMP date exactly 294 days back and exactly today (inclusive boundaries)", async () => {
+    act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
+    const oldest = await patchPregnancy(json({ datingMethod: "lmp", lastPeriodStartDate: addDays(todayIso(), -294) }));
+    expect(oldest.status).toBe(200);
+    const today = await patchPregnancy(json({ datingMethod: "lmp", lastPeriodStartDate: todayIso() }));
+    expect(today.status).toBe(200);
+  });
+
+  it("accepts a clinician-confirmed due date directly and keeps the due-date history mechanism unchanged", async () => {
+    act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
+    const before = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
+    const previousDue = before.pregnancy!.dueDate;
+    const nextDue = addDays(previousDue, 3);
+    const res = await patchPregnancy(json({ datingMethod: "clinician", dueDate: nextDue }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.changed).toBe(true);
+    expect(body.weekBefore).toBeDefined();
+    expect(body.weekAfter).toBeDefined();
+    const after = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
+    expect(after.pregnancy!.dueDate).toBe(nextDue);
+    expect(after.pregnancy!.datingMethod).toBe("clinician");
+    expect(after.pregnancy!.lastPeriodStartDate).toBeUndefined();
+    expect(after.pregnancy!.dueDateHistory.at(-1)).toMatchObject({ previous: previousDue, next: nextDue });
+  });
+
+  it("fills in dating metadata for an old record without shifting its due date, appointments, or history", async () => {
+    act(DEMO_HOUSEHOLD_PREGNANCY, "demo_m_mother");
+    const before = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
+    expect(before.pregnancy!.datingMethod).toBeUndefined();
+    const historyLengthBefore = before.pregnancy!.dueDateHistory.length;
+    const appointmentsBefore = before.appointments.length;
+    const res = await patchPregnancy(json({ datingMethod: "clinician", dueDate: before.pregnancy!.dueDate }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).changed).toBe(false);
+    const after = (await readHousehold("demo", DEMO_HOUSEHOLD_PREGNANCY))!;
+    expect(after.pregnancy!.dueDate).toBe(before.pregnancy!.dueDate);
+    expect(after.pregnancy!.datingMethod).toBe("clinician");
+    expect(after.pregnancy!.dueDateHistory.length).toBe(historyLengthBefore);
+    expect(after.appointments.length).toBe(appointmentsBefore);
+  });
+});
+
+describe("onboarding creates a household from either dating method", () => {
+  const baseInput = {
+    creator: { displayName: "أم", roles: ["mother"] },
+    finance: { enabled: false, shared: false },
+    followUpCity: "مدينة",
+    deliveryCity: "مدينة",
+  };
+
+  it("derives dueDate from LMP server-side, never trusting a client-supplied due date", async () => {
+    const lastPeriodStartDate = addDays(todayIso(), -70);
+    const res = await onboardHousehold(json({ ...baseInput, dating: { datingMethod: "lmp", lastPeriodStartDate } }));
+    expect(res.status).toBe(200);
+    const { householdId } = await res.json();
+    const data = await readHousehold("live", householdId);
+    expect(data!.pregnancy!.dueDate).toBe(addDays(lastPeriodStartDate, 280));
+    expect(data!.pregnancy!.datingMethod).toBe("lmp");
+    expect(data!.pregnancy!.lastPeriodStartDate).toBe(lastPeriodStartDate);
+  });
+
+  it("accepts a clinician-confirmed due date, for irregular cycles", async () => {
+    const dueDate = addDays(todayIso(), 120);
+    const res = await onboardHousehold(json({ ...baseInput, dating: { datingMethod: "clinician", dueDate } }));
+    expect(res.status).toBe(200);
+    const { householdId } = await res.json();
+    const data = await readHousehold("live", householdId);
+    expect(data!.pregnancy!.dueDate).toBe(dueDate);
+    expect(data!.pregnancy!.datingMethod).toBe("clinician");
+    expect(data!.pregnancy!.lastPeriodStartDate).toBeUndefined();
+  });
+
+  it("rejects an LMP date more than 294 days in the past before creating anything", async () => {
+    const res = await onboardHousehold(json({ ...baseInput, dating: { datingMethod: "lmp", lastPeriodStartDate: addDays(todayIso(), -400) } }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("lmp_too_old");
   });
 });

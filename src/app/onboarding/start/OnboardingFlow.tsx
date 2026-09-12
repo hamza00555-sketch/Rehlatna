@@ -2,14 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { HouseholdRole } from "@/domain/types";
+import type { DatingMethod, HouseholdRole } from "@/domain/types";
 import { addDays } from "@/domain/dates";
-import { pregnancyProgress, GESTATION_DAYS } from "@/domain/pregnancy";
+import { pregnancyProgress, dueDateFromLmp, GESTATION_DAYS, LMP_MAX_PAST_DAYS } from "@/domain/pregnancy";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { CalendarPicker } from "@/components/ui/CalendarPicker";
 import { ChoiceCard, ChoiceGroup } from "@/components/ui/ChoiceCard";
 import { Field, TextInput } from "@/components/ui/Field";
+import { DateText } from "@/components/ui/Num";
 import { Toggle } from "@/components/ui/Toggle";
 import { PrivacyNotice } from "@/components/ui/PrivacyNotice";
 import { Icon } from "@/components/icons/Icon";
@@ -23,6 +24,9 @@ type Step = "story" | "dueDate" | "household" | "finance" | "cities";
 const STEPS: Step[] = ["story", "dueDate", "household", "finance", "cities"];
 
 interface FormState {
+  datingMethod: DatingMethod;
+  lastPeriodStartDate?: string;
+  /** Only used when datingMethod === "clinician". */
   dueDate?: string;
   creatorName: string;
   creatorRole: HouseholdRole;
@@ -50,6 +54,7 @@ export function OnboardingFlow({ today }: { today: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>({
+    datingMethod: "lmp",
     creatorName: "",
     creatorRole: "mother",
     hasPartner: true,
@@ -66,11 +71,12 @@ export function OnboardingFlow({ today }: { today: string }) {
   const step = STEPS[stepIndex]!;
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
-  const progress = useMemo(() => (form.dueDate ? pregnancyProgress(form.dueDate, today) : null), [form.dueDate, today]);
+  const resolvedDueDate = form.datingMethod === "lmp" ? (form.lastPeriodStartDate ? dueDateFromLmp(form.lastPeriodStartDate) : undefined) : form.dueDate;
+  const progress = useMemo(() => (resolvedDueDate ? pregnancyProgress(resolvedDueDate, today) : null), [resolvedDueDate, today]);
 
   const canContinue =
     step === "story" ||
-    (step === "dueDate" && Boolean(form.dueDate)) ||
+    (step === "dueDate" && Boolean(resolvedDueDate)) ||
     (step === "household" && form.creatorName.trim().length > 0 && (!form.hasPartner || form.partnerName.trim().length > 0)) ||
     step === "finance" ||
     (step === "cities" && form.followUpCity.trim().length > 0 && (form.sameCity || form.deliveryCity.trim().length > 0));
@@ -84,7 +90,10 @@ export function OnboardingFlow({ today }: { today: string }) {
     setBusy(true);
     try {
       await api("/api/onboarding", {
-        dueDate: form.dueDate,
+        dating:
+          form.datingMethod === "lmp"
+            ? { datingMethod: "lmp" as const, lastPeriodStartDate: form.lastPeriodStartDate }
+            : { datingMethod: "clinician" as const, dueDate: form.dueDate },
         creator: { displayName: form.creatorName.trim(), roles: [form.creatorRole] },
         partner: form.hasPartner ? { displayName: form.partnerName.trim(), roles: [form.partnerRole] } : undefined,
         finance: {
@@ -135,24 +144,40 @@ export function OnboardingFlow({ today }: { today: string }) {
       {step === "dueDate" && (
         <section className={styles.step}>
           <header className={styles.header}>
-            <h1 className={styles.title}>{m.onboarding.dueDateTitle}</h1>
-            <p className={styles.help}>{m.onboarding.dueDateHelp}</p>
+            <h1 className={styles.title}>{form.datingMethod === "lmp" ? m.onboarding.lmpTitle : m.onboarding.dueDateTitle}</h1>
+            <p className={styles.help}>{form.datingMethod === "lmp" ? m.onboarding.lmpHelp : m.onboarding.dueDateHelp}</p>
           </header>
-          <CalendarPicker
-            value={form.dueDate}
-            onChange={(iso) => set("dueDate", iso)}
-            min={today}
-            max={addDays(today, GESTATION_DAYS + 14)}
-            today={today}
-            label={m.onboarding.dueDateLabel}
-          />
+          {form.datingMethod === "lmp" ? (
+            <CalendarPicker
+              value={form.lastPeriodStartDate}
+              onChange={(iso) => set("lastPeriodStartDate", iso)}
+              min={addDays(today, -LMP_MAX_PAST_DAYS)}
+              max={today}
+              today={today}
+              label={m.onboarding.lmpLabel}
+            />
+          ) : (
+            <CalendarPicker
+              value={form.dueDate}
+              onChange={(iso) => set("dueDate", iso)}
+              min={today}
+              max={addDays(today, GESTATION_DAYS + 14)}
+              today={today}
+              label={m.onboarding.dueDateLabel}
+            />
+          )}
           <div className={styles.preview} aria-live="polite">
-            {progress ? (
-              <span className={styles.previewChip}>{m.onboarding.weekPreview(progress.week, progress.dayOfWeek)}</span>
+            {progress && resolvedDueDate ? (
+              <span className={styles.previewChip}>
+                {m.onboarding.gestationalAgePreview(progress.week, progress.gestationalDays % 7)} · {m.onboarding.dueDatePreviewLabel}: <DateText iso={resolvedDueDate} style="long" />
+              </span>
             ) : (
-              <span className={styles.previewHint}>{m.onboarding.dueDateLabel}</span>
+              <span className={styles.previewHint}>{form.datingMethod === "lmp" ? m.onboarding.lmpLabel : m.onboarding.dueDateLabel}</span>
             )}
           </div>
+          <Button variant="quiet" onClick={() => set("datingMethod", form.datingMethod === "lmp" ? "clinician" : "lmp")}>
+            {form.datingMethod === "lmp" ? m.onboarding.useClinicianDate : m.onboarding.useLmpDate}
+          </Button>
         </section>
       )}
 

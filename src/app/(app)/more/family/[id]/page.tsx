@@ -8,7 +8,7 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { PrivacyNotice } from "@/components/ui/PrivacyNotice";
 import { DateText, Num } from "@/components/ui/Num";
 import { MemberEditor } from "@/components/more/MemberEditor";
-import { CitiesEditor, DueDateEditor, HealthEditor } from "@/components/more/PregnancyEditors";
+import { CitiesEditor, HealthEditor, PregnancyDatingEditor } from "@/components/more/PregnancyEditors";
 import { m } from "@/i18n";
 import styles from "../../more.module.css";
 
@@ -55,7 +55,7 @@ export default async function MemberPage({ params }: Params) {
             </div>
             {!ctx.data.baby?.birthDate && (
               <div className={styles.actions}>
-                <DueDateEditor dueDate={p.dueDate} canEdit={canEditJourney} />
+                <PregnancyDatingEditor dueDate={p.dueDate} datingMethod={p.datingMethod} lastPeriodStartDate={p.lastPeriodStartDate} today={ctx.today} canEdit={canEditJourney} />
                 <CitiesEditor followUpCity={p.followUpCity} deliveryCity={p.deliveryCity} canEdit={canEditJourney} />
               </div>
             )}

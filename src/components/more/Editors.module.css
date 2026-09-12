@@ -22,6 +22,11 @@
   font-size: var(--text-body-small);
   font-weight: var(--weight-medium);
 }
+.error {
+  color: var(--t-danger-text);
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+}
 .readiness {
   display: flex;
   flex-direction: column;

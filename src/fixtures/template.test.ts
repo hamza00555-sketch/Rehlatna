@@ -10,13 +10,14 @@ describe("template-first household", () => {
   it("is built entirely from onboarding input", () => {
     const data = createHouseholdFromOnboarding(
       {
-        dueDate: "2027-05-10",
+        dating: { datingMethod: "clinician", dueDate: "2027-05-10" },
         creator: { displayName: "أ", roles: ["mother"] },
         partner: { displayName: "ب", roles: ["partner"] },
         finance: { enabled: true, owner: "partner", shared: false },
         followUpCity: "مدينة 1",
         deliveryCity: "مدينة 2",
       },
+      { dueDate: "2027-05-10", datingMethod: "clinician" },
       ids,
       "2026-09-05T00:00:00.000Z",
     );
@@ -35,7 +36,14 @@ describe("template-first household", () => {
 
   it("gives the creator the finance role when they own it", () => {
     const data = createHouseholdFromOnboarding(
-      { dueDate: "2027-05-10", creator: { displayName: "أ", roles: ["partner"] }, finance: { enabled: true, owner: "creator", shared: true }, followUpCity: "x", deliveryCity: "x" },
+      {
+        dating: { datingMethod: "clinician", dueDate: "2027-05-10" },
+        creator: { displayName: "أ", roles: ["partner"] },
+        finance: { enabled: true, owner: "creator", shared: true },
+        followUpCity: "x",
+        deliveryCity: "x",
+      },
+      { dueDate: "2027-05-10", datingMethod: "clinician" },
       ids,
       "2026-09-05T00:00:00.000Z",
     );

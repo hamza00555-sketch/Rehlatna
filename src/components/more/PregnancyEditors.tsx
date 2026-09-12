@@ -2,48 +2,100 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { DatingMethod } from "@/domain/types";
+import { addDays } from "@/domain/dates";
+import { pregnancyProgress, dueDateFromLmp, GESTATION_DAYS, LMP_MAX_PAST_DAYS } from "@/domain/pregnancy";
 import { Button } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/ui/Sheet";
-import { Field, DateInput, TextInput } from "@/components/ui/Field";
+import { CalendarPicker } from "@/components/ui/CalendarPicker";
+import { ChoiceCard, ChoiceGroup } from "@/components/ui/ChoiceCard";
+import { Field, TextInput } from "@/components/ui/Field";
 import { PrivacyNotice } from "@/components/ui/PrivacyNotice";
 import { Toggle } from "@/components/ui/Toggle";
-import { Num } from "@/components/ui/Num";
-import { api } from "@/lib/api";
+import { DateText, Num } from "@/components/ui/Num";
+import { api, ApiError } from "@/lib/api";
 import { m } from "@/i18n";
 import styles from "./Editors.module.css";
 
-/** Due-date edits are explained: the displayed week changes; stored records do not. */
-export function DueDateEditor({ dueDate, canEdit }: { dueDate: string; canEdit: boolean }) {
+interface PregnancyDatingEditorProps {
+  dueDate: string;
+  datingMethod?: DatingMethod;
+  lastPeriodStartDate?: string;
+  today: string;
+  canEdit: boolean;
+}
+
+/**
+ * Pregnancy dating edits are explained: the displayed week changes; stored
+ * appointments and records do not. Old records without an LMP value open on
+ * the clinician-confirmed tab — they are never shown as if LMP was entered.
+ */
+export function PregnancyDatingEditor({ dueDate, datingMethod, lastPeriodStartDate, today, canEdit }: PregnancyDatingEditorProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(dueDate);
+  const startsOnLmp = datingMethod === "lmp" && Boolean(lastPeriodStartDate);
+  const [method, setMethod] = useState<DatingMethod>(startsOnLmp ? "lmp" : "clinician");
+  const [lmp, setLmp] = useState(startsOnLmp ? lastPeriodStartDate! : "");
+  const [clinicianDate, setClinicianDate] = useState(dueDate);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ weekBefore: number; weekAfter: number } | null>(null);
   if (!canEdit) return null;
+
+  const resolvedDueDate = method === "lmp" ? (lmp ? dueDateFromLmp(lmp) : undefined) : clinicianDate || undefined;
+  const progress = resolvedDueDate ? pregnancyProgress(resolvedDueDate, today) : null;
+  const unchanged = method === "lmp" ? startsOnLmp && lmp === lastPeriodStartDate : !startsOnLmp && clinicianDate === dueDate;
+  const canSave = Boolean(resolvedDueDate) && !unchanged;
+
   return (
     <>
       <Button variant="outline" fullWidth onClick={() => setOpen(true)}>
-        {m.family.editDueDate}
+        {m.family.editPregnancyDating}
       </Button>
-      <BottomSheet open={open} onClose={() => setOpen(false)} title={m.family.editDueDate}>
-        <Field id="due-edit" label={m.family.dueDate} help={m.onboarding.dueDateHelp}>
-          <DateInput id="due-edit" value={value} onChange={(e) => setValue(e.target.value)} />
-        </Field>
+      <BottomSheet open={open} onClose={() => setOpen(false)} title={m.family.editPregnancyDating}>
+        <ChoiceGroup legend={m.onboarding.datingMethodLabel} columns={2}>
+          <ChoiceCard name="dating-method" value="lmp" checked={method === "lmp"} onChange={() => setMethod("lmp")} title={m.onboarding.lmpTabLabel} />
+          <ChoiceCard name="dating-method" value="clinician" checked={method === "clinician"} onChange={() => setMethod("clinician")} title={m.onboarding.clinicianTabLabel} />
+        </ChoiceGroup>
+        {method === "lmp" ? (
+          <>
+            <CalendarPicker value={lmp || undefined} onChange={setLmp} min={addDays(today, -LMP_MAX_PAST_DAYS)} max={today} today={today} label={m.onboarding.lmpLabel} />
+            <p className={styles.headMeta}>{m.onboarding.lmpHelp}</p>
+          </>
+        ) : (
+          <CalendarPicker value={clinicianDate || undefined} onChange={setClinicianDate} min={addDays(today, -LMP_MAX_PAST_DAYS)} max={addDays(today, GESTATION_DAYS + 14)} today={today} label={m.onboarding.dueDateLabel} />
+        )}
+        {progress && resolvedDueDate && (
+          <PrivacyNotice variant="general">
+            {m.onboarding.gestationalAgePreview(progress.week, progress.gestationalDays % 7)} · {m.onboarding.dueDatePreviewLabel}: <DateText iso={resolvedDueDate} style="long" />
+          </PrivacyNotice>
+        )}
         {result && (
           <PrivacyNotice variant="general">
             {m.family.dueDateChanged} {m.today.weekLabel} <Num value={result.weekBefore} /> → <Num value={result.weekAfter} />
           </PrivacyNotice>
         )}
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
         <Button
           fullWidth
           loading={busy}
-          disabled={value === dueDate}
+          disabled={!canSave}
           onClick={async () => {
             setBusy(true);
+            setError(null);
             try {
-              const res = await api<{ changed: boolean; weekBefore?: number; weekAfter?: number }>("/api/pregnancy", { dueDate: value }, "PATCH");
+              const body = method === "lmp" ? { datingMethod: "lmp" as const, lastPeriodStartDate: lmp } : { datingMethod: "clinician" as const, dueDate: clinicianDate };
+              const res = await api<{ changed: boolean; weekBefore?: number; weekAfter?: number }>("/api/pregnancy", body, "PATCH");
               if (res.changed && res.weekBefore !== undefined && res.weekAfter !== undefined) setResult({ weekBefore: res.weekBefore, weekAfter: res.weekAfter });
               router.refresh();
+            } catch (err) {
+              if (err instanceof ApiError && err.code === "lmp_in_future") setError(m.onboarding.lmpFutureError);
+              else if (err instanceof ApiError && err.code === "lmp_too_old") setError(m.onboarding.lmpTooOldError);
+              else setError(m.common.error);
             } finally {
               setBusy(false);
             }

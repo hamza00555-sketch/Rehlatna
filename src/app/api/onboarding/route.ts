@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { onboardingSchema } from "@/schemas";
 import { createHouseholdFromOnboarding } from "@/fixtures/empty";
+import { todayIso } from "@/domain/dates";
+import { resolveDating } from "@/domain/pregnancy";
 import { parseBody } from "@/server/http";
 import { newId, nowIso } from "@/server/ids";
 import { clearedSessionCookie, sessionCookie } from "@/server/session";
@@ -12,6 +14,8 @@ import { fail } from "@/server/http";
 export async function POST(req: Request) {
   const parsed = await parseBody(req, onboardingSchema);
   if (!parsed.ok) return parsed.res;
+  const dating = resolveDating(parsed.data.dating, todayIso());
+  if (!dating.ok) return fail(dating.error, 400);
   const user = await getAuthUser();
   if (supabaseConfigured() && !user) return fail("unauthenticated", 401);
 
@@ -22,7 +26,7 @@ export async function POST(req: Request) {
     pregnancy: newId("prg"),
     baby: newId("bby"),
   };
-  const data = createHouseholdFromOnboarding(parsed.data, ids, nowIso());
+  const data = createHouseholdFromOnboarding(parsed.data, dating.value, ids, nowIso());
   if (user) {
     // The creator's member record carries the real auth identity.
     data.users[0]!.id = user.id;

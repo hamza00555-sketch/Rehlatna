@@ -1,4 +1,4 @@
-import type { IsoDate } from "./types";
+import type { DatingMethod, IsoDate } from "./types";
 import { addDays, daysBetween } from "./dates";
 
 /**
@@ -33,6 +33,42 @@ export interface PregnancyProgress {
 
 export function lmpFromDueDate(dueDate: IsoDate): IsoDate {
   return addDays(dueDate, -GESTATION_DAYS);
+}
+
+/** A last-period date older than this cannot still describe an ongoing (undelivered) pregnancy. */
+export const LMP_MAX_PAST_DAYS = 294;
+
+export function dueDateFromLmp(lastPeriodStartDate: IsoDate): IsoDate {
+  return addDays(lastPeriodStartDate, GESTATION_DAYS);
+}
+
+export type LmpDateError = "lmp_in_future" | "lmp_too_old";
+
+/** Never trust a client-computed due date: both onboarding and the edit endpoint re-derive it from this. */
+export function validateLmpDate(lastPeriodStartDate: IsoDate, today: IsoDate): LmpDateError | null {
+  if (lastPeriodStartDate > today) return "lmp_in_future";
+  if (daysBetween(lastPeriodStartDate, today) > LMP_MAX_PAST_DAYS) return "lmp_too_old";
+  return null;
+}
+
+export type DatingInput = { datingMethod: "lmp"; lastPeriodStartDate: IsoDate } | { datingMethod: "clinician"; dueDate: IsoDate };
+
+export interface ResolvedDating {
+  dueDate: IsoDate;
+  datingMethod: DatingMethod;
+  lastPeriodStartDate?: IsoDate;
+}
+
+export function resolveDating(input: DatingInput, today: IsoDate): { ok: true; value: ResolvedDating } | { ok: false; error: LmpDateError } {
+  if (input.datingMethod === "clinician") {
+    return { ok: true, value: { dueDate: input.dueDate, datingMethod: "clinician" } };
+  }
+  const error = validateLmpDate(input.lastPeriodStartDate, today);
+  if (error) return { ok: false, error };
+  return {
+    ok: true,
+    value: { dueDate: dueDateFromLmp(input.lastPeriodStartDate), datingMethod: "lmp", lastPeriodStartDate: input.lastPeriodStartDate },
+  };
 }
 
 export function dateForGestationalDay(dueDate: IsoDate, day: number): IsoDate {

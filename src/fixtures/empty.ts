@@ -1,14 +1,17 @@
 import type { HouseholdData, HouseholdMember, Pregnancy, User } from "@/domain/types";
 import { permissionsForRoles } from "@/domain/permissions";
+import type { ResolvedDating } from "@/domain/pregnancy";
 import { appConfig } from "@/config/app";
 import type { OnboardingInput } from "@/schemas";
 
 /**
  * Builds a REAL household from onboarding input. This is the respectful
  * empty/setup state every new family starts from — no demo content.
+ * `dating` is the server-resolved due date (never the client's raw input).
  */
 export function createHouseholdFromOnboarding(
   input: OnboardingInput,
+  dating: ResolvedDating,
   ids: { household: string; users: [string, string]; members: [string, string]; pregnancy: string; baby: string },
   now: string,
 ): HouseholdData {
@@ -50,7 +53,9 @@ export function createHouseholdFromOnboarding(
   const pregnancy: Pregnancy = {
     id: ids.pregnancy,
     householdId,
-    dueDate: input.dueDate,
+    dueDate: dating.dueDate,
+    datingMethod: dating.datingMethod,
+    lastPeriodStartDate: dating.lastPeriodStartDate,
     followUpCity: input.followUpCity,
     deliveryCity: input.deliveryCity,
     mode: "pregnancy",

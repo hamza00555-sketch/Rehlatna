@@ -395,15 +395,17 @@ export function demoPostpartumHousehold(today: string): HouseholdData {
 
 /** A just-onboarded household (week ~8): the respectful empty state, for demos and QA. */
 export function demoFreshHousehold(today: string): HouseholdData {
+  const dueDate = addDays(today, 280 - 8 * 7 - 2);
   return createHouseholdFromOnboarding(
     {
-      dueDate: addDays(today, 280 - 8 * 7 - 2),
+      dating: { datingMethod: "clinician", dueDate },
       creator: { displayName: "نورة", roles: ["mother"] },
       partner: { displayName: "فيصل", roles: ["partner"] },
       finance: { enabled: true, owner: "partner", shared: false },
       followUpCity: "الطائف",
       deliveryCity: "الطائف",
     },
+    { dueDate, datingMethod: "clinician" },
     {
       household: DEMO_HOUSEHOLD_FRESH,
       users: ["demo_u_fresh_mother", "demo_u_fresh_partner"],

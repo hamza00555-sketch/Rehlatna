@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lmpFromDueDate, postpartumAge, pregnancyProgress } from "./pregnancy";
+import { dueDateFromLmp, lmpFromDueDate, postpartumAge, pregnancyProgress, resolveDating, validateLmpDate } from "./pregnancy";
 import { addDays } from "./dates";
 
 describe("pregnancy progress", () => {
@@ -43,6 +43,63 @@ describe("pregnancy progress", () => {
     const lmp = lmpFromDueDate(due);
     expect(pregnancyProgress(due, addDays(lmp, 3 * 7)).mediaWeek).toBe(3);
     expect(pregnancyProgress(due, addDays(lmp, 41 * 7)).mediaWeek).toBe(40);
+  });
+});
+
+describe("dueDateFromLmp", () => {
+  it("adds exactly 280 days and inverts lmpFromDueDate", () => {
+    const due = "2027-06-15";
+    expect(dueDateFromLmp(lmpFromDueDate(due))).toBe(due);
+  });
+
+  it("carries a leap-year February and a year boundary forward correctly", () => {
+    // Nov 10 2027 + 280 days runs through Feb 2028 (a leap year, 29 days) and
+    // the 2027→2028 new year — hand-verified against the calendar, not derived
+    // from addDays itself.
+    expect(dueDateFromLmp("2027-11-10")).toBe("2028-08-16");
+  });
+
+  it("does not add an extra day when the span does not include Feb 29", () => {
+    // 2026 is not a leap year: LMP inside it should not be one day short.
+    expect(dueDateFromLmp("2026-01-01")).toBe(addDays("2026-01-01", 280));
+  });
+});
+
+describe("validateLmpDate", () => {
+  const today = "2027-03-20";
+
+  it("accepts a date in the past and rejects a date in the future", () => {
+    expect(validateLmpDate(addDays(today, -1), today)).toBeNull();
+    expect(validateLmpDate(today, today)).toBeNull();
+    expect(validateLmpDate(addDays(today, 1), today)).toBe("lmp_in_future");
+  });
+
+  it("accepts exactly 294 days back and rejects 295, crossing a leap February and a year boundary", () => {
+    // today = 2028-03-01; 294 days back lands on 2027-05-12, a span that
+    // includes Feb 29 2028 and the 2027→2028 boundary — hand-verified.
+    const boundaryToday = "2028-03-01";
+    expect(validateLmpDate("2027-05-12", boundaryToday)).toBeNull();
+    expect(validateLmpDate("2027-05-11", boundaryToday)).toBe("lmp_too_old");
+  });
+});
+
+describe("resolveDating", () => {
+  const today = "2027-03-20";
+
+  it("derives dueDate from a valid LMP and tags the method", () => {
+    const lastPeriodStartDate = addDays(today, -100);
+    const result = resolveDating({ datingMethod: "lmp", lastPeriodStartDate }, today);
+    expect(result).toEqual({ ok: true, value: { dueDate: dueDateFromLmp(lastPeriodStartDate), datingMethod: "lmp", lastPeriodStartDate } });
+  });
+
+  it("passes a clinician-confirmed due date through unchanged, without an LMP field", () => {
+    const result = resolveDating({ datingMethod: "clinician", dueDate: "2027-09-01" }, today);
+    expect(result).toEqual({ ok: true, value: { dueDate: "2027-09-01", datingMethod: "clinician" } });
+  });
+
+  it("surfaces the LMP validation error instead of deriving a due date", () => {
+    const result = resolveDating({ datingMethod: "lmp", lastPeriodStartDate: addDays(today, 5) }, today);
+    expect(result).toEqual({ ok: false, error: "lmp_in_future" });
   });
 });
 

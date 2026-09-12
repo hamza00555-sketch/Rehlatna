@@ -39,10 +39,21 @@ export const permissionSchema = z.enum([
 ]);
 export const genderSchema = z.enum(["boy", "girl", "unknown", "undisclosed"]);
 
+/**
+ * How a pregnancy's due date is established. The client sends the raw
+ * method + value; the server always re-derives `dueDate` itself (see
+ * resolveDating in @/domain/pregnancy) — a client-computed due date is never trusted.
+ */
+export const datingInputSchema = z.discriminatedUnion("datingMethod", [
+  z.object({ datingMethod: z.literal("lmp"), lastPeriodStartDate: isoDate }),
+  z.object({ datingMethod: z.literal("clinician"), dueDate: isoDate }),
+]);
+export type DatingInput = z.infer<typeof datingInputSchema>;
+
 // --- Onboarding --------------------------------------------------------------
 
 export const onboardingSchema = z.object({
-  dueDate: isoDate,
+  dating: datingInputSchema,
   creator: z.object({
     displayName: shortText,
     roles: z.array(householdRoleSchema).min(1),
@@ -67,7 +78,6 @@ export type OnboardingInput = z.infer<typeof onboardingSchema>;
 
 // --- Pregnancy / baby --------------------------------------------------------
 
-export const dueDateUpdateSchema = z.object({ dueDate: isoDate });
 export const careLogSchema = z.object({
   key: z.string().min(1).max(40),
   state: z.enum(["done", "discussed", "skipped"]).nullable(),

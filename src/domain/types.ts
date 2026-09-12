@@ -77,6 +77,9 @@ export type JourneyMode = "setup" | "pregnancy" | "birth_transition" | "postpart
 
 export type BabyGender = "boy" | "girl" | "unknown" | "undisclosed";
 
+/** How `dueDate` was established. Absent on records predating this field — never assume "lmp" for those. */
+export type DatingMethod = "lmp" | "clinician";
+
 export interface DueDateChange {
   previous: IsoDate;
   next: IsoDate;
@@ -87,6 +90,10 @@ export interface Pregnancy {
   id: Id;
   householdId: Id;
   dueDate: IsoDate;
+  /** Optional, backward-compatible: how `dueDate` was derived. */
+  datingMethod?: DatingMethod;
+  /** First day of the last menstrual period. Present only when `datingMethod` is "lmp". */
+  lastPeriodStartDate?: IsoDate;
   /** Where routine follow-up happens. Independent from deliveryCity. */
   followUpCity: string;
   /** Where delivery is planned. Independent from followUpCity. */
