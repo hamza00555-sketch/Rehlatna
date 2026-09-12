@@ -85,7 +85,11 @@
   pointer-events: none;
 }
 .hero:has(.trigger:active) .scrim {
-  background: var(--c-hero-scrim-pressed);
+  /* --c-hero-scrim-pressed is the old, lighter curve — it undid the fix above
+     while the trigger is held down (measured: two text spots dropped back
+     below 4.5:1). Same local ramp, uniformly darker, so pressed stays at
+     least as dark as resting at every stop. */
+  background: linear-gradient(180deg, rgba(47, 33, 36, 0.1) 0%, rgba(47, 33, 36, 0.54) 42%, rgba(47, 33, 36, 0.74) 62%, rgba(47, 33, 36, 0.9) 100%);
 }
 .expanded .scrim {
   background: var(--c-expanded-paused-scrim);
