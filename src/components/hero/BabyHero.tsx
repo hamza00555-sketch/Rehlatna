@@ -40,7 +40,7 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
   const [expanded, setExpanded] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const detailsRef = useRef<HTMLDivElement>(null);
+  const sheetWrapRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef<number | null>(null);
   const mediaCtl = useWeeklyMedia(media);
   const [hour, setHour] = useState<number | null>(null);
@@ -74,7 +74,6 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
       setExpanded(false);
       setAnimating(false);
       setDetailsOpen(false);
-      triggerRef.current?.focus();
     };
     if (mediaCtl.reducedMotion) return finish();
     // Target geometry: where the collapsed hero sits (top of the page, current scroll).
@@ -90,11 +89,29 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
     anim.finished.then(finish).catch(finish);
   }, [expanded, mediaCtl.reducedMotion]);
 
+  // Scroll lock + focus in/out. Deliberately NOT dependent on detailsOpen:
+  // toggling the details sheet must not re-run this and steal focus back
+  // to the close button. Focus-return runs in the cleanup, which fires
+  // after React has already committed expanded=false — by then the
+  // trigger button is back in the DOM and triggerRef is populated (unlike
+  // calling it inline from collapse()'s finish(), which always ran before
+  // that commit and so was always a no-op).
   useEffect(() => {
     if (!expanded) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeRef.current?.focus();
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      triggerRef.current?.focus();
+    };
+  }, [expanded]);
+
+  // Escape + Tab handling. Kept separate so re-running it on detailsOpen
+  // changes (needed for Escape's branch) never touches focus or scroll.
+  useEffect(() => {
+    if (!expanded) return;
+    const isVisible = (el: HTMLElement) => !el.closest('[aria-hidden="true"]') && getComputedStyle(el).visibility !== "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (detailsOpen) setDetailsOpen(false);
@@ -107,7 +124,7 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
       const root = rootRef.current;
       if (!root) return;
       const focusables = Array.from(root.querySelectorAll<HTMLElement>('button, a[href], [tabindex]:not([tabindex="-1"])')).filter(
-        (el) => !el.closest("[inert]") && el.offsetParent !== null,
+        (el) => !el.closest("[inert]") && el.offsetParent !== null && isVisible(el),
       );
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
@@ -121,31 +138,47 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
       }
     };
     document.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      document.removeEventListener("keydown", onKey);
-    };
+    return () => document.removeEventListener("keydown", onKey);
   }, [expanded, collapse, detailsOpen]);
 
   const onHandlePointerDown = useCallback((e: ReactPointerEvent) => {
     dragStartY.current = e.clientY;
     e.currentTarget.setPointerCapture(e.pointerId);
-    // Drag must track the finger 1:1 — the open/close transition would
-    // otherwise lag every intermediate frame behind the pointer.
-    if (detailsRef.current) detailsRef.current.style.transition = "none";
+    // Drag the wrap (arrow row + sheet) as one unit, tracking the finger
+    // 1:1 — the open/close transition would otherwise lag every
+    // intermediate frame behind the pointer.
+    if (sheetWrapRef.current) sheetWrapRef.current.style.transition = "none";
   }, []);
   const onHandlePointerMove = useCallback((e: ReactPointerEvent) => {
-    if (dragStartY.current == null || !detailsRef.current) return;
+    if (dragStartY.current == null || !sheetWrapRef.current) return;
     const delta = Math.max(0, e.clientY - dragStartY.current);
-    detailsRef.current.style.transform = delta > 0 ? `translateY(${delta}px)` : "";
+    sheetWrapRef.current.style.transform = `translateY(${delta}px)`;
   }, []);
   const onHandlePointerUp = useCallback((e: ReactPointerEvent) => {
-    if (dragStartY.current == null || !detailsRef.current) return;
+    if (dragStartY.current == null || !sheetWrapRef.current) return;
     const delta = Math.max(0, e.clientY - dragStartY.current);
     dragStartY.current = null;
-    detailsRef.current.style.transform = "";
-    detailsRef.current.style.transition = "";
-    if (delta > 70) setDetailsOpen(false);
+    const wrap = sheetWrapRef.current;
+    const closing = delta > 70;
+    // Re-enable the transition and set the transform straight to the
+    // final resting value (matching the closed/open CSS classes exactly)
+    // — the browser then animates continuously from the dragged position
+    // to that target, never snapping back through 0 first. The inline
+    // override is cleared once that animation settles, handing control
+    // back to the class-driven style with no visible change.
+    wrap.style.transition = "";
+    wrap.style.transform = closing ? "translateY(calc(100% - 64px))" : "translateY(0)";
+    let cleared = false;
+    const clear = () => {
+      if (cleared) return;
+      cleared = true;
+      wrap.style.transition = "";
+      wrap.style.transform = "";
+      wrap.removeEventListener("transitionend", clear);
+    };
+    wrap.addEventListener("transitionend", clear);
+    setTimeout(clear, 500);
+    if (closing) setDetailsOpen(false);
   }, []);
 
   const share = useCallback(async () => {
@@ -287,7 +320,7 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
                 inside it, so it can never overlap the sheet's own content
                 (CTA/boundary) once open — only the row's fixed height peeks
                 above the panel while closed. */}
-            <div className={cx(styles.sheetWrap, detailsOpen && styles.sheetWrapOpen)}>
+            <div ref={sheetWrapRef} className={cx(styles.sheetWrap, detailsOpen && styles.sheetWrapOpen)}>
               <div className={styles.detailsToggleRow}>
                 <button
                   type="button"
@@ -301,7 +334,7 @@ export function BabyHero({ vm, baby, member, todayIso, audience = "mother" }: Pr
                 </button>
               </div>
 
-              <div id="baby-hero-details" ref={detailsRef} className={styles.sheet} inert={!detailsOpen} aria-hidden={!detailsOpen}>
+              <div id="baby-hero-details" className={styles.sheet} inert={!detailsOpen} aria-hidden={!detailsOpen}>
                 <div
                   className={styles.handle}
                   aria-hidden="true"
