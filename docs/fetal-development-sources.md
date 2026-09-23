@@ -41,3 +41,20 @@ Mayo Clinic's week-by-week articles were not reachable (403) and are not cited.
 ## Review
 
 All entries stay `medicallyReviewed: false` until a clinician signs off.
+
+## Images
+
+`public/media/weekly/week-NN.{poster,thumb}.webp`, credited in
+`src/media/sourcedImages.ts` and under the image on the weekly page. All are
+real files from Wikimedia Commons under Public domain, CC0, CC BY or CC BY-SA
+(no NC/ND), from named origins — none are generated:
+
+- Weeks 0, 1, 4: OpenStax *Anatomy & Physiology* diagrams (CC BY). Week 40: Blausen Medical (CC BY 3.0).
+- Weeks 2–3: real micrographs of a human oocyte (ZEISS Microscopy) and a day-1 zygote.
+- Weeks 6–10: pathologists' photographs of real embryos (Ed Uthman MD; "lunar caustic"), from ectopic pregnancies or miscarriage. Graphic tissue is visible.
+- Weeks 5, 11–39: clinicians' ultrasound scans with the gestational age on screen (Wolfgang Moroder, Nevit Dilmen, X. Compagnion, others).
+
+Reused or nearest-week images (the caption states the true age): 15 (16w1d),
+31 (30w2d), 37 (36w2d), 38 (39w0d). Posters are letterboxed to 4:5, never
+cropped, except week 32, whose scanner header was cropped to remove a patient
+name. Modified CC BY-SA images remain under CC BY-SA.

@@ -83,7 +83,8 @@ src/app/(app)/              the four destinations and their sub-routes
 src/app/(flow)/             full-screen flows (gender, name, birth)
 src/components/             ui primitives, hero, shell, feature components
 src/i18n/ar.ts              every string, with Arabic count agreement helpers
-src/media/weekly.ts         weeks 5–40 manifest (no production media attached)
+src/media/weekly.ts         weeks 0–40 development content, cited (docs/fetal-development-sources.md)
+src/media/sourcedImages.ts  openly licensed weekly images with attribution
 scripts/                    tokens, screenshots, a11y, design reference fetch
 docs/                       brief, design system, plan, design notes, asset backlog, limitations
 ```

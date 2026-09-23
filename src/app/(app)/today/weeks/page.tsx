@@ -47,7 +47,7 @@ export default async function AllWeeksPage() {
                     </span>
                     <span className={styles.summary}>{w.developmentSummary}</span>
                     {(w.approximateSize || w.approximateWeight) && (
-                      <span className={cx(styles.meta, "num")}>{[w.approximateSize, w.approximateWeight].filter(Boolean).join(" · ")}</span>
+                      <span className={styles.meta}>{[w.approximateSize, w.approximateWeight].filter(Boolean).join(" · ")}</span>
                     )}
                   </span>
                 </Link>
