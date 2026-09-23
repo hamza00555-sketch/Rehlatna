@@ -465,9 +465,31 @@ export interface WeeklyBabyMedia {
   focalPoint: { x: number; y: number };
   safeArea: { top: number; right: number; bottom: number; left: number };
   loopDurationSeconds?: number;
+  /** A notable clinical marker for the week (scan window, viability, term), when one applies. */
+  milestone?: string;
+  /** Attribution for an openly licensed image (required by CC BY / BY-SA). */
+  imageCredit?: WeeklyImageCredit;
+  /** Published medical sources the development text is drawn from. */
+  sources: WeeklySourceRef[];
   medicallyReviewed: boolean;
   reviewedAt?: string;
   reviewNotes?: string;
+}
+
+export interface WeeklyImageCredit {
+  /** What the image actually shows, including its true age when it is reused for a nearby week. */
+  depicts: string;
+  author: string;
+  license: string;
+  licenseUrl?: string;
+  /** The image's page at its source (e.g. Wikimedia Commons file page). */
+  sourceUrl: string;
+}
+
+export interface WeeklySourceRef {
+  /** Short publisher name shown to families, e.g. "Mayo Clinic". */
+  label: string;
+  url: string;
 }
 
 // ---------------------------------------------------------------------------

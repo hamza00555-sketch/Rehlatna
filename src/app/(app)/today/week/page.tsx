@@ -29,23 +29,48 @@ export default async function WeeklyDevelopmentPage({ searchParams }: { searchPa
   if (!ctx || !ctx.data.pregnancy) redirect("/onboarding");
   const progress = pregnancyProgress(ctx.data.pregnancy.dueDate, ctx.today);
   const requested = Number(weekParam);
-  // Before week 5 the manifest has a single neutral entry, so browsing starts at the current week.
-  const minWeek = Math.min(MEDIA_MIN_WEEK, progress.mediaWeek);
+  const minWeek = MEDIA_MIN_WEEK;
   const week = Number.isFinite(requested) && requested >= minWeek && requested <= MEDIA_MAX_WEEK ? requested : progress.mediaWeek;
   const media = weeklyMedia(week);
   const isCurrent = week === progress.mediaWeek;
   const trimester = trimesterOfWeek(week);
-  const early = week < MEDIA_MIN_WEEK;
+  // No embryo to measure yet (weeks 0–4): the size section gives way to a note.
+  const early = !media.approximateSize;
   const next = upcomingAppointments(ctx)[0];
   const care = isCurrent ? careWindowViews(ctx).visible : [];
   const canEditCare = ctx.viewer.permissions.includes("appointments:edit");
 
   return (
     <div className="page">
-      <TopBar title={`${m.today.weekLabel} ${fmtInt(week)}`} subtitle={isCurrent ? m.today.currentWeek : undefined} backHref="/today" />
+      <TopBar
+        title={`${m.today.weekLabel} ${fmtInt(week)}`}
+        subtitle={isCurrent ? m.today.currentWeek : undefined}
+        backHref="/today"
+        actions={
+          <Link href="/today/weeks" className={styles.allWeeks}>
+            {m.today.allWeeks}
+          </Link>
+        }
+      />
 
       <div className={styles.body}>
         <MediaFrame src={media.posterWebp} alt={media.alt} focalPoint={media.focalPoint} ratio={media.posterWebp ? "hero" : "card"} radius="hero" placeholderLabel={m.today.mediaPlaceholder} />
+        {media.imageCredit && (
+          <p className={styles.credit}>
+            {media.imageCredit.depicts} · {m.today.imageCredit}:{" "}
+            <a href={media.imageCredit.sourceUrl} target="_blank" rel="noopener noreferrer">
+              {media.imageCredit.author}
+            </a>{" "}
+            ·{" "}
+            {media.imageCredit.licenseUrl ? (
+              <a href={media.imageCredit.licenseUrl} target="_blank" rel="noopener noreferrer">
+                {media.imageCredit.license}
+              </a>
+            ) : (
+              media.imageCredit.license
+            )}
+          </p>
+        )}
         {!media.medicallyReviewed && media.posterWebp && <StatusBadge tone="unverified">{m.today.devReviewBadge}</StatusBadge>}
 
         <nav className={styles.browse} aria-label={m.today.browseWeeks}>
@@ -75,6 +100,12 @@ export default async function WeeklyDevelopmentPage({ searchParams }: { searchPa
               </li>
             ))}
           </ul>
+          {media.milestone && (
+            <Card tone="tint" padding="md" className={styles.milestone}>
+              <span className={styles.statLabel}>{m.today.milestone}</span>
+              <p className={styles.summary}>{media.milestone}</p>
+            </Card>
+          )}
         </section>
 
         {early ? (
@@ -115,6 +146,23 @@ export default async function WeeklyDevelopmentPage({ searchParams }: { searchPa
                 <CareWindowRow key={w.key} vm={w} canEdit={canEditCare} />
               ))}
             </RowGroup>
+          </section>
+        )}
+
+        {media.sources.length > 0 && (
+          <section>
+            <SectionTitle>{m.today.sources}</SectionTitle>
+            <ul className={styles.sources}>
+              {media.sources.map((src) => (
+                <li key={src.url}>
+                  <a href={src.url} target="_blank" rel="noopener noreferrer" className={styles.sourceLink}>
+                    {src.label}
+                    <Icon name="external" size={16} />
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <p className={styles.sourcesNote}>{m.today.sourcesNote}</p>
           </section>
         )}
 

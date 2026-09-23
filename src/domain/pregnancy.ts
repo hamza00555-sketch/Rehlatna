@@ -10,12 +10,12 @@ import { addDays, daysBetween } from "./dates";
  *   "8 أسابيع و3 أيام" displays as week 8 — common tracker language.
  * - `dayOfWeek` = day within the current week, 1..7.
  * - Trimesters: weeks 0–12 first, 13–26 second, 27+ third.
- * - Weekly media exists for weeks 5–40; `mediaWeek` clamps to that range.
+ * - Weekly development content exists for weeks 0–40; `mediaWeek` clamps to that range.
  */
 
 export const GESTATION_DAYS = 280;
 export const TOTAL_WEEKS = 40;
-export const MEDIA_MIN_WEEK = 5;
+export const MEDIA_MIN_WEEK = 0;
 export const MEDIA_MAX_WEEK = 40;
 
 export interface PregnancyProgress {

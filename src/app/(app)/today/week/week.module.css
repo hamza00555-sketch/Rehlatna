@@ -106,3 +106,60 @@
   color: var(--t-muted);
   text-align: center;
 }
+
+.allWeeks {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--comp-target-min);
+  padding-inline: var(--space-xs);
+  font-size: var(--text-body-small);
+  font-weight: var(--weight-medium);
+  color: var(--t-ink);
+  border-radius: var(--radius-control);
+}
+.allWeeks:active {
+  background: var(--t-surface-tint);
+}
+
+.milestone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  margin-block-start: var(--space-sm);
+  color: var(--t-ink);
+}
+
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.sourceLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  min-height: var(--comp-target-min);
+  padding-inline: var(--space-sm);
+  font-size: var(--text-body-small);
+  color: var(--t-ink);
+  border: 1px solid var(--t-line-strong);
+  border-radius: var(--radius-round);
+}
+
+.sourcesNote {
+  margin-block-start: var(--space-xs);
+  font-size: var(--text-label);
+  color: var(--t-muted);
+}
+
+.credit {
+  margin-block-start: calc(-1 * var(--space-sm));
+  font-size: var(--text-label);
+  line-height: var(--leading-body);
+  color: var(--t-muted);
+}
+.credit a {
+  color: inherit;
+  text-decoration: underline;
+}

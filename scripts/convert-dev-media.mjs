@@ -1,7 +1,7 @@
 // One-off helper: converts generated PNG placeholders in a source folder into
 // the WebP files referenced by src/media/dev.ts. Usage:
 //   node scripts/convert-dev-media.mjs <raw-dir>
-// Weekly posters: 4:5 at 1080×1350 (+ 480×480 thumbs). Story/birth: 9:16 at
+// Story/birth: 9:16 at
 // 1080×1920. Postpartum neutral: 4:5. Hospital: 16:9 at 1600×900. Travel:
 // 21:9 at 1800×771. Preparation objects: 4:3 at 1200×900.
 import { existsSync, mkdirSync } from "node:fs";
@@ -21,12 +21,7 @@ async function convert(src, dest, width, height, opts = {}) {
   console.log(`✓ ${dest.replace(root, "")}`);
 }
 
-const weeks = [5, 8, 12, 16, 20, 22, 24, 28, 32, 36, 40];
-for (const w of weeks) {
-  const nn = String(w).padStart(2, "0");
-  await convert(join(raw, `${nn}.png`), join(out, "weekly", `week-${nn}.poster.webp`), 1080, 1350);
-  await convert(join(raw, `${nn}.png`), join(out, "weekly", `week-${nn}.thumb.webp`), 480, 480, { quality: 72 });
-}
+// Weekly images are no longer generated: they come from openly licensed sources (src/media/sourcedImages.ts).
 await convert(join(raw, "story-welcome.png"), join(out, "story", "welcome.webp"), 1080, 1920);
 await convert(join(raw, "birth-confirmed.png"), join(out, "birth", "confirmed.webp"), 1080, 1920);
 await convert(join(raw, "postpartum-neutral.png"), join(out, "postpartum", "neutral-fallback.webp"), 1080, 1350);
