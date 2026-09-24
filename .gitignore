@@ -21,3 +21,8 @@ next-env.d.ts
 *.log
 .env*.local
 *.tsbuildinfo
+
+# fetal-growth-explorer: generated Blender master (rebuilt by blender/scripts) and caches
+/fetal-growth-explorer/blender/*.blend
+/fetal-growth-explorer/blender/*.blend1
+__pycache__/
