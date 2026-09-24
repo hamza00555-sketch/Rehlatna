@@ -67,7 +67,7 @@ def setup_render(scene, width=1080, height=1920, samples=256, transparent=True):
     scene.render.image_settings.color_mode = "RGBA"
     scene.view_settings.view_transform = "AgX"
     scene.view_settings.look = "AgX - Medium Low Contrast"
-    scene.view_settings.exposure = -0.45
+    scene.view_settings.exposure = -0.55
     scene.view_layers[0].use_pass_mist = True
     scene.world.mist_settings.start = 1.10
     scene.world.mist_settings.depth = 0.45
@@ -112,9 +112,9 @@ def make_lights(target=(0.0, 0.0, 0.02)):
     # Large soft warm key from the left, low (about 25° up) and a little in front:
     # it reaches the neck and shoulder under the big head, while the face,
     # turned down and away, stays in soft shadow.
-    area_light("LGT_Key", (-1.25, -0.28, 0.62), target, "#FFE4D2", 120.0, 0.8, col=col)
+    area_light("LGT_Key", (-1.20, -0.12, 0.85), target, "#FFE0C8", 125.0, 0.75, col=col)
     # Low neutral-teal fill from the right keeps detail in the shadowed face.
-    area_light("LGT_Fill", (1.10, -0.60, -0.10), target, "#D6E6E4", 5.0, 1.2, col=col)
+    area_light("LGT_Fill", (1.10, -0.60, -0.10), target, "#D6E6E4", 3.5, 1.2, col=col)
     # Soft back light straight behind: a thin environment-like edge all round,
     # and SSS glow through ears, fingers and toes.
     area_light("LGT_Rim", (0.05, 1.00, 0.30), target, "#FFE2D0", 22.0, 0.8, col=col)
@@ -417,21 +417,32 @@ def veil(name, center, radii, tilt_deg, start, sweep, width, depth, twist, folds
     return ob
 
 
-def make_membranes(material, center=(0.004, 0.0, -0.004)):
+def make_membranes(material, center=(0.008, 0.0, -0.003), clearance=0.070):
+    """Veils on concentric orbits that keep the same on-screen gap around the fetus.
+
+    The fetus spans ~0.074 x 0.111 m (half-extents, image plane); each orbit is
+    that ellipse grown by `clearance`, then scaled by its depth so the gap reads
+    the same from the camera whether the veil sits in front or behind.
+    """
     col = collection("MEMBRANES")
+    half = (0.074, 0.111)
+    dist = HERO.distance
     specs = [
-        # radii (x, z), tilt, start, sweep, width, depth(y), twist, folds, fold amplitude
-        ((0.165, 0.250), -14.0, 1.7, 4.4, 0.120, 0.20, 0.6, 1.2, 0.012),
-        ((0.200, 0.295), -20.0, 2.0, 3.9, 0.170, 0.36, 0.8, 1.5, 0.016),
-        ((0.150, 0.225), -6.0, 3.3, 3.0, 0.090, -0.15, 0.5, 1.0, 0.008),
-        ((0.230, 0.325), -26.0, 1.1, 3.5, 0.200, 0.50, 1.0, 1.8, 0.018),
-        ((0.175, 0.265), -2.0, 4.1, 2.9, 0.130, 0.10, 0.6, 1.2, 0.010),
-        ((0.125, 0.270), -34.0, 1.0, 2.3, 0.110, -0.26, 0.5, 1.0, 0.010),
-        ((0.245, 0.255), -16.0, 3.6, 3.1, 0.160, 0.65, 0.8, 1.5, 0.016),
+        # start angle, sweep, width, depth(y), twist, folds, fold amplitude, extra clearance
+        (0.2, 5.6, 0.070, 0.20, 0.6, 1.2, 0.010, 0.000),
+        (2.3, 5.4, 0.090, 0.36, 0.8, 1.5, 0.012, 0.012),
+        (4.4, 5.2, 0.060, -0.14, 0.5, 1.0, 0.008, -0.006),
+        (1.2, 5.8, 0.110, 0.50, 1.0, 1.8, 0.014, 0.022),
+        (3.3, 5.0, 0.075, 0.10, 0.6, 1.2, 0.010, 0.006),
+        (5.3, 4.8, 0.080, -0.24, 0.5, 1.0, 0.009, -0.010),
+        (0.7, 5.5, 0.100, 0.65, 0.8, 1.5, 0.014, 0.030),
     ]
     obs = []
-    for i, (radii, tilt, start, sweep, width, depth, twist, folds, amp) in enumerate(specs, start=1):
-        obs.append(veil(f"ENV_Membrane_{i:02d}", center, radii, tilt, start, sweep, width, depth, twist, folds, amp, seed=i, material=material, col=col))
+    for i, (start, sweep, width, depth, twist, folds, amp, extra) in enumerate(specs, start=1):
+        scale = (dist + depth) / dist
+        radii = ((half[0] + clearance + extra) * scale, (half[1] + clearance + extra) * scale)
+        c = (center[0] * scale, center[1], center[2] * scale)
+        obs.append(veil(f"ENV_Membrane_{i:02d}", c, radii, 0.0, start, sweep, width, depth, twist, folds, amp, seed=i, material=material, col=col))
     return obs
 
 

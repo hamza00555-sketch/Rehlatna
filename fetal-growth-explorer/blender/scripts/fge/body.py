@@ -170,10 +170,10 @@ def far_hand(wrist) -> Group:
 
 def arm(shoulder, elbow, wrist, hand: Group, side: float) -> tuple[Group, Group]:
     upper = Group("upper_arm", k=0.004)
-    upper.add(RoundCone(shoulder, elbow, 0.0094, 0.0074, name="humerus"))
+    upper.add(RoundCone(shoulder, elbow, 0.0105, 0.0082, name="humerus"))
     upper.add(Ellipsoid(shoulder + V(0.0015, side * 0.0035, 0.0010), (0.0110, 0.0100, 0.0115), name="deltoid"), k=0.008)
     lower = Group("forearm", k=0.004)
-    lower.add(RoundCone(elbow, wrist, 0.0068, 0.0052, name="forearm"))
+    lower.add(RoundCone(elbow, wrist, 0.0077, 0.0058, name="forearm"))
     lower.add(hand, k=0.004)
     return upper, lower
 
@@ -202,7 +202,7 @@ def foot(heel, ball, toe_dir_hint, side: float, scale: float = 1.0) -> Group:
     return g
 
 
-def leg(hip, knee, ankle, heel, ball, side: float, thigh_r=(0.0165, 0.0105), calf_r=(0.0100, 0.0062)) -> tuple[Group, Group]:
+def leg(hip, knee, ankle, heel, ball, side: float, thigh_r=(0.0182, 0.0118), calf_r=(0.0108, 0.0066)) -> tuple[Group, Group]:
     upper = Group("thigh", k=0.004)
     upper.add(RoundCone(hip, knee, thigh_r[0], thigh_r[1], name="femur"))
     lower = Group("shin", k=0.004)
@@ -236,7 +236,7 @@ def build_w24() -> Group:
     h_r, k_r, a_r = V(-0.0200, -0.0185, -0.0700), V(0.0385, -0.0260, -0.0480), V(0.0525, -0.0200, -0.0840)
     h_l, k_l, a_l = V(-0.0200, 0.0185, -0.0700), V(0.0320, 0.0230, -0.0520), V(0.0330, 0.0120, -0.0935)
     th_r, sh_r = leg(h_r, k_r, a_r, heel=V(0.0490, -0.0180, -0.0895), ball=V(0.0735, -0.0140, -0.0775), side=-1.0)
-    th_l, sh_l = leg(h_l, k_l, a_l, heel=V(0.0255, 0.0100, -0.0975), ball=V(0.0490, 0.0055, -0.1085), side=1.0, thigh_r=(0.0160, 0.0100), calf_r=(0.0095, 0.0060))
+    th_l, sh_l = leg(h_l, k_l, a_l, heel=V(0.0255, 0.0100, -0.0975), ball=V(0.0490, 0.0055, -0.1085), side=1.0, thigh_r=(0.0176, 0.0112), calf_r=(0.0103, 0.0064))
 
     body.add(up_r, k=0.006)  # near upper arm reads as its own limb in front of the chest
     body.add(up_l, k=0.010)
