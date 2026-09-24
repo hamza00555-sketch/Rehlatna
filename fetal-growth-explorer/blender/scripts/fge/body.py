@@ -64,10 +64,10 @@ def ear(side: float, c) -> Group:
     def at(a_up, a_fwd, a_out=0.0):
         return c + a_up * up + a_fwd * fwd + a_out * out
 
-    g.add(Ellipsoid(c, (0.0092, 0.0024, 0.0062), R, name="ear_plate"))
+    g.add(Ellipsoid(c, (0.0104, 0.0026, 0.0071), R, name="ear_plate"))
     # Helix: C-shaped rim, thickest over the top and back.
     t = np.linspace(-0.35 * np.pi, 1.30 * np.pi, 12)
-    rim = [at(0.0088 * np.sin(a + 0.5 * np.pi) * (1.0 if a < 0.5 * np.pi else 1.05), -0.0056 * np.cos(a + 0.5 * np.pi) - 0.0006, 0.0014) for a in t]
+    rim = [at(0.0100 * np.sin(a + 0.5 * np.pi) * (1.0 if a < 0.5 * np.pi else 1.05), -0.0064 * np.cos(a + 0.5 * np.pi) - 0.0006, 0.0014) for a in t]
     radii = [0.0010 + 0.0006 * np.sin(np.clip((a + 0.35 * np.pi) / (1.65 * np.pi), 0, 1) * np.pi) for a in t]
     for i in range(len(rim) - 1):
         g.add(RoundCone(rim[i], rim[i + 1], radii[i], radii[i + 1], name="ear_helix"), k=0.0008)
@@ -96,7 +96,7 @@ def build_head(face: FaceParams | None = None) -> Group:
     head = Group("head", k=0.0015)
     head.add(Displaced(blank, face_field(face), max_disp=0.004, name="head_face"))
     for s in (-1.0, 1.0):
-        head.add(ear(s, V(-0.0257, s * 0.0270, 0.0560)))
+        head.add(ear(s, V(-0.0262, s * 0.0272, 0.0535)))
     return head
 
 
@@ -114,9 +114,9 @@ def build_trunk() -> Group:
     t.add(Ellipsoid(V(-0.0200, 0.0, 0.0120), (0.0190, 0.0250, 0.0150), name="upper_chest"), k=0.014)
     t.add(Ellipsoid(V(-0.0270, 0.0, -0.0440), (0.0335, 0.0290, 0.0300), name="abdomen"))
     t.add(Ellipsoid(V(-0.0075, 0.0, -0.0445), (0.0175, 0.0245, 0.0210), name="belly"), k=0.012)
-    t.add(Ellipsoid(V(-0.0300, 0.0, -0.0720), (0.0260, 0.0280, 0.0230), rot_y(-30.0), name="pelvis"))
+    t.add(Ellipsoid(V(-0.0300, 0.0, -0.0720), (0.0240, 0.0260, 0.0210), rot_y(-30.0), name="pelvis"))
     for s in (-1.0, 1.0):
-        t.add(Ellipsoid(V(-0.0270, s * 0.0120, -0.0815), (0.0215, 0.0175, 0.0190), rot_y(-30.0), name="buttock"), k=0.018)
+        t.add(Ellipsoid(V(-0.0270, s * 0.0120, -0.0810), (0.0200, 0.0160, 0.0180), rot_y(-30.0), name="buttock"), k=0.012)
     return t
 
 
@@ -173,7 +173,7 @@ def arm(shoulder, elbow, wrist, hand: Group, side: float) -> tuple[Group, Group]
     upper.add(RoundCone(shoulder, elbow, 0.0105, 0.0082, name="humerus"))
     upper.add(Ellipsoid(shoulder + V(0.0015, side * 0.0035, 0.0010), (0.0110, 0.0100, 0.0115), name="deltoid"), k=0.008)
     lower = Group("forearm", k=0.004)
-    lower.add(RoundCone(elbow, wrist, 0.0077, 0.0058, name="forearm"))
+    lower.add(RoundCone(elbow, wrist, 0.0086, 0.0064, name="forearm"))
     lower.add(hand, k=0.004)
     return upper, lower
 
@@ -241,7 +241,7 @@ def build_w24() -> Group:
     body.add(up_r, k=0.006)  # near upper arm reads as its own limb in front of the chest
     body.add(up_l, k=0.010)
     for g in (th_r, th_l):
-        body.add(g, k=0.014)
+        body.add(g, k=0.008)  # low blend keeps a groin crease so the thigh reads as a leg
     for g in (low_r, low_l, sh_r, sh_l):
         body.add(g, k=0.004)
     return body

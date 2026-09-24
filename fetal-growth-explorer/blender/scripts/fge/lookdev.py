@@ -248,17 +248,17 @@ def cord_material(name="MAT_Cord") -> bpy.types.Material:
     nt = mat.node_tree
     bsdf, _ = _principled(nt)
     bsdf.subsurface_method = "RANDOM_WALK"
-    bsdf.inputs["Base Color"].default_value = rgba("#DDD6D4")
+    bsdf.inputs["Base Color"].default_value = rgba("#D6D3D2")
     bsdf.inputs["Subsurface Weight"].default_value = 0.85
     bsdf.inputs["Subsurface Radius"].default_value = (1.0, 0.8, 0.75)
     bsdf.inputs["Subsurface Scale"].default_value = 0.004
     bsdf.inputs["Roughness"].default_value = 0.32
-    bsdf.inputs["Coat Weight"].default_value = 0.35
+    bsdf.inputs["Coat Weight"].default_value = 0.15
     bsdf.inputs["Coat Roughness"].default_value = 0.15
     return mat
 
 
-def membrane_material(name="MAT_Membrane", opacity=0.55) -> bpy.types.Material:
+def membrane_material(name="MAT_Membrane", opacity=0.75) -> bpy.types.Material:
     """Thin silk veil: nearly clear face-on, white where seen edge-on (fresnel-lit edges)."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
@@ -270,10 +270,10 @@ def membrane_material(name="MAT_Membrane", opacity=0.55) -> bpy.types.Material:
     lw.inputs["Blend"].default_value = 0.5
     curve = nt.nodes.new("ShaderNodeMath")
     curve.operation = "POWER"
-    curve.inputs[1].default_value = 2.0
+    curve.inputs[1].default_value = 3.0
     nt.links.new(lw.outputs["Facing"], curve.inputs[0])
     scale = nt.nodes.new("ShaderNodeMapRange")
-    scale.inputs["To Min"].default_value = 0.07
+    scale.inputs["To Min"].default_value = 0.04
     scale.inputs["To Max"].default_value = opacity
     nt.links.new(curve.outputs["Value"], scale.inputs["Value"])
     transp = nt.nodes.new("ShaderNodeBsdfTransparent")
@@ -446,7 +446,7 @@ def make_membranes(material, center=(0.008, 0.0, -0.003), clearance=0.070):
     return obs
 
 
-def make_particles(material, count=160, seed=7, name="ENV_Particles"):
+def make_particles(material, count=60, seed=7, name="ENV_Particles"):
     rng = np.random.default_rng(seed)
     col = collection("ENVIRONMENT")
     me_src = bpy.data.meshes.new(name + "_mote")
@@ -466,7 +466,7 @@ def make_particles(material, count=160, seed=7, name="ENV_Particles"):
         ph = rng.uniform(-1.0, 1.0)
         p = (r * math.cos(th) * math.sqrt(1 - ph * ph), rng.uniform(-0.35, 0.45), r * ph * 1.6)
         ob = bpy.data.objects.new(f"{name}_{i:03d}", me_src)
-        s = rng.uniform(0.0003, 0.0011)
+        s = rng.uniform(0.00025, 0.0007)
         ob.scale = (s, s, s)
         ob.location = p
         camera_only(ob)
