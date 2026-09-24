@@ -30,7 +30,7 @@ LOOK = {
     "lift": 0.03,  # black lift toward the teal shadow tint
     "shadow_tint": (0.30, 0.40, 0.41),
     "contrast": 1.0,
-    "saturation": 1.0,
+    "saturation": 0.95,
     "grain": 0.010,
 }
 

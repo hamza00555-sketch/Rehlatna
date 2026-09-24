@@ -63,11 +63,11 @@ the source of truth and rebuild it from code.
 
 | Element | Setup |
 | --- | --- |
-| Skin `MAT_Skin` | Principled, random-walk skin SSS (weight 0.55, radius 1.0/0.35/0.2), AO-driven crease tint `#B98474` → `#D6AA9A`, faint sheen, micro-bump, faint scalp vessel layer (scales up for earlier weeks) |
+| Skin `MAT_Skin` | Principled, random-walk skin SSS (weight 0.55, radius 1.0/0.35/0.2), AO-driven crease tint `#B58877` → `#D2AC9E`, faint sheen, micro-bump, faint scalp vessel layer (scales up for earlier weeks) |
 | Cord `FET_Cord` | NURBS tube along the measured S-curve, pale translucent SSS with a thin coat |
 | Membranes `ENV_Membrane_01…07` | folded silk veils on elliptical orbits, fresnel opacity (clear face-on, white edge-on), camera-only (they never light or shadow the fetus) |
-| Particles | 160 tiny motes, camera-only, mostly lost in the depth of field |
-| Lights | `LGT_Key` large warm area, top-left and side-on · `LGT_Fill` low teal-neutral from the right · `LGT_Rim` soft back light for the edge and SSS glow · `LGT_Bounce` faint underside |
+| Particles | 160 tiny light motes, camera-only, mostly lost in the depth of field |
+| Lights | `LGT_Key` large warm area from the left, low (≈25° up) so it reaches neck and shoulder under the head · `LGT_Fill` low teal-neutral from the right · `LGT_Rim` soft back light for the edge and SSS glow · `LGT_Bounce` faint underside |
 | Camera `CAM_Hero` | 85 mm, 9:16, f/5.6 focused on the face |
 | Grade (`scripts/post.py`) | backdrop gradient (fitted polynomial, `lookdev/background.json`, shared with the web shader) · light haze · rim-only bloom · lifted blacks toward teal · grain |
 

@@ -109,9 +109,10 @@ def area_light(name, location, target, color_hex, energy, size, shape="DISK", co
 
 def make_lights(target=(0.0, 0.0, 0.02)):
     col = collection("LIGHTS")
-    # Large soft warm key from the top-left and slightly behind the subject:
-    # the camera sees a half-lit body, the face side falls into soft shadow.
-    area_light("LGT_Key", (-1.10, -0.08, 1.00), target, "#FFE4D2", 120.0, 0.7, col=col)
+    # Large soft warm key from the left, low (about 25° up) and a little in front:
+    # it reaches the neck and shoulder under the big head, while the face,
+    # turned down and away, stays in soft shadow.
+    area_light("LGT_Key", (-1.25, -0.28, 0.62), target, "#FFE4D2", 120.0, 0.8, col=col)
     # Low neutral-teal fill from the right keeps detail in the shadowed face.
     area_light("LGT_Fill", (1.10, -0.60, -0.10), target, "#D6E6E4", 5.0, 1.2, col=col)
     # Soft back light straight behind: a thin environment-like edge all round,
@@ -166,9 +167,9 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     ao.samples = 8
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     ramp.color_ramp.elements[0].position = 0.25
-    ramp.color_ramp.elements[0].color = rgba("#B98474")
+    ramp.color_ramp.elements[0].color = rgba("#B58877")
     ramp.color_ramp.elements[1].position = 1.0
-    ramp.color_ramp.elements[1].color = rgba("#D6AA9A")
+    ramp.color_ramp.elements[1].color = rgba("#D2AC9E")
     nt.links.new(ao.outputs["AO"], ramp.inputs["Fac"])
     # Faint vessel network (Voronoi cell edges, broken up by noise), strongest on the scalp.
     coord = nt.nodes.new("ShaderNodeTexCoord")
@@ -221,8 +222,8 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     bsdf.inputs["Subsurface Scale"].default_value = 0.0024 * translucency
     bsdf.inputs["Subsurface IOR"].default_value = 1.38
     bsdf.inputs["Subsurface Anisotropy"].default_value = 0.4
-    bsdf.inputs["Roughness"].default_value = 0.42
-    bsdf.inputs["Specular IOR Level"].default_value = 0.55
+    bsdf.inputs["Roughness"].default_value = 0.5
+    bsdf.inputs["Specular IOR Level"].default_value = 0.5
     bsdf.inputs["Sheen Weight"].default_value = 0.12
     bsdf.inputs["Sheen Roughness"].default_value = 0.45
     bsdf.inputs["Sheen Tint"].default_value = rgba("#FFF1EA")
@@ -257,7 +258,7 @@ def cord_material(name="MAT_Cord") -> bpy.types.Material:
     return mat
 
 
-def membrane_material(name="MAT_Membrane", opacity=0.42) -> bpy.types.Material:
+def membrane_material(name="MAT_Membrane", opacity=0.55) -> bpy.types.Material:
     """Thin silk veil: nearly clear face-on, white where seen edge-on (fresnel-lit edges)."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
@@ -269,10 +270,10 @@ def membrane_material(name="MAT_Membrane", opacity=0.42) -> bpy.types.Material:
     lw.inputs["Blend"].default_value = 0.5
     curve = nt.nodes.new("ShaderNodeMath")
     curve.operation = "POWER"
-    curve.inputs[1].default_value = 1.3
+    curve.inputs[1].default_value = 2.0
     nt.links.new(lw.outputs["Facing"], curve.inputs[0])
     scale = nt.nodes.new("ShaderNodeMapRange")
-    scale.inputs["To Min"].default_value = 0.11
+    scale.inputs["To Min"].default_value = 0.07
     scale.inputs["To Max"].default_value = opacity
     nt.links.new(curve.outputs["Value"], scale.inputs["Value"])
     transp = nt.nodes.new("ShaderNodeBsdfTransparent")
@@ -298,7 +299,7 @@ def particle_material(name="MAT_Particle") -> bpy.types.Material:
     out = nt.nodes.new("ShaderNodeOutputMaterial")
     em = nt.nodes.new("ShaderNodeEmission")
     em.inputs["Color"].default_value = rgba("#F2FAFA")
-    em.inputs["Strength"].default_value = 0.6
+    em.inputs["Strength"].default_value = 3.0
     tr = nt.nodes.new("ShaderNodeBsdfTransparent")
     mix = nt.nodes.new("ShaderNodeMixShader")
     mix.inputs["Fac"].default_value = 0.35
