@@ -43,23 +43,31 @@ the source of truth and rebuild it from code.
 
 ## How the fetus is built
 
-**Current body (default): fitted MakeHuman baby** (`scripts/fge/mhbody.py`).
+**Current body (default): posed MakeHuman baby** (`scripts/fge/mhbody.py`).
 The procedural SDF body below matched the silhouette but never reached the
-reference's anatomy (hands, feet, ears, face). The default body now starts
-from the CC0 MakeHuman hm08 mesh at age "baby" (mean of the six ethnic
-targets, heavier/softer universal macros, closed-eye expression units,
-head-round) with its default rig and skin weights, then:
+reference's anatomy (hands, feet, ears, face). The default body starts from
+the CC0 MakeHuman hm08 mesh at age "baby" (mean of the six ethnic targets,
+closed-eye expression units, and MakeHuman's own belly / trunk-depth /
+buttock targets) with its default rig and skin weights, then:
 
-- **Proportions** are baked into a new rest pose: limb segment lengths from
-  the reference landmark skeleton, a fuller trunk, and a fetal head
-  (×1.45, scaled as one rigid piece with a tapered neck; the neck's skin
-  weights inside the skull are handed to the head bone so flexion can't
-  shear it).
-- **Pose**: bones aimed along the landmark skeleton, then a Powell search
-  over spine/neck/head/hip/knee/arm flexion, scale, roll and position
-  against the reference silhouette (`blender/lookdev/reference_mask.png`,
-  soft IoU ≈ 0.72). NumPy FK + linear blend skinning (`fge/mhfit.py`)
-  makes each candidate pose cost milliseconds instead of a depsgraph update.
+- **Joints.** Rig joint recipes that pair skin with helper vertices break on
+  the baby shape (neck01 collapsed, neck03 flipped); they are evaluated on
+  the base mesh and carried over with a local affine fit, and the neck chain
+  is spaced evenly between the neck and head joint cubes (`fge/mh.py`).
+- **Proportions.** Limb segment lengths come from the reference landmark
+  skeleton; each bone scales only its own segment (inherited pose scale
+  sheared the head and face into grooves).
+- **Head.** The vault is Taubin-smoothed and pulled toward a fitted
+  ellipsoid (ears protected via MakeHuman's ear targets), then the head is
+  enlarged ×1.5 about a pivot low on the neck so the junction cannot fold.
+- **Pose.** Anatomical flexion of spine, neck and head relative to rest;
+  the trunk is turned onto the reference pelvis→neck line and the limbs are
+  aimed along the landmark skeleton. A Nelder-Mead solve over the three
+  flexion angles, head size and placement fits the body to the traced
+  reference outline and the cranium's outline circle to the reference's,
+  with a prior on every parameter. Skinning is volume-preserving with
+  corrective smoothing; the cord is attached at the navel found from
+  MakeHuman's navel targets.
 
 **Earlier body (`--sdf`):**
 

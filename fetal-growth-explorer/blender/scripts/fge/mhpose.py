@@ -38,7 +38,10 @@ J = {
     "toe_l": (0.0560, 0.004, -0.1135),
 }
 
-HEAD_FLEX = math.radians(42)  # face looks down-right like the reference
+HEAD_FLEX = math.radians(42)  # used only by the legacy world-aim of the head bone
+
+
+MIDLINE = ("spine", "neck", "head")  # bones aimed with their roll pinned to the lateral axis
 
 
 def d(a, b) -> Vector:

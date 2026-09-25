@@ -2,7 +2,8 @@
 
 Downloads MPFB 2.0.17 from extensions.blender.org (hash-checked) and
 extracts only what the pipeline reads: the hm08 base mesh, the baby macro
-targets (ethnic and muscle/weight), the closed-eye expression units, head-round, and the default
+targets (ethnic and muscle/weight), the closed-eye expression units, the regional
+shape targets (head, face, trunk, limbs), and the default
 rig + skin weights. All of it is CC0 (MakeHuman assets, released 2020).
 
     python fetch_makehuman.py
@@ -22,16 +23,22 @@ URL = (
     "?repository=%2Fapi%2Fv1%2Fextensions%2F&blender_version_min=4.2.0"
 )
 SHA256 = "4f0a879d64a39bf646fbf5f53601ac678855da329d650617dca5737548239a87"
+SHAPE_DIRS = {
+    "head", "neck", "torso", "stomach", "buttocks", "hip", "pelvis", "legs", "arms", "hands", "feet",
+    "forehead", "chin", "cheek", "nose", "mouth", "ears", "eyes",
+}
 WANTED = (
     "data/3dobjs/base.obj",
     "data/rigs/standard/rig.default.json",
     "data/rigs/standard/weights.default.json",
-    "data/targets/head/head-round.target.gz",
 )
 
 
 def wanted(name: str) -> bool:
     if name in WANTED:
+        return True
+    parts = name.split("/")
+    if len(parts) == 4 and parts[2] in SHAPE_DIRS and name.endswith(".target.gz"):
         return True
     if name.startswith("data/targets/macrodetails/") and ("-baby.target.gz" in name or "-baby-" in name):
         return True
@@ -39,7 +46,7 @@ def wanted(name: str) -> bool:
 
 
 def main():
-    if (DEST / "targets" / "macrodetails" / "universal-male-baby-maxmuscle-maxweight.target.gz").exists():
+    if (DEST / "targets" / "stomach" / "stomach-pregnant-incr.target.gz").exists():
         print(f"[fge] MakeHuman assets already in {DEST}")
         return
     print(f"[fge] downloading {URL}")

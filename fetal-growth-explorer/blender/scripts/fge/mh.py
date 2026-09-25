@@ -49,7 +49,7 @@ def read_target(path: Path, n: int) -> np.ndarray:
             if not line or line[0] == "#":
                 continue
             parts = line.split()
-            if len(parts) == 4:
+            if len(parts) == 4 and int(parts[0]) < n:  # n may cover the body only; skip helper vertices
                 d[int(parts[0])] = [float(x) for x in parts[1:]]
     return d
 
@@ -75,6 +75,15 @@ def baby_offsets(data: Path, n: int, weight: float = 0.5, muscle: float = 0.5) -
     return d
 
 
+def region_mask(data: Path, n: int, folder: str, prefix: str = "") -> np.ndarray:
+    """Vertices any target in targets/<folder> moves (e.g. "ears"): a region
+    selection that comes straight from the MakeHuman modelling targets."""
+    mask = np.zeros(n, dtype=bool)
+    for f in sorted((data / "targets" / folder).glob(f"{prefix}*.target.gz")):
+        mask |= np.abs(read_target(f, n)).sum(axis=1) > 1e-6
+    return mask
+
+
 def joint_positions(verts_mh: np.ndarray, groups_verts: dict, spec: dict) -> np.ndarray:
     s = spec["strategy"]
     if s == "VERTEX":
@@ -89,13 +98,37 @@ def joint_positions(verts_mh: np.ndarray, groups_verts: dict, spec: dict) -> np.
 FETAL_TARGETS = {
     # closed lids: mean of the three ethnic expression units, both eyes
     **{f"expression/units/{e}/eye-{s}-closure.target.gz": 1.0 / 3 for e in ("african", "asian", "caucasian") for s in ("left", "right")},
-    "head/head-round.target.gz": 1.0,
+    # (head-round is not used: on the baby it creases the temples; the vault is
+    # rounded geometrically in fge.mhfit.smooth_vault instead)
 }
+
+
+def transfer_joints(adult: np.ndarray, baby: np.ndarray, joints_adult: np.ndarray, n_body: int, k: int = 40) -> np.ndarray:
+    """Carry joint positions from the base mesh to the shaped mesh with a local
+    affine map fitted to the k nearest skin vertices of each joint.
+
+    Some MEAN/VERTEX joint recipes pair skin vertices with helper-mesh vertices
+    that the baby targets move inconsistently (neck01 collapsed to ~1 mm, neck03
+    flipped downward). Evaluating them on the unshaped base mesh and
+    transferring gives consistent joints."""
+    from scipy.spatial import cKDTree
+
+    tree = cKDTree(adult[:n_body])
+    out = np.empty_like(joints_adult)
+    for j, p in enumerate(joints_adult):
+        dist, idx = tree.query(p, k=k)
+        wts = 1.0 / np.maximum(dist, 1e-6)
+        X = np.c_[adult[idx], np.ones(k)]
+        sw = np.sqrt(wts)[:, None]
+        Amap = np.linalg.lstsq(X * sw, baby[idx] * sw, rcond=None)[0]
+        out[j] = np.r_[p, 1.0] @ Amap
+    return out
 
 
 def build(data: Path, name: str = "FET_MH", collection=None, targets: dict | None = None, weight: float = 0.5, muscle: float = 0.5):
     verts, faces, groups = read_obj(data / "3dobjs" / "base.obj")
     n = len(verts)
+    adult = verts.copy()
     verts = verts + baby_offsets(data, n, weight, muscle)
     for rel, wt in (FETAL_TARGETS if targets is None else targets).items():
         verts = verts + wt * read_target(data / "targets" / rel, n)
@@ -119,10 +152,25 @@ def build(data: Path, name: str = "FET_MH", collection=None, targets: dict | Non
     col.objects.link(arm)
     bpy.context.view_layer.objects.active = arm
     bpy.ops.object.mode_set(mode="EDIT")
-    for bname, b in rig.items():
+    n_body = max(max(f) for f in body_faces) + 1
+    names = list(rig)
+    specs = [rig[b][e] for b in names for e in ("head", "tail")]
+    # CUBE joints use helper cubes the targets move consistently: evaluate them on the
+    # shaped mesh. MEAN/VERTEX recipes are evaluated on the base mesh and transferred.
+    direct = np.array([joint_positions(verts, groups_verts, sp) for sp in specs])
+    moved = transfer_joints(adult, verts, np.array([joint_positions(adult, groups_verts, sp) for sp in specs]), n_body)
+    ends = mh_to_blender(np.where(np.array([sp["strategy"] == "CUBE" for sp in specs])[:, None], direct, moved))
+    # The neck chain runs from the joint-neck cube to the joint-head cube; on the baby
+    # the in-between recipes zig-zag, so space its two inner joints evenly on that line.
+    j = {b: i for i, b in enumerate(names)}
+    a, z = ends[2 * j["neck01"]], ends[2 * j["head"]]
+    for k, b in enumerate(("neck01", "neck02", "neck03")):
+        ends[2 * j[b]] = a + (z - a) * k / 3
+        ends[2 * j[b] + 1] = a + (z - a) * (k + 1) / 3
+    for j, bname in enumerate(names):
+        b = rig[bname]
         eb = arm_data.edit_bones.new(bname)
-        h = mh_to_blender(joint_positions(verts, groups_verts, b["head"])[None])[0]
-        t = mh_to_blender(joint_positions(verts, groups_verts, b["tail"])[None])[0]
+        h, t = ends[2 * j], ends[2 * j + 1]
         if np.linalg.norm(t - h) < 1e-5:
             t = h + np.array([0, 0, 0.002])
         eb.head, eb.tail = Vector(h), Vector(t)

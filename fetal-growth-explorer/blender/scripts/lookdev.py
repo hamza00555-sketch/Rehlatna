@@ -45,7 +45,10 @@ def main():
         ob.data.materials.append(skin)
     base.hide_render = True
     base.hide_viewport = True
-    lookdev.make_cord(lookdev.cord_material())
+    path = lookdev.CORD_PATH
+    if "fge_navel" in base:
+        path = lookdev.attach_cord(path, base["fge_navel"], base["fge_navel_normal"])
+    lookdev.make_cord(lookdev.cord_material(), path=path)
     lookdev.make_membranes(lookdev.membrane_material())
     lookdev.make_particles(lookdev.particle_material())
     lookdev.make_lights()

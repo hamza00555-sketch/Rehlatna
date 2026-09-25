@@ -1,14 +1,20 @@
-"""Week-24 fetus from the MakeHuman baby, fitted to the reference.
+"""Week-24 fetus from the MakeHuman baby, posed to the reference.
 
-1. fge.mh builds the CC0 hm08 baby (closed eyes, round head) with its rig.
-2. Proportions are baked into a new rest pose: limb segment lengths from the
-   reference landmark skeleton, a fuller trunk, and the fetal head (x1.35).
-3. Bones are aimed along the landmark skeleton (fge.mhpose).
-4. A Powell search refines spine/neck/head/hip/knee/arm flexion together with
-   scale, in-plane roll and position against the segmented reference
-   silhouette (blender/lookdev/reference_mask.png, soft IoU).
-5. The pose is written back to the armature and the result is applied into
-   FET_Body; FET_Body_Hero adds one subdivision level for stills.
+1. fge.mh builds the CC0 hm08 baby (closed eyes, round head, a rounder belly,
+   deeper trunk and fuller buttocks from MakeHuman's own modelling targets)
+   with its default rig and skin weights.
+2. Limb segment lengths are baked from the reference landmark skeleton; every
+   bone scales only its own segment, so no child is sheared (fge.mhfit).
+3. The skull vault is smoothed and rounded (ears protected) and the head is
+   enlarged about a pivot low on the neck, so the junction cannot fold.
+4. Pose: anatomical flexion of spine, neck and head relative to rest; the
+   trunk is turned onto the reference pelvis->neck line; limbs are aimed along
+   the reference landmark skeleton. A Nelder-Mead solve over those three
+   flexion angles, the head size and the placement matches the body to the
+   segmented reference outline (lookdev/reference_mask.png) and the cranium's
+   outline circle to the reference cranium, with a prior on every parameter.
+5. Deformation uses volume-preserving skinning plus corrective smoothing; the
+   result is applied into FET_Body, and FET_Body_Hero adds subdivision.
 """
 
 from __future__ import annotations
@@ -22,17 +28,25 @@ from mathutils import Matrix
 from PIL import Image
 from scipy.ndimage import gaussian_filter
 from scipy.optimize import minimize
+from scipy.spatial import ConvexHull
 
 from . import mh, mhfit, mhpose
+from .camera import HERO, project_points
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ROOT / "assets" / "makehuman"
 MASK = ROOT / "lookdev" / "reference_mask.png"
 
-HEAD_SCALE = 1.45
-TRUNK_GIRTH = 1.15
-WEIGHT, MUSCLE = 0.8, 0.3  # MakeHuman macros: chubbier, softer than the average baby
+SHAPE_TARGETS = {
+    "stomach/stomach-pregnant-incr.target.gz": 1.0,  # the round fetal abdomen
+    "torso/torso-scale-depth-incr.target.gz": 0.5,
+    "buttocks/buttocks-volume-incr.target.gz": 0.7,
+}
+HEAD_SCALE = 1.5
+HEAD_DROP = 0.06
 FIT_SIZE = (279, 500)
+REF_FRAME = (1116, 2000)
+REF_CRANIUM = (542.0, 729.0, 164.0)  # outline circle of the reference cranium, px in the reference frame
 
 # reference landmark -> bone whose head sits on it
 JOINT_BONES = {
@@ -40,25 +54,25 @@ JOINT_BONES = {
     "shoulder_l": "upperarm01.L", "elbow_l": "lowerarm01.L", "wrist_l": "wrist.L",
     "hip_r": "upperleg01.R", "knee_r": "lowerleg01.R", "ankle_r": "foot.R",
     "hip_l": "upperleg01.L", "knee_l": "lowerleg01.L", "ankle_l": "foot.L",
-    "pelvis": "spine05", "neck_base": "neck01", "skull_base": "head",
+    "pelvis": "spine05", "neck_base": "neck01",
 }
 SEGMENTS = [("upperarm", "shoulder", "elbow"), ("lowerarm", "elbow", "wrist"), ("upperleg", "hip", "knee"), ("lowerleg", "knee", "ankle")]
-SPINE = ("spine01", "spine02", "spine03", "spine04", "spine05")
-FLEX_GROUPS = [
-    ("spine05", "spine04", "spine03"), ("spine02", "spine01"), ("neck01", "neck02", "neck03"), ("head",),
-    ("upperleg01.R", "upperleg01.L"), ("lowerleg01.R", "lowerleg01.L"), ("upperarm01.R",), ("lowerarm01.R",),
-]
+SPINE = ("spine05", "spine04", "spine03", "spine02", "spine01")
+NECK = ("neck01", "neck02", "neck03")
+# spine flex, neck flex, head flex (deg, + = flexion), head scale %, scale %, x mm, z mm, roll deg
+PRIOR = np.array([40.0, 8.0, -5.0, -10.0, 0.0, 0.0, 0.0, 0.0])
+SIGMA = np.array([20.0, 8.0, 6.0, 15.0, 10.0, 15.0, 15.0, 10.0])
 
 
-def _joints(rig):
+def _joint(rig, name):
     M = rig.pose_matrices()
-    return {k: (rig.world @ M[rig.index[b]][:, 3])[:3] for k, b in JOINT_BONES.items()}
+    return (rig.world @ M[rig.index[JOINT_BONES[name]]][:, 3])[:3]
 
 
 def _proportions(rig) -> dict:
     J = {k: np.array(v) for k, v in mhpose.J.items()}
-    P = _joints(rig)
-    dist = lambda D, a, b: np.linalg.norm(D[b] - D[a])
+    P = {k: _joint(rig, k) for k in JOINT_BONES}
+    dist = lambda D, a, b: np.linalg.norm(D[b] - D[a])  # noqa: E731
     torso_j, torso_p = dist(J, "pelvis", "neck_base"), dist(P, "pelvis", "neck_base")
     eff = {}
     for bone, a, b in SEGMENTS:
@@ -67,80 +81,107 @@ def _proportions(rig) -> dict:
             r = float(np.clip(r, 0.6, 1.5))
             for part in ("01", "02"):
                 eff[f"{bone}{part}.{side.upper()}"] = (1.0, r, 1.0)
-    for n in SPINE:
-        eff[n] = (TRUNK_GIRTH, 1.0, TRUNK_GIRTH)
-    for i, n in enumerate(rig.names):  # limbs hanging off the trunk keep their own girth
-        p = rig.parent[i]
-        if p >= 0 and rig.names[p] in SPINE and n not in SPINE and n not in eff:
-            eff[n] = (1.0, 1.0, 1.0)
     return eff
 
 
-def _align_to_landmarks(rig) -> None:
-    J = {k: np.array(v) for k, v in mhpose.J.items()}
-    P = _joints(rig)
-    A = np.array([P[k] for k in JOINT_BONES])
-    B = np.array([J[k] for k in JOINT_BONES])
-    ca, cb = A.mean(0), B.mean(0)
-    s = np.sum((A - ca) * (B - cb)) / np.sum((A - ca) ** 2)
-    W = rig.world.copy()
-    W[:3, :3] *= s
-    W[:3, 3] = s * (W[:3, 3] - ca) + cb
-    rig.world = W
+def _rot_y(W, angle, about):
+    c, s = math.cos(angle), math.sin(angle)
+    R = np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
+    W = W.copy()
+    W[:3, :3] = R @ W[:3, :3]
+    W[:3, 3] = R @ (W[:3, 3] - about) + about
+    return W
 
 
-def _fit_silhouette(rig, max_evals: int = 2500) -> float:
-    target = gaussian_filter((np.asarray(Image.open(MASK).convert("L").resize(FIT_SIZE)) > 127).astype(float), 2.0)
-    base_local, base_world = rig.local.copy(), rig.world.copy()
-    head = rig.index["head"]
-    c0 = rig.verts().mean(0)
-    n = len(FLEX_GROUPS)
+class _Poser:
+    def __init__(self, rig):
+        self.rig = rig
+        self.J = {k: np.array(v) for k, v in mhpose.J.items()}
+        self.limbs = [(b, np.array(d)) for b, d in mhpose.aim_plan() if not b.startswith(mhpose.MIDLINE)]
+        self.head = rig.index["head"]
+        sub = [i for i in range(len(rig.names)) if mhfit._descends(rig, i, self.head)]
+        hw = rig.W[:, sub].sum(axis=1)
+        self.head_verts, self.body_verts = hw > 0.6, hw < 0.2
+        self.world0 = rig.world.copy()
+        mask = np.asarray(Image.open(MASK).convert("L")) > 127
+        yy, xx = np.mgrid[0 : mask.shape[0], 0 : mask.shape[1]]
+        cx, cy, r = REF_CRANIUM
+        head = mask & (((xx - cx) ** 2 + (yy - cy) ** 2) < (1.2 * r) ** 2) & (yy < cy + 196)
+        self.target = gaussian_filter((np.asarray(Image.fromarray(mask & ~head).resize(FIT_SIZE)) > 0).astype(float), 2.0)
 
-    def apply(x):
-        rig.local = base_local.copy()
-        rig.scale[:] = 1.0
-        rig.scale[head] = 1.0 + x[n] / 100
-        for group, deg in zip(FLEX_GROUPS, x[:n]):
-            for b in group:
-                rig.bend(b, [1, 0, 0], deg / len(group) if b.startswith(("spine", "neck")) else deg)
-        sc, th = 1.0 + x[n + 1] / 100, math.radians(x[n + 4])
-        R = np.array([[math.cos(th), 0, math.sin(th)], [0, 1, 0], [-math.sin(th), 0, math.cos(th)]])
-        W = base_world.copy()
-        W[:3, :3] = sc * R @ W[:3, :3]
-        W[:3, 3] = sc * R @ (W[:3, 3] - c0) + c0 + np.array([x[n + 2] / 1000, 0, x[n + 3] / 1000])
-        rig.world = W
+    def pose(self, x):
+        rig = self.rig
+        spine, neck, head, head_scale, scale, tx, tz, roll = x
+        rig.reset()
+        rig.world = self.world0.copy()
+        rig.scale[self.head] = 1 + head_scale / 100
+        for b in SPINE:
+            rig.bend(b, [1, 0, 0], spine / len(SPINE))
+        for b in NECK:
+            rig.bend(b, [1, 0, 0], neck / len(NECK))
+        rig.bend("head", [1, 0, 0], head)
+        pelvis, neck_base = _joint(rig, "pelvis"), _joint(rig, "neck_base")
+        v, t = neck_base - pelvis, self.J["neck_base"] - self.J["pelvis"]
+        rig.world = _rot_y(rig.world, math.atan2(t[0], t[2]) - math.atan2(v[0], v[2]), pelvis)
+        for bone, d in self.limbs:
+            rig.aim(bone, d)
+        A = np.array([_joint(rig, k) for k in JOINT_BONES])
+        B = np.array([self.J[k] for k in JOINT_BONES])
+        ca, cb = A.mean(0), B.mean(0)
+        s = np.sum((A - ca) * (B - cb)) / np.sum((A - ca) ** 2) * (1 + scale / 100)
+        W = rig.world.copy()
+        W[:3, :3] *= s
+        W[:3, 3] = s * (W[:3, 3] - ca) + cb + np.array([tx / 1000, 0, tz / 1000])
+        rig.world = _rot_y(W, math.radians(roll), cb)
 
-    def loss(x):
-        apply(x)
-        m = gaussian_filter(mhfit.splat(rig.verts(), FIT_SIZE, 1).astype(float), 2.0)
-        return 1 - (m * target).sum() / (m + target - m * target).sum() + 1e-5 * np.sum(np.square(x[:n]))
+    def cranium(self, V):
+        uv, _ = project_points(V[self.head_verts], HERO, REF_FRAME)
+        hull = uv[ConvexHull(uv).vertices]
+        hull = hull[hull[:, 1] < hull[:, 1].min() + 230]  # same upper band the reference circle was fitted on
+        c = np.linalg.lstsq(np.c_[2 * hull, np.ones(len(hull))], (hull**2).sum(1), rcond=None)[0]
+        return c[0], c[1], math.sqrt(c[2] + c[0] ** 2 + c[1] ** 2)
 
-    x0 = np.zeros(n + 5)
-    x0[n + 1] = 8.6  # the landmark skeleton sits ~9 % small against the traced outline
-    res = minimize(loss, x0, method="Powell", options={"xtol": 0.2, "ftol": 1e-5, "maxfev": max_evals})
-    apply(res.x)
-    print(f"[fge] silhouette fit: soft IoU {1 - res.fun:.3f} after {res.nfev} evals")
-    return 1 - res.fun
+    def loss(self, x):
+        self.pose(x)
+        V = self.rig.verts()
+        m = gaussian_filter(mhfit.splat(V[self.body_verts], FIT_SIZE, 1).astype(float), 2.0)
+        body = 1 - (m * self.target).sum() / (m + self.target - m * self.target).sum()
+        cx, cy, r = self.cranium(V)
+        rx, ry, rr = REF_CRANIUM
+        head = ((cx - rx) ** 2 + (cy - ry) ** 2 + (r - rr) ** 2) / rr**2
+        return body + 2.0 * head + 0.02 * np.sum(((x - PRIOR) / SIGMA) ** 2)
+
+    def solve(self, max_evals=700):
+        simplex = np.vstack([PRIOR] + [PRIOR + np.eye(len(PRIOR))[i] * SIGMA[i] * 0.6 for i in range(len(PRIOR))])
+        res = minimize(self.loss, PRIOR.copy(), method="Nelder-Mead", options={"xatol": 0.2, "fatol": 1e-4, "maxfev": max_evals, "initial_simplex": simplex})
+        self.pose(res.x)
+        cr = np.round(self.cranium(self.rig.verts()), 1)
+        print(f"[fge] pose: spine {res.x[0]:.0f}°, neck {res.x[1]:.0f}°, head {res.x[2]:.0f}°; loss {res.fun:.3f}; cranium circle {cr} vs {REF_CRANIUM}")
+        return res.x
 
 
-def build(collection=None, max_evals: int = 2500):
+def build(collection=None, max_evals: int = 700):
     """Return (FET_Body, FET_Body_Hero, armature)."""
-    ob, arm = mh.build(ASSETS, name="FET_MH", collection=collection, weight=WEIGHT, muscle=MUSCLE)
+    ob, arm = mh.build(ASSETS, name="FET_MH", collection=collection, targets={**mh.FETAL_TARGETS, **SHAPE_TARGETS})
     rig = mhfit.Rig(arm, ob)
     mhfit.bake_proportions(rig, arm, ob, _proportions(rig))
     rig = mhfit.Rig(arm, ob)
-    mhfit.scale_head(rig, arm, ob, HEAD_SCALE)
+    ears = mh.region_mask(ASSETS, len(ob.data.vertices), "ears")
+    mhfit.smooth_vault(rig, ob, iterations=100, roundness=0.7, keep=ears)
+    mhfit.scale_head(rig, arm, ob, HEAD_SCALE, drop=HEAD_DROP)
     arm.rotation_euler = (0.0, 0.0, math.pi / 2)  # MakeHuman faces -Y; the reference fetus faces +X
     bpy.context.view_layer.update()
     rig = mhfit.Rig(arm, ob)
-    for bone, direction in mhpose.aim_plan():
-        rig.aim(bone, np.array(direction))
-    _align_to_landmarks(rig)
-    _fit_silhouette(rig, max_evals)
+    _Poser(rig).solve(max_evals)
     rig.apply_to(arm)
     arm.matrix_world = Matrix(rig.world.tolist())
     bpy.context.view_layer.update()
 
+    ob.modifiers["rig"].use_deform_preserve_volume = True
+    cs = ob.modifiers.new("corrective", "CORRECTIVE_SMOOTH")
+    cs.rest_source = "ORCO"
+    cs.smooth_type = "LENGTH_WEIGHTED"
+    cs.iterations = 20
     deps = bpy.context.evaluated_depsgraph_get()
     mesh = bpy.data.meshes.new_from_object(ob.evaluated_get(deps))
     mesh.transform(ob.matrix_world)
@@ -154,6 +195,12 @@ def build(collection=None, max_evals: int = 2500):
     sub.levels, sub.render_levels = 1, 2
     for o in (base, hero):
         o.data.shade_smooth()
+    # navel (where MakeHuman's navel targets act) for the cord attachment
+    navel = mh.region_mask(ASSETS, len(mesh.vertices), "stomach", "stomach-navel-")
+    co = np.array([v.co[:] for v in mesh.vertices])[navel]
+    nrm = np.array([v.normal[:] for v in mesh.vertices])[navel].mean(0)
+    base["fge_navel"] = co.mean(0).tolist()
+    base["fge_navel_normal"] = (nrm / np.linalg.norm(nrm)).tolist()
     ob.hide_render = ob.hide_viewport = True
     arm.hide_render = arm.hide_viewport = True
     return base, hero, arm

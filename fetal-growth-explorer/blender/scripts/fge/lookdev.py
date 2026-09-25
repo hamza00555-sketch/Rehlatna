@@ -109,12 +109,12 @@ def area_light(name, location, target, color_hex, energy, size, shape="DISK", co
 
 def make_lights(target=(0.0, 0.0, 0.02)):
     col = collection("LIGHTS")
-    # Large soft warm key from the left, low (about 25° up) and a little in front:
-    # it reaches the neck and shoulder under the big head, while the face,
-    # turned down and away, stays in soft shadow.
-    area_light("LGT_Key", (-1.15, -0.05, 0.95), target, "#FFDCC2", 80.0, 0.9, col=col)
-    # Low neutral-teal fill from the right keeps detail in the shadowed face.
-    area_light("LGT_Fill", (1.10, -0.60, -0.10), target, "#E2E4DF", 6.0, 1.4, col=col)
+    # Large soft warm key above and in front-left: the crown reads bright and the
+    # near side of the body falls off softly (a side key put the camera-facing
+    # half of the head in shadow with a hard terminator across the skull).
+    area_light("LGT_Key", (-0.40, -0.60, 1.20), target, "#FFDCC2", 55.0, 0.9, col=col)
+    # Neutral fill low from the front-right lifts the face and belly.
+    area_light("LGT_Fill", (0.90, -1.00, 0.10), target, "#E2E4DF", 8.0, 1.4, col=col)
     # Soft back light straight behind: a thin environment-like edge all round,
     # and SSS glow through ears, fingers and toes.
     area_light("LGT_Rim", (0.05, 1.00, 0.30), target, "#FFE2D0", 45.0, 0.8, col=col)
@@ -167,9 +167,9 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     ao.samples = 8
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     ramp.color_ramp.elements[0].position = 0.25
-    ramp.color_ramp.elements[0].color = rgba("#C49A8C")
+    ramp.color_ramp.elements[0].color = rgba("#B48373")
     ramp.color_ramp.elements[1].position = 1.0
-    ramp.color_ramp.elements[1].color = rgba("#E2C3B7")
+    ramp.color_ramp.elements[1].color = rgba("#D9AE9E")
     nt.links.new(ao.outputs["AO"], ramp.inputs["Fac"])
     # Faint vessel network (Voronoi cell edges, broken up by noise), strongest on the scalp.
     coord = nt.nodes.new("ShaderNodeTexCoord")
@@ -338,6 +338,22 @@ CORD_PATH = [
     (0.1600, 0.0560, 0.1130),
     (0.1800, 0.0720, 0.1160),
 ]
+
+
+def attach_cord(path, navel, normal, reach=4):
+    """Move the cord's first points onto the body's navel: the start sits just
+    inside the skin, the next leaves along the belly normal, and the shift fades
+    out over `reach` points so the rest of the drawn path is kept."""
+    path = [np.array(p, float) for p in path]
+    navel, normal = np.asarray(navel, float), np.asarray(normal, float)
+    delta = navel - path[0]
+    out = []
+    for i, p in enumerate(path):
+        f = max(0.0, 1.0 - i / reach)
+        out.append(p + delta * f * f * (3 - 2 * f))
+    out[0] = navel - 0.004 * normal
+    out[1] = navel + 0.010 * normal
+    return [tuple(p) for p in out]
 
 
 def make_cord(material, radius=0.0030, path=CORD_PATH, name="FET_Cord"):
