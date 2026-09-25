@@ -47,10 +47,12 @@ SHAPE_TARGETS = {
     **{f"cheek/{sd}-cheek-volume-decr.target.gz": 0.4 for sd in ("l", "r")},
     "nose/nose-scale-depth-incr.target.gz": 0.2,
     "chin/chin-prominent-incr.target.gz": 0.35,
+    # closed lids sit flatter in the reference: eyeballs pushed back a little
+    **{f"eyes/{sd}-eye-push{k}-in.target.gz": 0.7 for sd in ("l", "r") for k in (1, 2)},
     "neck/neck-back-scale-depth-incr.target.gz": 0.5,  # a full nape: the occiput flows into the back
     "head/head-back-scale-depth-incr.target.gz": 0.4,  # the occiput bulges behind the neck
 }
-HEAD_SCALE = 1.5
+HEAD_SCALE = 1.45
 HEAD_DROP = 0.06
 FIT_SIZE = (279, 500)
 REF_FRAME = (1116, 2000)
