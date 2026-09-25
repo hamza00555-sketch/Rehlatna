@@ -322,7 +322,7 @@ class _Out:
         self.outputs = {"Value": socket}
 
 
-def membrane_material(name="MAT_Membrane", opacity=0.75, hem=0.6, haze=0.08) -> bpy.types.Material:
+def membrane_material(name="MAT_Membrane", opacity=0.75, hem=0.9, haze=0.05, strength=3.0) -> bpy.types.Material:
     """Thin silk veil: a faint milky film, white where seen edge-on (fresnel), with
     a thin bright hem along both long edges — the crisp lines the reference's
     veils draw across the frame."""
@@ -368,11 +368,11 @@ def membrane_material(name="MAT_Membrane", opacity=0.75, hem=0.6, haze=0.08) -> 
     # Veils glow in proportion to the backdrop behind them (screen position):
     # constant emission lifted the dark lower corners ~50 levels above the reference.
     gain = _backdrop_gain_node(nt)
-    strength = nt.nodes.new("ShaderNodeMath")
-    strength.operation = "MULTIPLY"
-    strength.inputs[1].default_value = 1.5
-    nt.links.new(gain.outputs["Value"], strength.inputs[0])
-    nt.links.new(strength.outputs["Value"], veil.inputs["Strength"])
+    boost = nt.nodes.new("ShaderNodeMath")
+    boost.operation = "MULTIPLY"
+    boost.inputs[1].default_value = strength
+    nt.links.new(gain.outputs["Value"], boost.inputs[0])
+    nt.links.new(boost.outputs["Value"], veil.inputs["Strength"])
     mix = nt.nodes.new("ShaderNodeMixShader")
     nt.links.new(fac.outputs["Value"], mix.inputs["Fac"])
     nt.links.new(transp.outputs["BSDF"], mix.inputs[1])
@@ -529,7 +529,29 @@ def veil(name, center, radii, tilt_deg, start, sweep, width, depth, twist, folds
     return ob
 
 
-def make_membranes(material, center=(0.008, 0.0, -0.003), clearance=0.070):
+MEMBRANE_SPECS = [
+    # start, sweep, width, depth(y), twist, folds, fold amp, extra clearance, tilt, centre offset (x, z)
+    (0.4, 5.4, 0.220, 0.25, 0.35, 2.0, 0.018, 0.000, 8.0, (0.000, 0.000)),
+    (2.5, 5.0, 0.300, 0.45, 0.45, 2.5, 0.024, 0.020, -12.0, (0.010, 0.015)),
+    (4.2, 4.6, 0.050, -0.16, 0.20, 1.0, 0.006, 0.010, 14.0, (-0.006, -0.008)),
+    (1.3, 5.6, 0.360, 0.70, 0.50, 3.0, 0.030, 0.040, -18.0, (-0.015, 0.020)),
+    (3.4, 4.8, 0.260, 0.12, 0.40, 2.0, 0.020, 0.010, 5.0, (0.010, -0.012)),
+    (5.4, 4.4, 0.060, -0.26, 0.20, 1.0, 0.006, 0.006, -8.0, (0.000, 0.008)),
+    (0.8, 5.2, 0.420, 1.00, 0.55, 3.0, 0.034, 0.070, 22.0, (0.020, -0.006)),
+    (1.7, 3.4, 0.500, 1.35, 0.60, 3.5, 0.045, 0.110, -32.0, (-0.040, 0.060)),
+    (4.7, 3.2, 0.480, 1.55, 0.55, 3.0, 0.042, 0.130, 26.0, (0.050, -0.070)),
+    # broad open sheets over the rings, laid out like the reference: a cradle
+    # under the fetus, sheets sweeping down the upper left, one up the right side
+    (3.1, 3.2, 0.160, 0.06, 0.20, 1.0, 0.012, -0.010, 8.0, (0.000, -0.015)),
+    (1.5, 2.2, 0.300, 0.30, 0.30, 1.5, 0.016, 0.060, -15.0, (0.000, 0.000)),
+    (1.1, 2.8, 0.450, 0.60, 0.25, 1.5, 0.022, 0.120, 22.0, (-0.020, 0.030)),
+    (-1.0, 2.4, 0.350, 0.40, 0.25, 1.0, 0.018, 0.090, -8.0, (0.020, 0.000)),
+    (4.2, 2.0, 0.550, 0.80, 0.30, 1.5, 0.026, 0.200, 12.0, (0.030, -0.040)),
+    (0.2, 1.7, 0.550, 1.00, 0.30, 1.5, 0.026, 0.180, -20.0, (0.040, 0.050)),
+]
+
+
+def make_membranes(material, center=(0.008, 0.0, -0.003), clearance=0.070, specs=None):
     """Veils on concentric orbits that keep the same on-screen gap around the fetus.
 
     The fetus spans ~0.074 x 0.111 m (half-extents, image plane); each orbit is
@@ -539,18 +561,7 @@ def make_membranes(material, center=(0.008, 0.0, -0.003), clearance=0.070):
     col = collection("MEMBRANES")
     half = (0.074, 0.111)
     dist = HERO.distance
-    specs = [
-        # start, sweep, width, depth(y), twist, folds, fold amp, extra clearance, tilt, centre offset (x, z)
-        (0.4, 5.4, 0.220, 0.25, 0.35, 2.0, 0.018, 0.000, 8.0, (0.000, 0.000)),
-        (2.5, 5.0, 0.300, 0.45, 0.45, 2.5, 0.024, 0.020, -12.0, (0.010, 0.015)),
-        (4.2, 4.6, 0.050, -0.16, 0.20, 1.0, 0.006, 0.010, 14.0, (-0.006, -0.008)),
-        (1.3, 5.6, 0.360, 0.70, 0.50, 3.0, 0.030, 0.040, -18.0, (-0.015, 0.020)),
-        (3.4, 4.8, 0.260, 0.12, 0.40, 2.0, 0.020, 0.010, 5.0, (0.010, -0.012)),
-        (5.4, 4.4, 0.060, -0.26, 0.20, 1.0, 0.006, 0.006, -8.0, (0.000, 0.008)),
-        (0.8, 5.2, 0.420, 1.00, 0.55, 3.0, 0.034, 0.070, 22.0, (0.020, -0.006)),
-        (1.7, 3.4, 0.500, 1.35, 0.60, 3.5, 0.045, 0.110, -32.0, (-0.040, 0.060)),
-        (4.7, 3.2, 0.480, 1.55, 0.55, 3.0, 0.042, 0.130, 26.0, (0.050, -0.070)),
-    ]
+    specs = specs or MEMBRANE_SPECS
     obs = []
     for i, (start, sweep, width, depth, twist, folds, amp, extra, tilt, off) in enumerate(specs, start=1):
         scale = (dist + depth) / dist
