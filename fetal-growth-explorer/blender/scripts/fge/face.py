@@ -57,14 +57,14 @@ class FaceParams:
         "lower_lip": Bump(0.0024, 0.0, -0.0215, 0.0056, 0.0019),
         "mentolabial": Bump(-0.0008, 0.0, -0.0248, 0.0060, 0.0018),
         "chin": Bump(0.0004, 0.0, -0.0301, 0.0068, 0.0032),
-        "cheek": Bump(0.0040, 0.0152, -0.0105, 0.0068, 0.0082, mirror=True),
+        "cheek": Bump(0.0050, 0.0152, -0.0105, 0.0068, 0.0082, mirror=True),
         "brow": Bump(0.0008, 0.0110, 0.0055, 0.0065, 0.0022, mirror=True),
-        "orbit": Bump(-0.0017, 0.0125, 0.0006, 0.0068, 0.0050, mirror=True),
-        "lid": Bump(0.0028, 0.0126, -0.0002, 0.0054, 0.0030, mirror=True),
+        "orbit": Bump(-0.0022, 0.0125, 0.0006, 0.0068, 0.0050, mirror=True),
+        "lid": Bump(0.0036, 0.0126, -0.0002, 0.0054, 0.0030, mirror=True),
     })
     grooves: dict = field(default_factory=lambda: {
-        "mouth": Groove(-0.00110, 0.0, -0.0194, 0.0094, 0.0004, 0.00050),
-        "lid_crease": Groove(-0.00085, 0.0126, -0.0008, 0.0062, -0.0012, 0.00052, mirror=True),
+        "mouth": Groove(-0.00150, 0.0, -0.0194, 0.0098, 0.0004, 0.00060),
+        "lid_crease": Groove(-0.00120, 0.0126, -0.0008, 0.0066, -0.0012, 0.00060, mirror=True),
         "under_eye": Groove(-0.00030, 0.0130, -0.0052, 0.0060, 0.0008, 0.00120, mirror=True),
     })
 

@@ -67,7 +67,7 @@ def setup_render(scene, width=1080, height=1920, samples=256, transparent=True):
     scene.render.image_settings.color_mode = "RGBA"
     scene.view_settings.view_transform = "AgX"
     scene.view_settings.look = "AgX - Medium Low Contrast"
-    scene.view_settings.exposure = -0.55
+    scene.view_settings.exposure = -0.5
     scene.view_layers[0].use_pass_mist = True
     scene.world.mist_settings.start = 1.10
     scene.world.mist_settings.depth = 0.45
@@ -112,9 +112,9 @@ def make_lights(target=(0.0, 0.0, 0.02)):
     # Large soft warm key from the left, low (about 25° up) and a little in front:
     # it reaches the neck and shoulder under the big head, while the face,
     # turned down and away, stays in soft shadow.
-    area_light("LGT_Key", (-1.20, -0.12, 0.85), target, "#FFE0C8", 125.0, 0.75, col=col)
+    area_light("LGT_Key", (-1.15, -0.05, 0.95), target, "#FFDCC2", 130.0, 0.7, col=col)
     # Low neutral-teal fill from the right keeps detail in the shadowed face.
-    area_light("LGT_Fill", (1.10, -0.60, -0.10), target, "#D6E6E4", 3.5, 1.2, col=col)
+    area_light("LGT_Fill", (1.10, -0.60, -0.10), target, "#D6E6E4", 2.5, 1.2, col=col)
     # Soft back light straight behind: a thin environment-like edge all round,
     # and SSS glow through ears, fingers and toes.
     area_light("LGT_Rim", (0.05, 1.00, 0.30), target, "#FFE2D0", 22.0, 0.8, col=col)
@@ -248,11 +248,11 @@ def cord_material(name="MAT_Cord") -> bpy.types.Material:
     nt = mat.node_tree
     bsdf, _ = _principled(nt)
     bsdf.subsurface_method = "RANDOM_WALK"
-    bsdf.inputs["Base Color"].default_value = rgba("#D6D3D2")
-    bsdf.inputs["Subsurface Weight"].default_value = 0.85
-    bsdf.inputs["Subsurface Radius"].default_value = (1.0, 0.8, 0.75)
+    bsdf.inputs["Base Color"].default_value = rgba("#C9D0D0")
+    bsdf.inputs["Subsurface Weight"].default_value = 0.5
+    bsdf.inputs["Subsurface Radius"].default_value = (0.8, 0.85, 0.9)
     bsdf.inputs["Subsurface Scale"].default_value = 0.004
-    bsdf.inputs["Roughness"].default_value = 0.32
+    bsdf.inputs["Roughness"].default_value = 0.45
     bsdf.inputs["Coat Weight"].default_value = 0.15
     bsdf.inputs["Coat Roughness"].default_value = 0.15
     return mat
@@ -428,21 +428,24 @@ def make_membranes(material, center=(0.008, 0.0, -0.003), clearance=0.070):
     half = (0.074, 0.111)
     dist = HERO.distance
     specs = [
-        # start angle, sweep, width, depth(y), twist, folds, fold amplitude, extra clearance
-        (0.2, 5.6, 0.070, 0.20, 0.6, 1.2, 0.010, 0.000),
-        (2.3, 5.4, 0.090, 0.36, 0.8, 1.5, 0.012, 0.012),
-        (4.4, 5.2, 0.060, -0.14, 0.5, 1.0, 0.008, -0.006),
-        (1.2, 5.8, 0.110, 0.50, 1.0, 1.8, 0.014, 0.022),
-        (3.3, 5.0, 0.075, 0.10, 0.6, 1.2, 0.010, 0.006),
-        (5.3, 4.8, 0.080, -0.24, 0.5, 1.0, 0.009, -0.010),
-        (0.7, 5.5, 0.100, 0.65, 0.8, 1.5, 0.014, 0.030),
+        # start, sweep, width, depth(y), twist, folds, fold amp, extra clearance, tilt, centre offset (x, z)
+        (0.2, 5.6, 0.070, 0.20, 0.6, 1.2, 0.010, 0.000, 6.0, (0.000, 0.000)),
+        (2.3, 5.4, 0.090, 0.36, 0.8, 1.5, 0.012, 0.012, -9.0, (0.006, 0.010)),
+        (4.4, 5.2, 0.060, -0.14, 0.5, 1.0, 0.008, -0.006, 12.0, (-0.004, -0.006)),
+        (1.2, 5.8, 0.110, 0.50, 1.0, 1.8, 0.014, 0.022, -14.0, (-0.010, 0.012)),
+        (3.3, 5.0, 0.075, 0.10, 0.6, 1.2, 0.010, 0.006, 4.0, (0.008, -0.010)),
+        (5.3, 4.8, 0.080, -0.24, 0.5, 1.0, 0.009, -0.010, -6.0, (0.000, 0.006)),
+        (0.7, 5.5, 0.100, 0.65, 0.8, 1.5, 0.014, 0.030, 18.0, (0.012, -0.004)),
+        # Two wide, loose sheets far behind fill the corners like free-hanging silk.
+        (1.6, 3.2, 0.260, 1.10, 1.3, 2.5, 0.040, 0.090, -30.0, (-0.030, 0.050)),
+        (4.6, 3.0, 0.240, 1.30, 1.1, 2.2, 0.036, 0.110, 24.0, (0.040, -0.060)),
     ]
     obs = []
-    for i, (start, sweep, width, depth, twist, folds, amp, extra) in enumerate(specs, start=1):
+    for i, (start, sweep, width, depth, twist, folds, amp, extra, tilt, off) in enumerate(specs, start=1):
         scale = (dist + depth) / dist
         radii = ((half[0] + clearance + extra) * scale, (half[1] + clearance + extra) * scale)
-        c = (center[0] * scale, center[1], center[2] * scale)
-        obs.append(veil(f"ENV_Membrane_{i:02d}", c, radii, 0.0, start, sweep, width, depth, twist, folds, amp, seed=i, material=material, col=col))
+        c = ((center[0] + off[0]) * scale, center[1], (center[2] + off[1]) * scale)
+        obs.append(veil(f"ENV_Membrane_{i:02d}", c, radii, tilt, start, sweep, width, depth, twist, folds, amp, seed=i, material=material, col=col))
     return obs
 
 

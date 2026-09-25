@@ -170,10 +170,10 @@ def far_hand(wrist) -> Group:
 
 def arm(shoulder, elbow, wrist, hand: Group, side: float) -> tuple[Group, Group]:
     upper = Group("upper_arm", k=0.004)
-    upper.add(RoundCone(shoulder, elbow, 0.0105, 0.0082, name="humerus"))
+    upper.add(RoundCone(shoulder, elbow, 0.0115, 0.0092, name="humerus"))
     upper.add(Ellipsoid(shoulder + V(0.0015, side * 0.0035, 0.0010), (0.0110, 0.0100, 0.0115), name="deltoid"), k=0.008)
     lower = Group("forearm", k=0.004)
-    lower.add(RoundCone(elbow, wrist, 0.0086, 0.0064, name="forearm"))
+    lower.add(RoundCone(elbow, wrist, 0.0095, 0.0070, name="forearm"))
     lower.add(hand, k=0.004)
     return upper, lower
 
