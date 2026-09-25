@@ -57,6 +57,9 @@ HEAD_DROP = 0.06
 FIT_SIZE = (279, 500)
 REF_FRAME = (1116, 2000)
 REF_CRANIUM = (542.0, 729.0, 164.0)  # outline circle of the reference cranium, px in the reference frame
+# face profile landmarks traced on the reference silhouette (px) and the hm08
+# midline vertices they correspond to: they fix how far the chin is tucked
+FACE_POINTS = {297: (640.0, 876.0), 467: (615.0, 907.0)}  # nose tip, lower lip
 
 # reference landmark -> bone whose head sits on it
 JOINT_BONES = {
@@ -172,13 +175,19 @@ class _Poser:
         cx, cy, r = self.cranium(V)
         rx, ry, rr = REF_CRANIUM
         head = ((cx - rx) ** 2 + (cy - ry) ** 2 + (r - rr) ** 2) / rr**2
-        return body + 2.0 * head + 0.02 * np.sum(((x - PRIOR) / SIGMA) ** 2)
+        idx = list(FACE_POINTS)
+        uv, _ = project_points(V[idx], HERO, REF_FRAME)
+        face = np.sum((uv - np.array([FACE_POINTS[i] for i in idx])) ** 2) / rr**2
+        return body + 2.0 * head + 2.0 * face + 0.02 * np.sum(((x - PRIOR) / SIGMA) ** 2)
 
     def solve(self, max_evals=700):
         simplex = np.vstack([PRIOR] + [PRIOR + np.eye(len(PRIOR))[i] * SIGMA[i] * 0.6 for i in range(len(PRIOR))])
         res = minimize(self.loss, PRIOR.copy(), method="Nelder-Mead", options={"xatol": 0.2, "fatol": 1e-4, "maxfev": max_evals, "initial_simplex": simplex})
         self.pose(res.x)
-        cr = np.round(self.cranium(self.rig.verts()), 1)
+        V = self.rig.verts()
+        cr = np.round(self.cranium(V), 1)
+        uv, _ = project_points(V[list(FACE_POINTS)], HERO, REF_FRAME)
+        print(f"[fge] face points {np.round(uv, 0).tolist()} vs {list(FACE_POINTS.values())}")
         print(f"[fge] pose: lumbar {res.x[0]:.0f}°, thoracic {res.x[1]:.0f}°, neck {res.x[2]:.0f}°, head {res.x[3]:.0f}°; loss {res.fun:.3f}; cranium {cr} vs {REF_CRANIUM}")
         return res.x
 
