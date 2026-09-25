@@ -61,19 +61,31 @@ def import_sculpt(path: Path, name: str = "FET_Sculpt", collection=None):
     for o in meshes:
         o.data.transform(o.matrix_world)
         o.matrix_world = Matrix.Identity(4)
+    others = [o.name for o in new if o.type != "MESH"]
     if len(meshes) > 1:
         bpy.ops.object.join()
     ob = bpy.context.view_layer.objects.active
     ob.name = ob.data.name = name
-    for o in new:
-        if o is not ob and o.name in bpy.data.objects and o.type != "MESH":
-            bpy.data.objects.remove(o, do_unlink=True)
+    for n in others:
+        if n in bpy.data.objects:
+            bpy.data.objects.remove(bpy.data.objects[n], do_unlink=True)
     if collection is not None:
         for c in list(ob.users_collection):
             c.objects.unlink(ob)
         collection.objects.link(ob)
-    # keep only the largest connected part (drops stray bits, stands, labels)
+    # fuse the parts (sculpts are often split into chunks, the head separate)
+    # into one closed surface, then keep the largest piece (drops stray bits)
+    V = np.empty(len(ob.data.vertices) * 3)
+    ob.data.vertices.foreach_get("co", V)
+    extent = float(np.ptp(V.reshape(-1, 3), axis=0).max())
+    mod = ob.modifiers.new("fuse", "REMESH")
+    mod.mode = "VOXEL"
+    mod.voxel_size = extent / 400.0
+    mod.use_smooth_shade = True
+    bpy.context.view_layer.objects.active = ob
+    bpy.ops.object.modifier_apply(modifier=mod.name)
     _keep_largest_island(ob)
+    print(f"[fge] sculpt fused: {len(ob.data.vertices)} verts (voxel {extent / 400.0:.4g})")
     return ob
 
 
