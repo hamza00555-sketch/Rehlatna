@@ -109,12 +109,13 @@ def area_light(name, location, target, color_hex, energy, size, shape="DISK", co
 
 def make_lights(target=(0.0, 0.0, 0.02)):
     col = collection("LIGHTS")
-    # Large soft warm key above and in front-left: the crown reads bright and the
-    # near side of the body falls off softly (a side key put the camera-facing
-    # half of the head in shadow with a hard terminator across the skull).
-    area_light("LGT_Key", (-0.40, -0.60, 1.20), target, "#FFDCC2", 42.0, 0.9, col=col)
+    # Large soft warm key from the upper left (45° up, a little in front): the
+    # crown and back read bright and the face, turned down and away, falls
+    # into soft shade, the reference's light balance. Size 1.6 m keeps the
+    # terminator across the skull soft.
+    area_light("LGT_Key", (-1.13, -0.30, 1.13), target, "#FFDCC2", 70.0, 1.6, col=col)
     # Neutral fill low from the front-right lifts the face and belly.
-    area_light("LGT_Fill", (0.90, -1.00, 0.10), target, "#E2E4DF", 8.0, 1.4, col=col)
+    area_light("LGT_Fill", (0.90, -1.00, 0.10), target, "#E2E4DF", 14.0, 1.4, col=col)
     # Soft back light straight behind: a thin environment-like edge all round,
     # and SSS glow through ears, fingers and toes.
     area_light("LGT_Rim", (0.05, 1.00, 0.30), target, "#FFE2D0", 80.0, 0.8, col=col)
@@ -181,9 +182,9 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     ao.samples = 8
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     ramp.color_ramp.elements[0].position = 0.25
-    ramp.color_ramp.elements[0].color = rgba("#AA8276")
+    ramp.color_ramp.elements[0].color = rgba("#B08A80")
     ramp.color_ramp.elements[1].position = 1.0
-    ramp.color_ramp.elements[1].color = rgba("#D4B0A4")
+    ramp.color_ramp.elements[1].color = rgba("#DAB8AE")
     nt.links.new(ao.outputs["AO"], ramp.inputs["Fac"])
     # Faint vessel network (Voronoi cell edges, broken up by noise), strongest on the scalp.
     rest = _rest_coords(nt)
