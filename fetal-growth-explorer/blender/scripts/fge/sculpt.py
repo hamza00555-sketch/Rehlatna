@@ -46,21 +46,16 @@ def import_sculpt(path: Path, name: str = "FET_Sculpt", collection=None):
     meshes = [o for o in new if o.type == "MESH"]
     if not meshes:
         raise RuntimeError(f"no mesh in {path}")
-    for o in new:
-        if o.type != "MESH":
-            continue
-        o.select_set(True)
-    bpy.context.view_layer.objects.active = meshes[0]
-    for o in bpy.context.selected_objects:
-        o.parent = None if o.parent and o.parent.type != "MESH" else o.parent
+    # bake world transforms into the mesh data (before touching parents)
+    world = {o.name: o.matrix_world.copy() for o in meshes}
+    for o in meshes:
+        o.parent = None
+        o.data.transform(world[o.name])
+        o.matrix_world = Matrix.Identity(4)
     bpy.ops.object.select_all(action="DESELECT")
     for o in meshes:
         o.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
-    # bake world transforms into the mesh data before joining
-    for o in meshes:
-        o.data.transform(o.matrix_world)
-        o.matrix_world = Matrix.Identity(4)
     others = [o.name for o in new if o.type != "MESH"]
     if len(meshes) > 1:
         bpy.ops.object.join()
