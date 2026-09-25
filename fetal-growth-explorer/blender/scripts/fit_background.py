@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
 REF = ROOT / "reference" / "north-star.webp"
@@ -65,7 +65,7 @@ def main():
                     err = 0.0
                     cs = []
                     for c in range(3):
-                        x, res, *_ = np.linalg.lstsq(A[sel], a[..., c].ravel()[sel], rcond=None)
+                        x = np.linalg.lstsq(A[sel], a[..., c].ravel()[sel], rcond=None)[0]
                         cs.append(x)
                         err += float(np.sum((A[sel] @ x - a[..., c].ravel()[sel]) ** 2))
                     if best is None or err < best[0]:
