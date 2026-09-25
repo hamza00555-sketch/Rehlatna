@@ -1,6 +1,7 @@
 """Fit the backdrop gradient to the north-star reference (run once).
 
-Masks out the fetus and cord, fills the holes by normalised convolution,
+Masks out the fetus (traced silhouette), takes a low local percentile so the
+veils rendered on top are not counted twice, fills the holes by normalised convolution,
 then fits a degree-4 polynomial per sRGB channel over (u, v) in [0, 1].
 The coefficients live in blender/lookdev/background.json and are evaluated
 by post.py (hero stills) and, later, by the web background shader, so both
@@ -18,6 +19,7 @@ from PIL import Image, ImageFilter
 ROOT = Path(__file__).resolve().parents[2]
 REF = ROOT / "reference" / "north-star.webp"
 OUT = ROOT / "blender" / "lookdev" / "background.json"
+MASK = ROOT / "blender" / "lookdev" / "reference_mask.png"
 DEGREE = 4
 
 
@@ -30,10 +32,17 @@ def main():
     small = im.resize((112, 200), Image.LANCZOS)
     a = np.asarray(small).astype(float) / 255.0
     warm = a[..., 0] - a[..., 2]
-    lum = a.mean(-1)
-    subject = (warm > 10 / 255) | (lum < 125 / 255)
-    # The cord is pale; take a generous box around its path as well as the fetus.
+    # Fetus: the traced silhouette (fit_reference_mask.py), grown a little. The
+    # dark corners are backdrop and must stay in the fit (an earlier luminance
+    # threshold dropped them and the fit came out ~40 levels too bright there).
+    body = np.asarray(Image.open(MASK).convert("L").resize((112, 200))) > 127
+    subject = body | (warm > 10 / 255)
     mask = ~subject
+    # The veils are rendered on top of this plate, so fit the level *under* them:
+    # a low local percentile drops the bright veil lines and the pale cord.
+    from scipy.ndimage import percentile_filter
+
+    a = np.stack([percentile_filter(a[..., c], 20, size=9) for c in range(3)], -1)
     m_img = Image.fromarray((mask * 255).astype(np.uint8)).filter(ImageFilter.MinFilter(5))
     mask = np.asarray(m_img) > 127
     num = np.stack([np.asarray(Image.fromarray((a[..., c] * mask * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(14))) for c in range(3)], -1).astype(float)

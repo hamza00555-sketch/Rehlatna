@@ -112,7 +112,7 @@ def make_lights(target=(0.0, 0.0, 0.02)):
     # Large soft warm key above and in front-left: the crown reads bright and the
     # near side of the body falls off softly (a side key put the camera-facing
     # half of the head in shadow with a hard terminator across the skull).
-    area_light("LGT_Key", (-0.40, -0.60, 1.20), target, "#FFDCC2", 55.0, 0.9, col=col)
+    area_light("LGT_Key", (-0.40, -0.60, 1.20), target, "#FFDCC2", 42.0, 0.9, col=col)
     # Neutral fill low from the front-right lifts the face and belly.
     area_light("LGT_Fill", (0.90, -1.00, 0.10), target, "#E2E4DF", 8.0, 1.4, col=col)
     # Soft back light straight behind: a thin environment-like edge all round,
@@ -167,9 +167,9 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     ao.samples = 8
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     ramp.color_ramp.elements[0].position = 0.25
-    ramp.color_ramp.elements[0].color = rgba("#B48373")
+    ramp.color_ramp.elements[0].color = rgba("#AA8276")
     ramp.color_ramp.elements[1].position = 1.0
-    ramp.color_ramp.elements[1].color = rgba("#D9AE9E")
+    ramp.color_ramp.elements[1].color = rgba("#D4B0A4")
     nt.links.new(ao.outputs["AO"], ramp.inputs["Fac"])
     # Faint vessel network (Voronoi cell edges, broken up by noise), strongest on the scalp.
     coord = nt.nodes.new("ShaderNodeTexCoord")
@@ -258,8 +258,74 @@ def cord_material(name="MAT_Cord") -> bpy.types.Material:
     return mat
 
 
-def membrane_material(name="MAT_Membrane", opacity=0.75) -> bpy.types.Material:
-    """Thin silk veil: nearly clear face-on, white where seen edge-on (fresnel-lit edges)."""
+def _backdrop_gain_node(nt):
+    """Math-node network: backdrop luminance at the pixel's screen position (a
+    quadratic fitted to blender/lookdev/background.json), relative to the frame
+    centre, clamped to 0.25..1.3."""
+    import json
+    from pathlib import Path
+
+    spec = json.loads((Path(__file__).resolve().parents[2] / "lookdev" / "background.json").read_text())
+    deg = spec["degree"]
+    v, u = np.mgrid[0:1:64j, 0:1:36j]
+    T = np.stack([u**i * v**j for i in range(deg + 1) for j in range(deg + 1 - i)], axis=-1)
+    lum = np.stack([T @ np.array(c) for c in spec["coefficients"]], -1) @ np.array([0.2126, 0.7152, 0.0722])
+    lum = np.clip(lum, 0.02, 1.0) ** 2.2  # sRGB -> linear, roughly
+    Q = np.stack([np.ones_like(u), u, v, u * u, u * v, v * v], -1).reshape(-1, 6)
+    c = np.linalg.lstsq(Q, lum.ravel(), rcond=None)[0]
+    c = c / (Q[np.argmin((u.ravel() - 0.5) ** 2 + (v.ravel() - 0.5) ** 2)] @ c)
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Window"], sep.inputs["Vector"])
+    vdown = nt.nodes.new("ShaderNodeMath")
+    vdown.operation = "SUBTRACT"
+    vdown.inputs[0].default_value = 1.0
+    nt.links.new(sep.outputs["Y"], vdown.inputs[1])
+
+    def mul(a, b):
+        n = nt.nodes.new("ShaderNodeMath")
+        n.operation = "MULTIPLY"
+        nt.links.new(a, n.inputs[0])
+        if isinstance(b, float):
+            n.inputs[1].default_value = b
+        else:
+            nt.links.new(b, n.inputs[1])
+        return n.outputs["Value"]
+
+    U, V = sep.outputs["X"], vdown.outputs["Value"]
+    terms = [U, V, mul(U, U), mul(U, V), mul(V, V)]
+    acc = None
+    for coef, t in zip(c[1:], terms):
+        term = mul(t, float(coef))
+        if acc is None:
+            acc = term
+        else:
+            add = nt.nodes.new("ShaderNodeMath")
+            add.operation = "ADD"
+            nt.links.new(acc, add.inputs[0])
+            nt.links.new(term, add.inputs[1])
+            acc = add.outputs["Value"]
+    out = nt.nodes.new("ShaderNodeMath")
+    out.operation = "ADD"
+    out.use_clamp = False
+    out.inputs[1].default_value = float(c[0])
+    nt.links.new(acc, out.inputs[0])
+    clamp = nt.nodes.new("ShaderNodeClamp")
+    clamp.inputs["Min"].default_value = 0.25
+    clamp.inputs["Max"].default_value = 1.3
+    nt.links.new(out.outputs["Value"], clamp.inputs["Value"])
+    return _Out(clamp.outputs["Result"])
+
+
+class _Out:
+    def __init__(self, socket):
+        self.outputs = {"Value": socket}
+
+
+def membrane_material(name="MAT_Membrane", opacity=0.75, hem=0.6, haze=0.08) -> bpy.types.Material:
+    """Thin silk veil: a faint milky film, white where seen edge-on (fresnel), with
+    a thin bright hem along both long edges — the crisp lines the reference's
+    veils draw across the frame."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nt = mat.node_tree
@@ -273,16 +339,42 @@ def membrane_material(name="MAT_Membrane", opacity=0.75) -> bpy.types.Material:
     curve.inputs[1].default_value = 4.0
     nt.links.new(lw.outputs["Facing"], curve.inputs[0])
     scale = nt.nodes.new("ShaderNodeMapRange")
-    scale.inputs["To Min"].default_value = 0.025
+    scale.inputs["To Min"].default_value = haze
     scale.inputs["To Max"].default_value = opacity
     nt.links.new(curve.outputs["Value"], scale.inputs["Value"])
+    # hem: |v| from the veil UV, a thin smooth band at the long edges
+    uvn = nt.nodes.new("ShaderNodeUVMap")
+    uvn.uv_map = "veil"
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(uvn.outputs["UV"], sep.inputs["Vector"])
+    absv = nt.nodes.new("ShaderNodeMath")
+    absv.operation = "ABSOLUTE"
+    nt.links.new(sep.outputs["Y"], absv.inputs[0])
+    band = nt.nodes.new("ShaderNodeMapRange")
+    band.interpolation_type = "SMOOTHSTEP"
+    band.inputs["From Min"].default_value = 0.955
+    band.inputs["From Max"].default_value = 0.99
+    band.inputs["To Max"].default_value = hem
+    nt.links.new(absv.outputs["Value"], band.inputs["Value"])
+    fac = nt.nodes.new("ShaderNodeMath")
+    fac.operation = "MAXIMUM"
+    nt.links.new(scale.outputs["Result"], fac.inputs[0])
+    nt.links.new(band.outputs["Result"], fac.inputs[1])
     transp = nt.nodes.new("ShaderNodeBsdfTransparent")
     # unlit: the key light is warm, and lit veils picked up a pink cast the reference doesn't have
     veil = nt.nodes.new("ShaderNodeEmission")
     veil.inputs["Color"].default_value = rgba("#E6F4F6")
     veil.inputs["Strength"].default_value = 1.5
+    # Veils glow in proportion to the backdrop behind them (screen position):
+    # constant emission lifted the dark lower corners ~50 levels above the reference.
+    gain = _backdrop_gain_node(nt)
+    strength = nt.nodes.new("ShaderNodeMath")
+    strength.operation = "MULTIPLY"
+    strength.inputs[1].default_value = 1.5
+    nt.links.new(gain.outputs["Value"], strength.inputs[0])
+    nt.links.new(strength.outputs["Value"], veil.inputs["Strength"])
     mix = nt.nodes.new("ShaderNodeMixShader")
-    nt.links.new(scale.outputs["Result"], mix.inputs["Fac"])
+    nt.links.new(fac.outputs["Value"], mix.inputs["Fac"])
     nt.links.new(transp.outputs["BSDF"], mix.inputs[1])
     nt.links.new(veil.outputs["Emission"], mix.inputs[2])
     nt.links.new(mix.outputs["Shader"], out.inputs["Surface"])
@@ -425,6 +517,11 @@ def veil(name, center, radii, tilt_deg, start, sweep, width, depth, twist, folds
     me = bpy.data.meshes.new(name)
     me.from_pydata(verts, [], faces)
     me.shade_smooth()
+    # UV = (along, across in -1..1): the material draws the hems from it
+    uv = me.uv_layers.new(name="veil")
+    UV = np.stack(np.broadcast_arrays(u, v), axis=-1).reshape(-1, 2)
+    loop_v = np.array([lp.vertex_index for lp in me.loops])
+    uv.data.foreach_set("uv", UV[loop_v].ravel())
     ob = bpy.data.objects.new(name, me)
     ob.data.materials.append(material)
     camera_only(ob)

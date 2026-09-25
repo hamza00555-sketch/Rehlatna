@@ -40,9 +40,8 @@ MASK = ROOT / "lookdev" / "reference_mask.png"
 SHAPE_TARGETS = {
     "stomach/stomach-pregnant-incr.target.gz": 1.0,  # the round fetal abdomen
     "torso/torso-scale-depth-incr.target.gz": 0.5,
-    "buttocks/buttocks-volume-incr.target.gz": 1.0,
-    **{f"legs/{sd}-upperleg-fat-incr.target.gz": 0.8 for sd in ("l", "r")},  # the reference's full thighs
-    "legs/measure-thigh-circ-incr.target.gz": 0.5,
+    "buttocks/buttocks-volume-incr.target.gz": 0.5,
+    **{f"legs/{sd}-upperleg-fat-incr.target.gz": 0.3 for sd in ("l", "r")},  # soft, full thighs
     **{f"hands/{sd}-hand-scale-decr.target.gz": 0.5 for sd in ("l", "r")},
     # a more defined profile than the chubby newborn default: nose, leaner cheeks
     **{f"cheek/{sd}-cheek-volume-decr.target.gz": 0.6 for sd in ("l", "r")},
@@ -66,6 +65,9 @@ SEGMENTS = [("upperarm", "shoulder", "elbow"), ("lowerarm", "elbow", "wrist"), (
 LUMBAR = ("spine05", "spine04")
 THORACIC = ("spine03", "spine02", "spine01")
 NECK = ("neck01", "neck02", "neck03")
+FINGER_CURL = tuple(f"finger{f}-{j}.{sd}" for f in range(2, 6) for j in (1, 2, 3) for sd in ("L", "R"))
+FINGER_CURL_DEG = 8.0
+CLAVICLE_DROP_DEG = -12.0  # shoulders down, relaxed (the rest pose reads shrugged under the big head)
 # lumbar flex, thoracic flex, neck flex, head flex (deg, + = flexion), head scale %, scale %, x mm, z mm, roll deg.
 # Lumbar flexion tucks the pelvis under (the reference's round, low rump).
 PRIOR = np.array([25.0, 25.0, 8.0, -5.0, -10.0, 0.0, 0.0, 0.0, 0.0])
@@ -133,8 +135,12 @@ class _Poser:
         pelvis, neck_base = _joint(rig, "pelvis"), _joint(rig, "neck_base")
         v, t = neck_base - pelvis, self.J["neck_base"] - self.J["pelvis"]
         rig.world = _rot_y(rig.world, math.atan2(t[0], t[2]) - math.atan2(v[0], v[2]), pelvis)
+        for b in ("clavicle.L", "clavicle.R"):  # before the arms are aimed, so they keep their directions
+            rig.bend(b, [1, 0, 0], CLAVICLE_DROP_DEG)
         for bone, d in self.limbs:
             rig.aim(bone, d)
+        for b in FINGER_CURL:  # relaxed fingers, slightly curled toward the palm
+            rig.bend(b, [1, 0, 0], FINGER_CURL_DEG)
         A = np.array([_joint(rig, k) for k in JOINT_BONES])
         B = np.array([self.J[k] for k in JOINT_BONES])
         ca, cb = A.mean(0), B.mean(0)
