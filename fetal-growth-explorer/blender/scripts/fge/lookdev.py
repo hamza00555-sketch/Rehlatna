@@ -269,7 +269,7 @@ def cord_material(name="MAT_Cord") -> bpy.types.Material:
     bsdf.subsurface_method = "RANDOM_WALK"
     bsdf.inputs["Base Color"].default_value = rgba("#E6E2E4")
     bsdf.inputs["Subsurface Weight"].default_value = 0.4
-    bsdf.inputs["Subsurface Radius"].default_value = (1.0, 0.6, 0.6)  # pink glow from within
+    bsdf.inputs["Subsurface Radius"].default_value = (1.0, 0.75, 0.75)  # a faint pink glow from within
     bsdf.inputs["Subsurface Scale"].default_value = 0.0012  # shorter than the cord radius, or the streaks blur away
     bsdf.inputs["Roughness"].default_value = 0.45
     bsdf.inputs["Coat Weight"].default_value = 0.15
@@ -303,7 +303,7 @@ def cord_material(name="MAT_Cord") -> bpy.types.Material:
     nt.links.new(wave.outputs["Value"], streak.inputs["Value"])
     tint = nt.nodes.new("ShaderNodeMix")
     tint.data_type = "RGBA"
-    tint.inputs["A"].default_value = rgba("#E8E2E3")
+    tint.inputs["A"].default_value = rgba("#DCE0E4")  # cool blue-white jelly
     tint.inputs["B"].default_value = rgba("#BFC8D0")
     nt.links.new(streak.outputs["Result"], tint.inputs["Factor"])
     nt.links.new(tint.outputs["Result"], bsdf.inputs["Base Color"])
@@ -605,14 +605,12 @@ MEMBRANE_SPECS = [
     (0.8, 5.2, 0.420, 1.00, 0.55, 3.0, 0.034, 0.070, 22.0, (0.020, -0.006)),
     (1.7, 3.4, 0.500, 1.35, 0.60, 3.5, 0.045, 0.110, -32.0, (-0.040, 0.060)),
     (4.7, 3.2, 0.480, 1.55, 0.55, 3.0, 0.042, 0.130, 26.0, (0.050, -0.070)),
-    # broad open sheets over the rings, laid out like the reference: a cradle
-    # under the fetus, sheets sweeping down the upper left, one up the right side
-    (3.1, 3.2, 0.160, 0.06, 0.20, 1.0, 0.012, -0.010, 8.0, (0.000, -0.015)),
-    (1.5, 2.2, 0.300, 0.30, 0.30, 1.5, 0.016, 0.060, -15.0, (0.000, 0.000)),
-    (1.1, 2.8, 0.450, 0.60, 0.25, 1.5, 0.022, 0.120, 22.0, (-0.020, 0.030)),
-    (-1.0, 2.4, 0.350, 0.40, 0.25, 1.0, 0.018, 0.090, -8.0, (0.020, 0.000)),
-    (4.2, 2.0, 0.550, 0.80, 0.30, 1.5, 0.026, 0.200, 12.0, (0.030, -0.040)),
-    (0.2, 1.7, 0.550, 1.00, 0.30, 1.5, 0.026, 0.180, -20.0, (0.040, 0.050)),
+    # wide silk sheets well behind the fetus (they can never cross the body):
+    # the soft folded fabric the reference frames the fetus with
+    (2.9, 3.0, 0.900, 0.45, 0.20, 1.5, 0.030, 0.100, 6.0, (0.000, -0.030)),
+    (1.2, 2.6, 1.100, 0.80, 0.25, 2.0, 0.040, 0.180, 24.0, (-0.030, 0.050)),
+    (-0.9, 2.4, 0.950, 0.60, 0.20, 1.5, 0.034, 0.140, -10.0, (0.030, 0.000)),
+    (4.3, 2.0, 1.200, 1.10, 0.25, 2.0, 0.046, 0.260, 14.0, (0.040, -0.050)),
 ]
 
 
