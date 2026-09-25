@@ -29,7 +29,10 @@ uv venv --python 3.13 .venv && . .venv/bin/activate
 uv pip install bpy==5.2.2 scikit-image pillow scipy
 
 cd blender/scripts
-python build_base.py                 # SDF → FET_Body + FET_Body_Hero → blender/fetal_master.blend  (~2.5 min)
+python fetch_makehuman.py            # (once) CC0 MakeHuman base mesh, baby targets, rig → blender/assets/
+python fit_reference_mask.py         # (once) fetus silhouette traced from the reference
+python build_base.py                 # fitted MakeHuman baby → FET_Body + FET_Body_Hero → fetal_master.blend (~6 min)
+                                     # (--sdf: the earlier procedural implicit-surface body)
 python lookdev.py                    # materials, cord, membranes, lights, camera, render settings
 python render_stages.py --week 24    # Cycles 1080×1920 → post → blender/renders/render_W24.png
 python fit_background.py             # (once) backdrop gradient fitted to the reference
@@ -39,6 +42,26 @@ python fit_background.py             # (once) backdrop gradient fitted to the re
 the source of truth and rebuild it from code.
 
 ## How the fetus is built
+
+**Current body (default): fitted MakeHuman baby** (`scripts/fge/mhbody.py`).
+The procedural SDF body below matched the silhouette but never reached the
+reference's anatomy (hands, feet, ears, face). The default body now starts
+from the CC0 MakeHuman hm08 mesh at age "baby" (mean of the six ethnic
+targets, heavier/softer universal macros, closed-eye expression units,
+head-round) with its default rig and skin weights, then:
+
+- **Proportions** are baked into a new rest pose: limb segment lengths from
+  the reference landmark skeleton, a fuller trunk, and a fetal head
+  (×1.45, scaled as one rigid piece with a tapered neck; the neck's skin
+  weights inside the skull are handed to the head bone so flexion can't
+  shear it).
+- **Pose**: bones aimed along the landmark skeleton, then a Powell search
+  over spine/neck/head/hip/knee/arm flexion, scale, roll and position
+  against the reference silhouette (`blender/lookdev/reference_mask.png`,
+  soft IoU ≈ 0.72). NumPy FK + linear blend skinning (`fge/mhfit.py`)
+  makes each candidate pose cost milliseconds instead of a depsgraph update.
+
+**Earlier body (`--sdf`):**
 
 - **Implicit surface.** The body is a signed-distance function: ellipsoids
   and round cones joined with smooth unions (`scripts/fge/sdf.py`,

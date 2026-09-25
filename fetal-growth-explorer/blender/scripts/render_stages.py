@@ -35,7 +35,7 @@ def side_by_side(render_png: Path, out: Path) -> None:
         font = ImageFont.truetype("DejaVuSans.ttf", 34)
     except OSError:
         font = ImageFont.load_default()
-    draw.text((pad, pad + 10), "Blender / Cycles · procedural · week 24", fill=(220, 232, 232), font=font)
+    draw.text((pad, pad + 10), "Blender / Cycles · week 24", fill=(220, 232, 232), font=font)
     draw.text((ours.width + pad * 2, pad + 10), "North-star reference", fill=(220, 232, 232), font=font)
     sheet.save(out, quality=92)
 

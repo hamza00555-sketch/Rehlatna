@@ -226,7 +226,7 @@ def leg(hip, knee, ankle, heel, ball, side: float, thigh_r=(0.0182, 0.0118), cal
 def build_w24() -> Group:
     body = Group("FET_Body")
     body.add(build_head())
-    body.add(build_trunk(), k=0.018)
+    body.add(build_trunk(), k=0.011)
 
     s_r, e_r, w_r = V(-0.0420, -0.0305, 0.0060), V(-0.0290, -0.0445, -0.0265), V(0.0065, -0.0335, -0.0010)
     s_l, e_l, w_l = V(-0.0355, 0.0270, 0.0040), V(-0.0215, 0.0400, -0.0300), V(-0.0010, 0.0250, -0.0305)

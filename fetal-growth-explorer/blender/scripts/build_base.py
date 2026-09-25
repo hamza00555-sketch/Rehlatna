@@ -1,11 +1,15 @@
 """Build the week-24 base fetus and save blender/fetal_master.blend.
 
-FET_Body      even quad mesh (voxel remesh of the implicit surface), the
-              carrier for per-week shape keys and the web export.
-FET_Body_Hero FET_Body subdivided once and re-projected onto the exact
-              surface: sub-millimetre detail for Cycles stills.
+Default body: the CC0 MakeHuman baby, reproportioned, posed and fitted to
+the reference silhouette (fge.mhbody; run fetch_makehuman.py and
+fit_reference_mask.py once first). `--sdf` builds the earlier procedural
+implicit-surface body instead.
 
-    python build_base.py            # bpy as a module (pip install bpy==5.2.2)
+FET_Body      quad mesh, the carrier for per-week shape keys and the web export.
+FET_Body_Hero FET_Body with subdivision for Cycles stills.
+FET_MH_rig    (MakeHuman path) the fitted armature, kept for later posing.
+
+    python build_base.py [--sdf]    # bpy as a module (pip install bpy==5.2.2)
     blender -b -P build_base.py     # or inside Blender 5.2
 """
 
@@ -14,10 +18,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import bpy  # noqa: E402
-
-from fge import lookdev, meshing  # noqa: E402
-from fge.body import build_w24  # noqa: E402
+import bpy
+from fge import lookdev
 
 ROOT = Path(__file__).resolve().parents[1]
 MASTER = ROOT / "fetal_master.blend"
@@ -28,7 +30,15 @@ REMESH_VOXEL = 0.0008
 def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     fetus = lookdev.collection("FETUS")
-    base, hero = meshing.build_body_meshes(build_w24(), grid_voxel=GRID_VOXEL, remesh_voxel=REMESH_VOXEL, collection=fetus)
+    if "--sdf" in sys.argv:
+        from fge import meshing
+        from fge.body import build_w24
+
+        base, hero = meshing.build_body_meshes(build_w24(), grid_voxel=GRID_VOXEL, remesh_voxel=REMESH_VOXEL, collection=fetus)
+    else:
+        from fge import mhbody
+
+        base, hero, _ = mhbody.build(collection=fetus)
     base["fge_week"] = 24
     hero["fge_week"] = 24
     bpy.ops.wm.save_as_mainfile(filepath=str(MASTER), compress=True)

@@ -24,5 +24,7 @@ next-env.d.ts
 
 # fetal-growth-explorer: generated Blender master (rebuilt by blender/scripts) and caches
 /fetal-growth-explorer/blender/*.blend
+/fetal-growth-explorer/blender/assets/
 /fetal-growth-explorer/blender/*.blend1
+/fetal-growth-explorer/blender/assets/
 __pycache__/

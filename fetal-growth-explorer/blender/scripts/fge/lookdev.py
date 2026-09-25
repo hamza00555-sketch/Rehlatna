@@ -67,7 +67,7 @@ def setup_render(scene, width=1080, height=1920, samples=256, transparent=True):
     scene.render.image_settings.color_mode = "RGBA"
     scene.view_settings.view_transform = "AgX"
     scene.view_settings.look = "AgX - Medium Low Contrast"
-    scene.view_settings.exposure = -0.5
+    scene.view_settings.exposure = -1.05
     scene.view_layers[0].use_pass_mist = True
     scene.world.mist_settings.start = 1.10
     scene.world.mist_settings.depth = 0.45
@@ -89,7 +89,7 @@ def make_world(scene) -> None:
     out = nt.nodes.new("ShaderNodeOutputWorld")
     bg = nt.nodes.new("ShaderNodeBackground")
     bg.inputs["Color"].default_value = rgba("#9DB3B5")
-    bg.inputs["Strength"].default_value = 0.08
+    bg.inputs["Strength"].default_value = 0.16
     nt.links.new(bg.outputs["Background"], out.inputs["Surface"])
 
 
@@ -112,12 +112,12 @@ def make_lights(target=(0.0, 0.0, 0.02)):
     # Large soft warm key from the left, low (about 25° up) and a little in front:
     # it reaches the neck and shoulder under the big head, while the face,
     # turned down and away, stays in soft shadow.
-    area_light("LGT_Key", (-1.15, -0.05, 0.95), target, "#FFDCC2", 130.0, 0.7, col=col)
+    area_light("LGT_Key", (-1.15, -0.05, 0.95), target, "#FFDCC2", 80.0, 0.9, col=col)
     # Low neutral-teal fill from the right keeps detail in the shadowed face.
-    area_light("LGT_Fill", (1.10, -0.60, -0.10), target, "#D6E6E4", 2.5, 1.2, col=col)
+    area_light("LGT_Fill", (1.10, -0.60, -0.10), target, "#E2E4DF", 6.0, 1.4, col=col)
     # Soft back light straight behind: a thin environment-like edge all round,
     # and SSS glow through ears, fingers and toes.
-    area_light("LGT_Rim", (0.05, 1.00, 0.30), target, "#FFE2D0", 22.0, 0.8, col=col)
+    area_light("LGT_Rim", (0.05, 1.00, 0.30), target, "#FFE2D0", 45.0, 0.8, col=col)
     # Faint low bounce so the underside never goes muddy.
     area_light("LGT_Bounce", (0.20, -0.80, -0.90), target, "#C9BDB5", 1.5, 1.2, col=col)
 
@@ -167,9 +167,9 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     ao.samples = 8
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     ramp.color_ramp.elements[0].position = 0.25
-    ramp.color_ramp.elements[0].color = rgba("#B58877")
+    ramp.color_ramp.elements[0].color = rgba("#C49A8C")
     ramp.color_ramp.elements[1].position = 1.0
-    ramp.color_ramp.elements[1].color = rgba("#D2AC9E")
+    ramp.color_ramp.elements[1].color = rgba("#E2C3B7")
     nt.links.new(ao.outputs["AO"], ramp.inputs["Fac"])
     # Faint vessel network (Voronoi cell edges, broken up by noise), strongest on the scalp.
     coord = nt.nodes.new("ShaderNodeTexCoord")
@@ -248,8 +248,8 @@ def cord_material(name="MAT_Cord") -> bpy.types.Material:
     nt = mat.node_tree
     bsdf, _ = _principled(nt)
     bsdf.subsurface_method = "RANDOM_WALK"
-    bsdf.inputs["Base Color"].default_value = rgba("#C9D0D0")
-    bsdf.inputs["Subsurface Weight"].default_value = 0.5
+    bsdf.inputs["Base Color"].default_value = rgba("#E4EEEF")
+    bsdf.inputs["Subsurface Weight"].default_value = 0.35
     bsdf.inputs["Subsurface Radius"].default_value = (0.8, 0.85, 0.9)
     bsdf.inputs["Subsurface Scale"].default_value = 0.004
     bsdf.inputs["Roughness"].default_value = 0.45
@@ -270,22 +270,21 @@ def membrane_material(name="MAT_Membrane", opacity=0.75) -> bpy.types.Material:
     lw.inputs["Blend"].default_value = 0.5
     curve = nt.nodes.new("ShaderNodeMath")
     curve.operation = "POWER"
-    curve.inputs[1].default_value = 3.0
+    curve.inputs[1].default_value = 4.0
     nt.links.new(lw.outputs["Facing"], curve.inputs[0])
     scale = nt.nodes.new("ShaderNodeMapRange")
-    scale.inputs["To Min"].default_value = 0.04
+    scale.inputs["To Min"].default_value = 0.025
     scale.inputs["To Max"].default_value = opacity
     nt.links.new(curve.outputs["Value"], scale.inputs["Value"])
     transp = nt.nodes.new("ShaderNodeBsdfTransparent")
-    veil = nt.nodes.new("ShaderNodeBsdfPrincipled")
-    veil.inputs["Base Color"].default_value = rgba("#F4FBFB")
-    veil.inputs["Roughness"].default_value = 0.6
-    veil.inputs["Emission Color"].default_value = rgba("#EAF4F4")
-    veil.inputs["Emission Strength"].default_value = 0.22
+    # unlit: the key light is warm, and lit veils picked up a pink cast the reference doesn't have
+    veil = nt.nodes.new("ShaderNodeEmission")
+    veil.inputs["Color"].default_value = rgba("#E6F4F6")
+    veil.inputs["Strength"].default_value = 1.5
     mix = nt.nodes.new("ShaderNodeMixShader")
     nt.links.new(scale.outputs["Result"], mix.inputs["Fac"])
     nt.links.new(transp.outputs["BSDF"], mix.inputs[1])
-    nt.links.new(veil.outputs["BSDF"], mix.inputs[2])
+    nt.links.new(veil.outputs["Emission"], mix.inputs[2])
     nt.links.new(mix.outputs["Shader"], out.inputs["Surface"])
     return mat
 
@@ -429,16 +428,15 @@ def make_membranes(material, center=(0.008, 0.0, -0.003), clearance=0.070):
     dist = HERO.distance
     specs = [
         # start, sweep, width, depth(y), twist, folds, fold amp, extra clearance, tilt, centre offset (x, z)
-        (0.2, 5.6, 0.070, 0.20, 0.6, 1.2, 0.010, 0.000, 6.0, (0.000, 0.000)),
-        (2.3, 5.4, 0.090, 0.36, 0.8, 1.5, 0.012, 0.012, -9.0, (0.006, 0.010)),
-        (4.4, 5.2, 0.060, -0.14, 0.5, 1.0, 0.008, -0.006, 12.0, (-0.004, -0.006)),
-        (1.2, 5.8, 0.110, 0.50, 1.0, 1.8, 0.014, 0.022, -14.0, (-0.010, 0.012)),
-        (3.3, 5.0, 0.075, 0.10, 0.6, 1.2, 0.010, 0.006, 4.0, (0.008, -0.010)),
-        (5.3, 4.8, 0.080, -0.24, 0.5, 1.0, 0.009, -0.010, -6.0, (0.000, 0.006)),
-        (0.7, 5.5, 0.100, 0.65, 0.8, 1.5, 0.014, 0.030, 18.0, (0.012, -0.004)),
-        # Two wide, loose sheets far behind fill the corners like free-hanging silk.
-        (1.6, 3.2, 0.260, 1.10, 1.3, 2.5, 0.040, 0.090, -30.0, (-0.030, 0.050)),
-        (4.6, 3.0, 0.240, 1.30, 1.1, 2.2, 0.036, 0.110, 24.0, (0.040, -0.060)),
+        (0.4, 5.4, 0.220, 0.25, 0.35, 2.0, 0.018, 0.000, 8.0, (0.000, 0.000)),
+        (2.5, 5.0, 0.300, 0.45, 0.45, 2.5, 0.024, 0.020, -12.0, (0.010, 0.015)),
+        (4.2, 4.6, 0.050, -0.16, 0.20, 1.0, 0.006, 0.010, 14.0, (-0.006, -0.008)),
+        (1.3, 5.6, 0.360, 0.70, 0.50, 3.0, 0.030, 0.040, -18.0, (-0.015, 0.020)),
+        (3.4, 4.8, 0.260, 0.12, 0.40, 2.0, 0.020, 0.010, 5.0, (0.010, -0.012)),
+        (5.4, 4.4, 0.060, -0.26, 0.20, 1.0, 0.006, 0.006, -8.0, (0.000, 0.008)),
+        (0.8, 5.2, 0.420, 1.00, 0.55, 3.0, 0.034, 0.070, 22.0, (0.020, -0.006)),
+        (1.7, 3.4, 0.500, 1.35, 0.60, 3.5, 0.045, 0.110, -32.0, (-0.040, 0.060)),
+        (4.7, 3.2, 0.480, 1.55, 0.55, 3.0, 0.042, 0.130, 26.0, (0.050, -0.070)),
     ]
     obs = []
     for i, (start, sweep, width, depth, twist, folds, amp, extra, tilt, off) in enumerate(specs, start=1):
