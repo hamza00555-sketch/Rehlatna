@@ -33,6 +33,9 @@ def main():
     mask = (warm > -7) & nd.binary_dilation(core, iterations=22)
     mask = largest(nd.binary_opening(mask, iterations=3))
     mask = nd.binary_fill_holes(nd.binary_closing(mask, iterations=3))
+    # the loose threshold also takes in the rim-lit glow just outside the skin:
+    # measured against the rendered body's alpha, the outline sits ~4 px wide
+    mask = nd.binary_erosion(mask, iterations=4)
     Image.fromarray((mask * 255).astype(np.uint8)).save(OUT)
     print(f"[fge] wrote {OUT} ({mask.mean():.1%} of frame)")
 

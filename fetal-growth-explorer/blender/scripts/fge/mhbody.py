@@ -220,6 +220,48 @@ class _Poser:
         return res.x
 
 
+LIMB_CHAINS = [
+    ("upperarm01.R", "lowerarm01.R", "wrist.R"), ("upperarm01.L", "lowerarm01.L", "wrist.L"),
+    ("upperleg01.R", "lowerleg01.R", "foot.R"), ("upperleg01.L", "lowerleg01.L", "foot.L"),
+]
+REFINE_SIZE = (558, 1000)
+
+
+def _refine_limbs(rig, max_evals: int = 1500, sigma_deg: float = 15.0) -> float:
+    """Small corrective rotations of each limb segment (two axes per bone, the
+    trunk held) fitted to the whole reference silhouette at 558x1000: the global
+    solve places the limbs along the landmark skeleton, this lines up the actual
+    arm, hand, leg and foot outlines. A prior keeps every correction small."""
+    mask = np.asarray(Image.open(MASK).convert("L").resize(REFINE_SIZE)) > 127
+    target = gaussian_filter(mask.astype(float), 1.5)
+    base = rig.local.copy()
+    bones = [b for chain in LIMB_CHAINS for b in chain if b in rig.index]
+
+    def apply(x):
+        rig.local = base.copy()
+        for k, b in enumerate(bones):
+            rig.bend(b, [1, 0, 0], x[2 * k])
+            rig.bend(b, [0, 0, 1], x[2 * k + 1])
+
+    def soft_iou(x):
+        apply(x)
+        m = gaussian_filter(mhfit.splat(rig.verts(), REFINE_SIZE, 2).astype(float), 1.5)
+        return (m * target).sum() / (m + target - m * target).sum()
+
+    def loss(x):
+        return 1 - soft_iou(x) + 0.004 * np.sum((x / sigma_deg) ** 2)
+
+    x0 = np.zeros(2 * len(bones))
+    before = soft_iou(x0)
+    res = minimize(loss, x0, method="Powell", options={"xtol": 0.3, "ftol": 1e-5, "maxfev": max_evals})
+    after = soft_iou(res.x)
+    if after <= before:  # never make it worse
+        apply(x0)
+        after = before
+    print(f"[fge] limb refinement: soft IoU {before:.3f} -> {after:.3f} (largest correction {np.abs(res.x).max():.1f} deg)")
+    return after
+
+
 def _scalp_mask(rig) -> np.ndarray:
     """0..1 per vertex: the cranium above and behind the face (rest pose: face
     -Y, up +Z). Stored as the mesh attribute `fge_scalp` for the skin shader."""
@@ -265,6 +307,7 @@ def build(collection=None, max_evals: int = 700):
     mhfit.scale_head(mhfit.Rig(arm, ob), arm, ob, 1.0 + x[4] / 100.0, drop=HEAD_DROP)
     rig = mhfit.Rig(arm, ob)  # fresh: world = the rig object's placement, as for the first solve
     _Poser(rig).solve(max_evals // 2, start=x, lock_head_scale=True)
+    _refine_limbs(rig)
     mh.clean_weights(ob)  # the head-scale weight hand-over adds memberships
     scalp = _scalp_mask(rig)  # rest frame, before the placement is baked
     rig = mhfit.bake_world(rig, arm, ob)
