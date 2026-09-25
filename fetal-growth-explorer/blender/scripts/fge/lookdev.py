@@ -325,7 +325,7 @@ class _Out:
         self.outputs = {"Value": socket}
 
 
-def membrane_material(name="MAT_Membrane", opacity=0.75, hem=0.9, haze=0.05, strength=3.0) -> bpy.types.Material:
+def membrane_material(name="MAT_Membrane", opacity=0.75, hem=0.9, haze=0.05, strength=3.0, one_sided=False) -> bpy.types.Material:
     """Thin silk veil: a faint milky film, white where seen edge-on (fresnel), with
     a thin bright hem along both long edges — the crisp lines the reference's
     veils draw across the frame."""
@@ -351,7 +351,8 @@ def membrane_material(name="MAT_Membrane", opacity=0.75, hem=0.9, haze=0.05, str
     sep = nt.nodes.new("ShaderNodeSeparateXYZ")
     nt.links.new(uvn.outputs["UV"], sep.inputs["Vector"])
     absv = nt.nodes.new("ShaderNodeMath")
-    absv.operation = "ABSOLUTE"
+    absv.operation = "ADD" if one_sided else "ABSOLUTE"  # one-sided: only the +v edge carries a hem
+    absv.inputs[1].default_value = 0.0
     nt.links.new(sep.outputs["Y"], absv.inputs[0])
     band = nt.nodes.new("ShaderNodeMapRange")
     band.interpolation_type = "SMOOTHSTEP"
@@ -554,7 +555,7 @@ MEMBRANE_SPECS = [
 ]
 
 
-def make_membranes(material, center=(0.008, 0.0, -0.003), clearance=0.070, specs=None):
+def make_membranes(material, center=(0.008, 0.0, -0.003), clearance=0.070, specs=None, width_scale=1.0):
     """Veils on concentric orbits that keep the same on-screen gap around the fetus.
 
     The fetus spans ~0.074 x 0.111 m (half-extents, image plane); each orbit is
@@ -570,7 +571,7 @@ def make_membranes(material, center=(0.008, 0.0, -0.003), clearance=0.070, specs
         scale = (dist + depth) / dist
         radii = ((half[0] + clearance + extra) * scale, (half[1] + clearance + extra) * scale)
         c = ((center[0] + off[0]) * scale, center[1], (center[2] + off[1]) * scale)
-        obs.append(veil(f"ENV_Membrane_{i:02d}", c, radii, tilt, start, sweep, width, depth, twist, folds, amp, seed=i, material=material, col=col))
+        obs.append(veil(f"ENV_Membrane_{i:02d}", c, radii, tilt, start, sweep, width * (width_scale if depth > 0.2 else 1.0), depth, twist, folds, amp, seed=i, material=material, col=col))
     return obs
 
 

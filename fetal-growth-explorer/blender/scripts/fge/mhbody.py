@@ -43,9 +43,11 @@ SHAPE_TARGETS = {
     "buttocks/buttocks-volume-incr.target.gz": 0.5,
     **{f"legs/{sd}-upperleg-fat-incr.target.gz": 0.3 for sd in ("l", "r")},  # soft, full thighs
     **{f"hands/{sd}-hand-scale-decr.target.gz": 0.5 for sd in ("l", "r")},
-    # a more defined profile than the chubby newborn default: nose, leaner cheeks
-    **{f"cheek/{sd}-cheek-volume-decr.target.gz": 0.6 for sd in ("l", "r")},
-    "nose/nose-scale-depth-incr.target.gz": 0.5,
+    # a more defined profile than the chubby newborn default: small button nose,
+    # slightly leaner cheeks, a small but present chin
+    **{f"cheek/{sd}-cheek-volume-decr.target.gz": 0.4 for sd in ("l", "r")},
+    "nose/nose-scale-depth-incr.target.gz": 0.2,
+    "chin/chin-prominent-incr.target.gz": 0.35,
 }
 HEAD_SCALE = 1.5
 HEAD_DROP = 0.06
