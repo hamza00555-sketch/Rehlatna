@@ -38,13 +38,20 @@ def main():
     scene = bpy.context.scene
     lookdev.make_world(scene)
     lookdev.setup_render(scene)
-    base, hero = bpy.data.objects["FET_Body"], bpy.data.objects["FET_Body_Hero"]
+    base = bpy.data.objects["FET_Body"]
+    hero = bpy.data.objects.get("FET_Body_Hero")  # SDF build only; the rigged body subdivides itself
     skin = lookdev.skin_material()
     for ob in (base, hero):
+        if ob is None:
+            continue
         ob.data.materials.clear()
         ob.data.materials.append(skin)
-    base.hide_render = True
-    base.hide_viewport = True
+        ob.data.use_auto_texspace = False  # rest coordinates for the skin textures (see lookdev._rest_coords)
+        ob.data.texspace_location = (0.0, 0.0, 0.0)
+        ob.data.texspace_size = (1.0, 1.0, 1.0)
+    if hero is not None:
+        base.hide_render = True
+        base.hide_viewport = True
     path = lookdev.CORD_PATH
     if "fge_navel" in base:
         path = lookdev.attach_cord(path, base["fge_navel"], base["fge_navel_normal"])

@@ -379,3 +379,43 @@ def smooth_vault(rig: Rig, ob, iterations: int = 60, roundness: float = 0.0, kee
         v.co = co
     ob.data.update()
     rig.rest_verts = V
+
+
+def bake_world(rig: Rig, arm, ob) -> Rig:
+    """Split the solved placement into rig-ready parts: the uniform scale goes
+    into the rest data (real-world size, object scale 1), while rotation and
+    offset stay on the FET_Rig object. The rest pose therefore stands upright
+    along the rig's own axes (face -Y, up +Z), and the shot orientation is just
+    the object transform, as an animator expects.
+
+    Pose-bone rotations are relative to each bone's rest frame, which a uniform
+    scale does not turn, so the current pose carries over unchanged."""
+    import bpy
+
+    W = rig.world.copy()
+    s = float(np.cbrt(np.linalg.det(W[:3, :3])))
+    V = rig.rest_verts * s
+    for v, co in zip(ob.data.vertices, V):
+        v.co = co
+    ob.data.update()
+    heads = np.array([arm.data.bones[n].head_local[:] for n in rig.names])
+    tails = np.array([arm.data.bones[n].tail_local[:] for n in rig.names])
+    zaxes = np.array([np.array(arm.data.bones[n].matrix_local)[:3, 2] for n in rig.names])
+    placement = np.eye(4)
+    placement[:3, :3] = W[:3, :3] / s
+    placement[:3, 3] = W[:3, 3]
+    arm.matrix_world = Matrix(placement.tolist())
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode="EDIT")
+    for i, name in enumerate(rig.names):
+        eb = arm.data.edit_bones[name]
+        eb.head = Vector((heads[i] * s).tolist())
+        eb.tail = Vector((tails[i] * s).tolist())
+        eb.align_roll(Vector(zaxes[i].tolist()))
+    bpy.ops.object.mode_set(mode="OBJECT")
+    ob.matrix_parent_inverse = Matrix.Identity(4)
+    ob.matrix_basis = Matrix.Identity(4)
+    bpy.context.view_layer.update()
+    new = Rig(arm, ob)
+    new.local = rig.local.copy()
+    return new

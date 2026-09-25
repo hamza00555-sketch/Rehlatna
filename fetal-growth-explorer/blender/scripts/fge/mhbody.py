@@ -38,7 +38,7 @@ ASSETS = ROOT / "assets" / "makehuman"
 MASK = ROOT / "lookdev" / "reference_mask.png"
 
 SHAPE_TARGETS = {
-    "stomach/stomach-pregnant-incr.target.gz": 1.0,  # the round fetal abdomen
+    "stomach/stomach-pregnant-incr.target.gz": 0.3,  # the round fetal abdomen
     "torso/torso-scale-depth-incr.target.gz": 0.3,
     "buttocks/buttocks-volume-incr.target.gz": 0.5,
     **{f"legs/{sd}-upperleg-fat-incr.target.gz": 0.3 for sd in ("l", "r")},  # soft, full thighs
@@ -48,7 +48,8 @@ SHAPE_TARGETS = {
     **{f"cheek/{sd}-cheek-volume-decr.target.gz": 0.4 for sd in ("l", "r")},
     "nose/nose-scale-depth-incr.target.gz": 0.2,
     "chin/chin-prominent-incr.target.gz": 0.35,
-    "neck/neck-back-scale-depth-incr.target.gz": 1.0,  # a full nape: the occiput flows into the back
+    "neck/neck-back-scale-depth-incr.target.gz": 0.5,  # a full nape: the occiput flows into the back
+    "head/head-back-scale-depth-incr.target.gz": 0.4,  # the occiput bulges behind the neck
 }
 HEAD_SCALE = 1.5
 HEAD_DROP = 0.06
@@ -89,11 +90,13 @@ def _proportions(rig) -> dict:
     torso_j, torso_p = dist(J, "pelvis", "neck_base"), dist(P, "pelvis", "neck_base")
     eff = {}
     for bone, a, b in SEGMENTS:
-        for side in ("r", "l"):
-            r = (dist(J, f"{a}_{side}", f"{b}_{side}") / torso_j) / (dist(P, f"{a}_{side}", f"{b}_{side}") / torso_p)
-            r = float(np.clip(r, 0.6, 1.5))
+        # one ratio for both sides: the rest shape stays symmetric (rigging,
+        # mirrored weights); the far limbs are foreshortened in the reference anyway
+        r = np.mean([(dist(J, f"{a}_{sd}", f"{b}_{sd}") / torso_j) / (dist(P, f"{a}_{sd}", f"{b}_{sd}") / torso_p) for sd in ("r", "l")])
+        r = float(np.clip(r, 0.6, 1.5))
+        for side in ("R", "L"):
             for part in ("01", "02"):
-                eff[f"{bone}{part}.{side.upper()}"] = (1.0, r, 1.0)
+                eff[f"{bone}{part}.{side}"] = (1.0, r, 1.0)
     return eff
 
 
@@ -179,9 +182,34 @@ class _Poser:
         return res.x
 
 
+def _scalp_mask(rig) -> np.ndarray:
+    """0..1 per vertex: the cranium above and behind the face (rest pose: face
+    -Y, up +Z). Stored as the mesh attribute `fge_scalp` for the skin shader."""
+    head = rig.index["head"]
+    sub = [i for i in range(len(rig.names)) if mhfit._descends(rig, i, head)]
+    w = rig.W[:, sub].sum(axis=1)
+    V = rig.rest_verts
+    H = V[w > 0.95]
+    centre = (H.max(0) + H.min(0)) / 2
+    centre[0] = 0.0
+    u = V - centre
+    u /= np.maximum(np.linalg.norm(u, axis=1, keepdims=True), 1e-9)
+    face = np.array([0.0, -1.0, -0.35]) / np.linalg.norm([0.0, -1.0, -0.35])
+    t = np.clip((0.55 - u @ face) / 0.35, 0, 1) * np.clip((u[:, 2] + 0.2) / 0.4, 0, 1) * np.clip((w - 0.5) / 0.5, 0, 1)
+    return t * t * (3 - 2 * t)
+
+
 def build(collection=None, max_evals: int = 700):
-    """Return (FET_Body, FET_Body_Hero, armature)."""
-    ob, arm = mh.build(ASSETS, name="FET_MH", collection=collection, targets={**mh.FETAL_TARGETS, **SHAPE_TARGETS})
+    """Return (FET_Body, None, FET_Rig).
+
+    FET_Body is the skinned, animation-ready mesh: a symmetric neutral rest
+    pose standing upright along the rig axes (fetal proportions and real-world
+    size baked in), MakeHuman UVs and weights, parented to FET_Rig (the
+    MakeHuman default rig, face bones included) whose object transform (scale
+    1) places it in the shot. The week-24 curl is the rig's pose, also stored as the action
+    FET_W24_Curl; nothing is applied, so it can be re-posed and animated."""
+    ob, arm = mh.build(ASSETS, name="FET_Body", collection=collection, targets={**mh.FETAL_TARGETS, **SHAPE_TARGETS})
+    arm.name = arm.data.name = "FET_Rig"
     rig = mhfit.Rig(arm, ob)
     mhfit.bake_proportions(rig, arm, ob, _proportions(rig))
     rig = mhfit.Rig(arm, ob)
@@ -191,10 +219,26 @@ def build(collection=None, max_evals: int = 700):
     arm.rotation_euler = (0.0, 0.0, math.pi / 2)  # MakeHuman faces -Y; the reference fetus faces +X
     bpy.context.view_layer.update()
     rig = mhfit.Rig(arm, ob)
-    _Poser(rig).solve(max_evals)
+    x = _Poser(rig).solve(max_evals)
+    # The solve sizes the head with a pose-level scale; an animation rig must
+    # not carry scale in its pose, so fold it into the rest shape instead.
+    local, world = rig.local.copy(), rig.world.copy()
+    mhfit.scale_head(mhfit.Rig(arm, ob), arm, ob, 1.0 + x[4] / 100.0, drop=HEAD_DROP)
+    rig = mhfit.Rig(arm, ob)
+    rig.local, rig.world = local, world
+    mh.clean_weights(ob)  # the head-scale weight hand-over adds memberships
+    scalp = _scalp_mask(rig)  # rest frame, before the placement is baked
+    rig = mhfit.bake_world(rig, arm, ob)
     rig.apply_to(arm)
-    arm.matrix_world = Matrix(rig.world.tolist())
     bpy.context.view_layer.update()
+    _store_action(arm, "FET_W24_Curl")
+
+    attr = ob.data.attributes.new("fge_scalp", "FLOAT", "POINT")
+    attr.data.foreach_set("value", scalp.astype(np.float32))
+    # skin textures read the undeformed position (Generated = rest coords with this texture space)
+    ob.data.use_auto_texspace = False
+    ob.data.texspace_location = (0.0, 0.0, 0.0)
+    ob.data.texspace_size = (1.0, 1.0, 1.0)
 
     ob.modifiers["rig"].use_deform_preserve_volume = True
     # Corrective smooth only below the head: it reads the head's scale as
@@ -211,25 +255,32 @@ def build(collection=None, max_evals: int = 700):
     cs.smooth_type = "LENGTH_WEIGHTED"
     cs.iterations = 20
     cs.vertex_group = vg.name
-    deps = bpy.context.evaluated_depsgraph_get()
-    mesh = bpy.data.meshes.new_from_object(ob.evaluated_get(deps))
-    mesh.transform(ob.matrix_world)
-    mesh.name = "FET_Body"
-    col = collection or bpy.context.scene.collection
-    base = bpy.data.objects.new("FET_Body", mesh)
-    col.objects.link(base)
-    hero = bpy.data.objects.new("FET_Body_Hero", mesh.copy())
-    col.objects.link(hero)
-    sub = hero.modifiers.new("subd", "SUBSURF")
-    sub.levels, sub.render_levels = 1, 2
-    for o in (base, hero):
-        o.data.shade_smooth()
-    # navel (where MakeHuman's navel targets act) for the cord attachment
-    navel = mh.region_mask(ASSETS, len(mesh.vertices), "stomach", "stomach-navel-")
-    co = np.array([v.co[:] for v in mesh.vertices])[navel]
-    nrm = np.array([v.normal[:] for v in mesh.vertices])[navel].mean(0)
-    base["fge_navel"] = co.mean(0).tolist()
-    base["fge_navel_normal"] = (nrm / np.linalg.norm(nrm)).tolist()
-    ob.hide_render = ob.hide_viewport = True
-    arm.hide_render = arm.hide_viewport = True
-    return base, hero, arm
+    ob.data.shade_smooth()
+
+    # navel (where MakeHuman's navel targets act), posed, for the cord attachment
+    bpy.context.view_layer.update()
+    ev = ob.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    me = ev.to_mesh()
+    navel = mh.region_mask(ASSETS, len(me.vertices), "stomach", "stomach-navel-")
+    M = np.array(ob.matrix_world)
+    co = np.array([v.co[:] for v in me.vertices])[navel] @ M[:3, :3].T + M[:3, 3]
+    nrm = np.array([v.normal[:] for v in me.vertices])[navel].mean(0) @ M[:3, :3].T
+    ev.to_mesh_clear()
+    ob["fge_navel"] = co.mean(0).tolist()
+    ob["fge_navel_normal"] = (nrm / np.linalg.norm(nrm)).tolist()
+
+    subd = ob.modifiers.new("subd", "SUBSURF")  # after the deformers: smooth at any pose
+    subd.levels, subd.render_levels = 1, 2
+    return ob, None, arm
+
+
+def _store_action(arm, name: str) -> None:
+    """Key the current pose (every bone, frame 1) as an action on the rig."""
+    action = bpy.data.actions.new(name)
+    action.use_fake_user = True
+    arm.animation_data_create()
+    arm.animation_data.action = action
+    for pb in arm.pose.bones:
+        pb.rotation_mode = "QUATERNION"
+        pb.keyframe_insert("rotation_quaternion", frame=1, group=pb.name)
+        pb.keyframe_insert("location", frame=1, group=pb.name)

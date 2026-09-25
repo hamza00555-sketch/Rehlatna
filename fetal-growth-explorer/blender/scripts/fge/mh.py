@@ -25,19 +25,24 @@ def mh_to_blender(P: np.ndarray) -> np.ndarray:
     return np.stack([P[:, 0], -P[:, 2], P[:, 1]], axis=1) * SCALE
 
 
-def read_obj(path: Path):
-    verts, faces, groups = [], [], {}
+def read_obj(path: Path, with_uv: bool = False):
+    verts, uvs, faces, face_uv, groups = [], [], [], [], {}
     current = None
     for line in path.read_text().splitlines():
         if line.startswith("v "):
             verts.append([float(x) for x in line.split()[1:4]])
+        elif line.startswith("vt "):
+            uvs.append([float(x) for x in line.split()[1:3]])
         elif line.startswith("g "):
             current = line.split(maxsplit=1)[1].strip()
             groups.setdefault(current, [])
         elif line.startswith("f "):
-            idx = [int(tok.split("/")[0]) - 1 for tok in line.split()[1:]]
-            faces.append(idx)
+            toks = [tok.split("/") for tok in line.split()[1:]]
+            faces.append([int(t[0]) - 1 for t in toks])
+            face_uv.append([int(t[1]) - 1 if len(t) > 1 and t[1] else -1 for t in toks])
             groups[current].append(len(faces) - 1)
+    if with_uv:
+        return np.array(verts), faces, groups, np.array(uvs), face_uv
     return np.array(verts), faces, groups
 
 
@@ -125,8 +130,59 @@ def transfer_joints(adult: np.ndarray, baby: np.ndarray, joints_adult: np.ndarra
     return out
 
 
+def clean_weights(ob, limit: int = 4) -> None:
+    """Deform weights ready for export: drop near-zero memberships, keep at most
+    `limit` bones per vertex (glTF / three.js skinning) and normalise to 1."""
+    prev, was_selected = bpy.context.view_layer.objects.active, ob.select_get()
+    bpy.context.view_layer.objects.active = ob
+    ob.select_set(True)  # the vertex-group operators silently skip unselected objects
+    bpy.ops.object.vertex_group_clean(group_select_mode="ALL", limit=0.001)
+    bpy.ops.object.vertex_group_limit_total(group_select_mode="ALL", limit=limit)
+    bpy.ops.object.vertex_group_normalize_all(group_select_mode="ALL", lock_active=False)
+    _fill_unweighted(ob)
+    ob.select_set(was_selected)
+    bpy.context.view_layer.objects.active = prev
+
+
+def _fill_unweighted(ob) -> None:
+    """Vertices left without any weight (the source weights are below the clean
+    threshold there) take the average of their weighted edge neighbours."""
+    n = len(ob.data.vertices)
+    W = {}
+    for v in ob.data.vertices:
+        if v.groups:
+            W[v.index] = {g.group: g.weight for g in v.groups}
+    todo = [i for i in range(n) if i not in W]
+    if not todo:
+        return
+    nbrs = [[] for _ in range(n)]
+    for e in ob.data.edges:
+        a, b = e.vertices
+        nbrs[a].append(b)
+        nbrs[b].append(a)
+    while todo:
+        left = []
+        for i in todo:
+            src = [W[j] for j in nbrs[i] if j in W]
+            if not src:
+                left.append(i)
+                continue
+            acc = {}
+            for d in src:
+                for g, w in d.items():
+                    acc[g] = acc.get(g, 0.0) + w / len(src)
+            top = sorted(acc.items(), key=lambda t: -t[1])[:4]
+            tot = sum(w for _, w in top)
+            W[i] = {g: w / tot for g, w in top}
+            for g, w in W[i].items():
+                ob.vertex_groups[g].add([i], w, "REPLACE")
+        if len(left) == len(todo):
+            break
+        todo = left
+
+
 def build(data: Path, name: str = "FET_MH", collection=None, targets: dict | None = None, weight: float = 0.5, muscle: float = 0.5):
-    verts, faces, groups = read_obj(data / "3dobjs" / "base.obj")
+    verts, faces, groups, uvs, face_uv = read_obj(data / "3dobjs" / "base.obj", with_uv=True)
     n = len(verts)
     adult = verts.copy()
     verts = verts + baby_offsets(data, n, weight, muscle)
@@ -141,6 +197,10 @@ def build(data: Path, name: str = "FET_MH", collection=None, targets: dict | Non
 
     me = bpy.data.meshes.new(name)
     me.from_pydata(mh_to_blender(verts), [], body_faces)
+    # MakeHuman's own UV layout (texturing, and texture coordinates that stay
+    # glued to the skin when the rig deforms it)
+    loop_uv = np.array([uvs[k] for i in groups["body"] for k in face_uv[i]])
+    me.uv_layers.new(name="UVMap").data.foreach_set("uv", loop_uv.ravel())
     me.validate()
     me.shade_smooth()
     ob = bpy.data.objects.new(name, me)
@@ -197,6 +257,7 @@ def build(data: Path, name: str = "FET_MH", collection=None, targets: dict | Non
     bmesh.ops.delete(bm, geom=loose, context="VERTS")
     bm.to_mesh(me)
     bm.free()
+    clean_weights(ob)
     mod = ob.modifiers.new("rig", "ARMATURE")
     mod.object = arm
     ob.parent = arm

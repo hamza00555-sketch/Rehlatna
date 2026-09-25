@@ -5,9 +5,15 @@ the reference silhouette (fge.mhbody; run fetch_makehuman.py and
 fit_reference_mask.py once first). `--sdf` builds the earlier procedural
 implicit-surface body instead.
 
-FET_Body      quad mesh, the carrier for per-week shape keys and the web export.
-FET_Body_Hero FET_Body with subdivision for Cycles stills.
-FET_MH_rig    (MakeHuman path) the fitted armature, kept for later posing.
+MakeHuman path (default):
+  FET_Rig   MakeHuman default rig (body + face bones); object transform =
+            shot placement (rotation + offset, scale 1);
+            its pose is the week-24 curl, also stored as action FET_W24_Curl.
+  FET_Body  skinned quad mesh (UVs, weights), symmetric neutral rest pose,
+            parented to FET_Rig; armature (preserve volume) -> corrective
+            smooth -> subdivision. Nothing is applied: ready to animate.
+SDF path (--sdf):
+  FET_Body / FET_Body_Hero  static meshes (hero = subdivided, re-projected).
 
     python build_base.py [--sdf]    # bpy as a module (pip install bpy==5.2.2)
     blender -b -P build_base.py     # or inside Blender 5.2
@@ -39,10 +45,12 @@ def main():
         from fge import mhbody
 
         base, hero, _ = mhbody.build(collection=fetus)
-    base["fge_week"] = 24
-    hero["fge_week"] = 24
+    for ob in (base, hero):
+        if ob is not None:
+            ob["fge_week"] = 24
     bpy.ops.wm.save_as_mainfile(filepath=str(MASTER), compress=True)
-    print(f"[fge] saved {MASTER} ({len(base.data.vertices)} base / {len(hero.data.vertices)} hero verts)")
+    extra = f" / {len(hero.data.vertices)} hero" if hero is not None else f", rigged to {len(bpy.data.objects['FET_Rig'].data.bones)} bones"
+    print(f"[fge] saved {MASTER} ({len(base.data.vertices)} verts{extra})")
 
 
 if __name__ == "__main__":

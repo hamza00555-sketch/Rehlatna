@@ -154,6 +154,20 @@ def _principled(nt):
     return bsdf, out
 
 
+def _rest_coords(nt):
+    """Undeformed object-space position: Generated coordinates with the body's
+    texture space pinned to location 0, size 1 (set by the body builder and by
+    lookdev.py), so gen = (co + 1) / 2. Unlike Object coordinates these do not
+    swim across the skin when the rig deforms it."""
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    ma = nt.nodes.new("ShaderNodeVectorMath")
+    ma.operation = "MULTIPLY_ADD"
+    ma.inputs[1].default_value = (2.0, 2.0, 2.0)
+    ma.inputs[2].default_value = (-1.0, -1.0, -1.0)
+    nt.links.new(tc.outputs["Generated"], ma.inputs[0])
+    return ma.outputs["Vector"]
+
+
 def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1.0) -> bpy.types.Material:
     """Soft, waxy, backlit skin. `translucency` > 1 and more `vessels` for earlier weeks (thinner skin)."""
     mat = bpy.data.materials.new(name)
@@ -172,7 +186,7 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     ramp.color_ramp.elements[1].color = rgba("#D4B0A4")
     nt.links.new(ao.outputs["AO"], ramp.inputs["Fac"])
     # Faint vessel network (Voronoi cell edges, broken up by noise), strongest on the scalp.
-    coord = nt.nodes.new("ShaderNodeTexCoord")
+    rest = _rest_coords(nt)
     vor = nt.nodes.new("ShaderNodeTexVoronoi")
     vor.feature = "DISTANCE_TO_EDGE"
     vor.inputs["Scale"].default_value = 70.0
@@ -183,7 +197,7 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     mixv = nt.nodes.new("ShaderNodeMix")
     mixv.data_type = "VECTOR"
     mixv.inputs["Factor"].default_value = 0.12
-    nt.links.new(coord.outputs["Object"], mixv.inputs["A"])
+    nt.links.new(rest, mixv.inputs["A"])
     nt.links.new(warp.outputs["Color"], mixv.inputs["B"])
     nt.links.new(mixv.outputs["Result"], vor.inputs["Vector"])
     line = nt.nodes.new("ShaderNodeMapRange")
@@ -194,15 +208,15 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     nt.links.new(vor.outputs["Distance"], line.inputs["Value"])
     breakup = nt.nodes.new("ShaderNodeTexNoise")
     breakup.inputs["Scale"].default_value = 25.0
-    nt.links.new(coord.outputs["Object"], breakup.inputs["Vector"])
-    sepz = nt.nodes.new("ShaderNodeSeparateXYZ")
-    nt.links.new(coord.outputs["Object"], sepz.inputs["Vector"])
+    nt.links.new(rest, breakup.inputs["Vector"])
+    # scalp mask: a per-vertex attribute written by the body builder (fge.mhbody)
+    scalp_attr = nt.nodes.new("ShaderNodeAttribute")
+    scalp_attr.attribute_type = "GEOMETRY"
+    scalp_attr.attribute_name = "fge_scalp"
     scalp = nt.nodes.new("ShaderNodeMapRange")
-    scalp.inputs["From Min"].default_value = 0.045
-    scalp.inputs["From Max"].default_value = 0.085
     scalp.inputs["To Min"].default_value = 0.25
     scalp.inputs["To Max"].default_value = 1.0
-    nt.links.new(sepz.outputs["Z"], scalp.inputs["Value"])
+    nt.links.new(scalp_attr.outputs["Fac"], scalp.inputs["Value"])
     m1 = nt.nodes.new("ShaderNodeMath"); m1.operation = "MULTIPLY"
     nt.links.new(line.outputs["Result"], m1.inputs[0]); nt.links.new(breakup.outputs["Fac"], m1.inputs[1])
     m2 = nt.nodes.new("ShaderNodeMath"); m2.operation = "MULTIPLY"
@@ -231,12 +245,11 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     bsdf.inputs["Sheen Roughness"].default_value = 0.45
     bsdf.inputs["Sheen Tint"].default_value = rgba("#FFF1EA")
     # Micro surface: fine low-amplitude noise (vellus / skin grain).
-    tex = nt.nodes.new("ShaderNodeTexCoord")
     noise = nt.nodes.new("ShaderNodeTexNoise")
     noise.inputs["Scale"].default_value = 900.0
     noise.inputs["Detail"].default_value = 4.0
     noise.inputs["Roughness"].default_value = 0.55
-    nt.links.new(tex.outputs["Object"], noise.inputs["Vector"])
+    nt.links.new(rest, noise.inputs["Vector"])
     bump = nt.nodes.new("ShaderNodeBump")
     bump.inputs["Strength"].default_value = 0.06
     bump.inputs["Distance"].default_value = 0.00015

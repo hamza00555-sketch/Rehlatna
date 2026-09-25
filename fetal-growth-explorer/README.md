@@ -69,6 +69,20 @@ buttock targets) with its default rig and skin weights, then:
   corrective smoothing; the cord is attached at the navel found from
   MakeHuman's navel targets.
 
+**Rig-ready by construction.** The body is never baked into its pose:
+
+| | |
+| --- | --- |
+| `FET_Rig` | MakeHuman default rig, 163 bones (body, fingers, toes, eyes, lids, jaw, lips). Object transform = shot placement (rotation + offset, scale 1). |
+| `FET_Body` | Skinned quad mesh (13 378 quads, no tris/ngons), MakeHuman UVs, ≤ 4 normalised weights per vertex (glTF / three.js), parented to `FET_Rig`. |
+| Rest pose | Upright and symmetric along the rig axes (face −Y, up +Z), ~30 cm crown–heel, fetal proportions baked in; no pose-level scale anywhere. |
+| Pose | The week-24 curl is the rig's pose, keyed as action `FET_W24_Curl`; switch the armature to *Rest Position* to see the neutral body. |
+| Deformers | Armature (preserve volume) → corrective smooth (masked off the head) → subdivision, all live modifiers. |
+| Shading | Skin textures read the undeformed position (`Generated`, pinned texture space) and a `fge_scalp` attribute, so nothing swims when the body moves. |
+
+`blender/renders/rig_W24.jpg` shows rest pose, week-24 pose and a quick
+animation test with the skeleton overlaid.
+
 **Earlier body (`--sdf`):**
 
 - **Implicit surface.** The body is a signed-distance function: ellipsoids
