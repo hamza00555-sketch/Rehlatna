@@ -1,19 +1,17 @@
 """Bind an external fetus sculpt to the fitted MakeHuman rig.
 
-The MakeHuman body gives the pipeline its rig, weights and reference pose, but
-its surface is a newborn's. A dedicated fetus sculpt (see assets/sculpt/README)
-has the right surface. This module moves the sculpt onto the rig:
+The MakeHuman body gives the pipeline its rig, weights and reference pose; a
+sculpt (see assets/sculpt/README) gives a finer surface. This module moves the
+sculpt onto the rig:
 
-1. import + clean: all mesh parts joined, transforms applied, reduced to an
-   animation-friendly quad mesh (QuadriFlow) or a triangle budget (decimate);
-2. register: the sculpt is aligned to the rig's posed body (similarity from
-   principal axes, then ICP on the surfaces), and the rig pose is refined so
-   the posed MakeHuman body sits inside the sculpt (chamfer fit, NumPy LBS);
-3. bind: skin weights are carried from the posed MakeHuman body to the
-   sculpt by nearest surface point, and the sculpt is "unposed" with the
-   inverse of its per-vertex skinning matrix, so the rig in that pose
-   reproduces the sculpt exactly and any other pose deforms it;
-4. the rig is then posed to the reference (the pose solved by fge.mhbody).
+1. import + clean: all mesh parts baked to world space, fused into one closed
+   surface (voxel remesh), reduced to an animation-friendly quad mesh;
+2. register: similarity from the posed rig's bone frames matched on the
+   heads, refined by symmetric ICP; the rig pose is then fitted to the sculpt
+   (trunk, arms, legs, all; chamfer on NumPy LBS);
+3. bind in place: weights carried over by normal-aware nearest points, the
+   fitted pose applied as the armature's rest pose (binding moves nothing);
+4. the reference pose (fge.mhbody) is re-applied through the bones and keyed.
 """
 
 from __future__ import annotations
@@ -28,6 +26,9 @@ from scipy.optimize import minimize
 from scipy.spatial import cKDTree
 
 from . import mh, mhfit
+
+
+HEAD_NAMES = ("head", "testa", "kopf", "tete", "cabeza", "skull")
 
 
 def import_sculpt(path: Path, name: str = "FET_Sculpt", collection=None):
@@ -57,6 +58,11 @@ def import_sculpt(path: Path, name: str = "FET_Sculpt", collection=None):
         o.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
     others = [o.name for o in new if o.type != "MESH"]
+    head = [o for o in meshes if any(k in o.name.lower() for k in HEAD_NAMES)]
+    head_box = None
+    if head:
+        H = np.vstack([np.array([v.co[:] for v in o.data.vertices]) for o in head])
+        head_box = (H.min(0).tolist(), H.max(0).tolist())
     if len(meshes) > 1:
         bpy.ops.object.join()
     ob = bpy.context.view_layer.objects.active
@@ -80,6 +86,8 @@ def import_sculpt(path: Path, name: str = "FET_Sculpt", collection=None):
     bpy.context.view_layer.objects.active = ob
     bpy.ops.object.modifier_apply(modifier=mod.name)
     _keep_largest_island(ob)
+    if head_box is not None:
+        ob["fge_head_min"], ob["fge_head_max"] = head_box
     print(f"[fge] sculpt fused: {len(ob.data.vertices)} verts (voxel {extent / 400.0:.4g})")
     return ob
 
@@ -151,39 +159,33 @@ def _verts(ob) -> np.ndarray:
     return V.reshape(-1, 3) @ np.array(ob.matrix_world)[:3, :3].T + np.array(ob.matrix_world)[:3, 3]
 
 
-def _principal(P):
-    c = P.mean(0)
-    w, U = np.linalg.eigh(np.cov((P - c).T))
-    return c, U[:, ::-1], np.sqrt(w[::-1])
+def _normals(P: np.ndarray, faces: np.ndarray) -> np.ndarray:
+    fn = np.cross(P[faces[:, 1]] - P[faces[:, 0]], P[faces[:, 2]] - P[faces[:, 0]])
+    N = np.zeros_like(P)
+    for k in range(3):
+        np.add.at(N, faces[:, k], fn)
+    return N / np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-12)
 
 
-def register(sculpt, target_pts: np.ndarray, iters: int = 40) -> None:
-    """Similarity-align the sculpt to target points (the posed MakeHuman body):
-    principal axes for the start (all 4 sign flips tried), then ICP."""
-    S = _verts(sculpt)
-    cs, Us, ss = _principal(S)
-    ct, Ut, st = _principal(target_pts)
-    scale = float(np.prod(st) / np.prod(ss)) ** (1 / 3)
-    tree_t = cKDTree(target_pts)
-    best = None
-    for signs in np.array(np.meshgrid([1, -1], [1, -1], [1, -1])).T.reshape(-1, 3):
-        R = Ut @ np.diag(signs) @ Us.T
-        if np.linalg.det(R) < 0:  # proper rotations only (eigh axes may be left-handed)
-            continue
-        X = (S - cs) @ R.T * scale + ct
-        err = tree_t.query(X[:: max(1, len(X) // 4000)])[0].mean()
-        if best is None or err < best[0]:
-            best = (err, R)
-    R, s, t = best[1], scale, ct - scale * (best[1] @ cs)
-    sub = S[:: max(1, len(S) // 6000)]
-    tsub = target_pts[:: max(1, len(target_pts) // 6000)]
+def _descendants(rig: mhfit.Rig, root: str) -> list[int]:
+    r = rig.index[root]
+    return [i for i in range(len(rig.names)) if mhfit._descends(rig, i, r)]
+
+
+def _rot_x(deg: float) -> np.ndarray:
+    a = math.radians(deg)
+    return np.array([[1, 0, 0], [0, math.cos(a), -math.sin(a)], [0, math.sin(a), math.cos(a)]])
+
+
+def _icp(S, T, R, s, t, iters):
+    """Similarity ICP with symmetric correspondences (one-way closest points shrink the fit)."""
+    tree_t = cKDTree(T)
     for _ in range(iters):
-        # symmetric correspondences: one-way closest points shrink the fit
-        X = s * sub @ R.T + t
+        X = s * S @ R.T + t
         _, j = tree_t.query(X)
-        _, i = cKDTree(X).query(tsub)
-        A = np.vstack([sub, sub[i]])
-        B = np.vstack([target_pts[j], tsub])
+        _, i = cKDTree(X).query(T)
+        A = np.vstack([S, S[i]])
+        B = np.vstack([T[j], T])
         ca, cb = A.mean(0), B.mean(0)
         H = (A - ca).T @ (B - cb)
         U, sv, Vt = np.linalg.svd(H)
@@ -191,110 +193,220 @@ def register(sculpt, target_pts: np.ndarray, iters: int = 40) -> None:
         R = Vt.T @ D @ U.T
         s = float(np.sum(sv * np.diag(D)) / np.sum((A - ca) ** 2))
         t = cb - s * R @ ca
-    M = np.eye(4)
-    M[:3, :3] = s * R
-    M[:3, 3] = t
-    sculpt.data.transform(Matrix(M.tolist()) @ sculpt.matrix_world)
+    X = s * S @ R.T + t
+    err = tree_t.query(X)[0].mean() + cKDTree(X).query(T)[0].mean()
+    return R, s, t, err
+
+
+def register(sculpt, rig: mhfit.Rig) -> None:
+    """Similarity-align the sculpt to the posed MakeHuman body.
+
+    Sculpts come in the same frame convention as MakeHuman (face -Y, up +Z), so
+    the start rotations are the posed rig's own bone frames (head, neck, chest,
+    pelvis), each with a few pitch offsets; the start scale and position match
+    the heads. Every start runs ICP and the best symmetric fit wins."""
+    S = _verts(sculpt)
+    T = rig.verts()
+    head_bones = _descendants(rig, "head")
+    head_t = T[rig.W[:, head_bones].sum(1) > 0.5]
+    if "fge_head_min" in sculpt:
+        lo, hi = np.array(sculpt["fge_head_min"]), np.array(sculpt["fge_head_max"])
+        head_s = S[np.all((S >= lo) & (S <= hi), axis=1)]
+    else:
+        head_s = S
+    rms = lambda P: float(np.sqrt(((P - P.mean(0)) ** 2).sum(1).mean()))
+    s0 = rms(head_t) / rms(head_s)
+    M = rig.pose_matrices()
+    Wr = rig.world[:3, :3] / np.linalg.norm(rig.world[:3, :3], axis=0)[None, :]
+    sub = S[:: max(1, len(S) // 3000)]
+    tsub = T[:: max(1, len(T) // 3000)]
+    best = None
+    for bone in ("head", "neck02", "spine03", "spine05"):
+        i = rig.index[bone]
+        Rb = (M[i] @ np.linalg.inv(rig.rest[i]))[:3, :3]
+        Rb = Rb / np.linalg.norm(Rb, axis=0)[None, :]
+        for pitch in (-40, -20, 0, 20, 40):
+            R = Wr @ Rb @ _rot_x(pitch)
+            t = head_t.mean(0) - s0 * R @ head_s.mean(0)
+            fit = _icp(sub, tsub, R, s0, t, 15)
+            if best is None or fit[3] < best[3]:
+                best = fit
+    R, s, t, _ = _icp(S[:: max(1, len(S) // 8000)], T[:: max(1, len(T) // 8000)], *best[:3], 30)
+    Mx = np.eye(4)
+    Mx[:3, :3] = s * R
+    Mx[:3, 3] = t
+    sculpt.data.transform(Matrix(Mx.tolist()) @ sculpt.matrix_world)
     sculpt.matrix_world = Matrix.Identity(4)
-    print(f"[fge] sculpt registered: scale {s:.4f}, mean surface gap {tree_t.query(_verts(sculpt)[::20])[0].mean() * 1000:.1f} mm")
+    X = _verts(sculpt)
+    gap = cKDTree(T).query(X[::10])[0].mean() + cKDTree(X).query(T[::10])[0].mean()
+    print(f"[fge] sculpt registered: scale {s:.4f}, symmetric surface gap {gap * 500:.1f} mm")
 
 
-def fit_rig_pose(rig: mhfit.Rig, sculpt_pts: np.ndarray, bones: list[str], max_evals: int = 800) -> None:
-    """Refine limb/spine rotations so the posed MakeHuman body lies on the
-    sculpt surface (symmetric chamfer on subsampled points)."""
+STAGES = [
+    ["root", "spine05", "spine04", "spine03", "spine02", "spine01", "neck01", "neck02", "neck03", "head"],
+    ["shoulder01.L", "upperarm01.L", "lowerarm01.L", "wrist.L", "shoulder01.R", "upperarm01.R", "lowerarm01.R", "wrist.R"],
+    ["pelvis.L", "upperleg01.L", "lowerleg01.L", "foot.L", "pelvis.R", "upperleg01.R", "lowerleg01.R", "foot.R"],
+]
+
+
+def fit_rig_pose(rig: mhfit.Rig, sculpt_pts: np.ndarray, max_evals: int = 1200) -> None:
+    """Bend the rig so the posed MakeHuman body lies on the sculpt surface:
+    trunk first, then arms, then legs, then everything together (symmetric
+    chamfer on subsampled points, NumPy LBS)."""
     tree_s = cKDTree(sculpt_pts)
-    base = rig.local.copy()
-    idx = [b for b in bones if b in rig.index]
-    sub = np.arange(0, len(rig.rest_verts), 4)
-    ssub = sculpt_pts[:: max(1, len(sculpt_pts) // 6000)]
+    sub = np.arange(0, len(rig.rest_verts), 3)
+    ssub = sculpt_pts[:: max(1, len(sculpt_pts) // 8000)]
 
-    def apply(x):
-        rig.local = base.copy()
-        for k, b in enumerate(idx):
-            rig.bend(b, [1, 0, 0], x[3 * k])
-            rig.bend(b, [0, 1, 0], x[3 * k + 1])
-            rig.bend(b, [0, 0, 1], x[3 * k + 2])
-
-    def loss(x):
-        apply(x)
+    def chamfer():
         V = rig.verts()[sub]
-        a = tree_s.query(V)[0].mean()
-        b = cKDTree(V).query(ssub)[0].mean()
-        return a + b + 1e-6 * np.sum(x**2)
+        return tree_s.query(V)[0].mean() + cKDTree(V).query(ssub)[0].mean()
 
-    x0 = np.zeros(3 * len(idx))
-    res = minimize(loss, x0, method="Powell", options={"xtol": 0.2, "ftol": 1e-7, "maxfev": max_evals})
-    apply(res.x)
-    print(f"[fge] rig pose fitted to sculpt: chamfer {loss(np.zeros_like(x0)) * 1000:.2f} -> {res.fun * 1000:.2f} mm")
+    start = chamfer()
+    for bones in STAGES + [sum(STAGES, [])]:
+        idx = [b for b in bones if b in rig.index]
+        base = rig.local.copy()
+
+        def apply(x):
+            rig.local = base.copy()
+            for k, b in enumerate(idx):
+                rig.bend(b, [1, 0, 0], x[3 * k])
+                rig.bend(b, [0, 1, 0], x[3 * k + 1])
+                rig.bend(b, [0, 0, 1], x[3 * k + 2])
+
+        def loss(x):
+            apply(x)
+            return chamfer() + 2e-7 * np.sum(x**2)
+
+        res = minimize(loss, np.zeros(3 * len(idx)), method="Powell", options={"xtol": 0.2, "ftol": 1e-7, "maxfev": max_evals})
+        apply(res.x)
+    print(f"[fge] rig pose fitted to sculpt: chamfer {start * 500:.2f} -> {chamfer() * 500:.2f} mm")
 
 
-def bind(sculpt, body, rig: mhfit.Rig, arm) -> None:
-    """Carry weights from the posed MakeHuman body to the sculpt (nearest
-    point, blended over the 4 nearest), unpose the sculpt with the inverse of
-    its skinning matrix, and parent it to the armature."""
-    Vb = rig.verts()  # posed MakeHuman body, world
-    Vs = _verts(sculpt)
-    d, j = cKDTree(Vb).query(Vs, k=4)
-    w = 1.0 / np.maximum(d, 1e-5)
+def _sculpt_normals(sculpt) -> np.ndarray:
+    N = np.empty(len(sculpt.data.vertices) * 3)
+    sculpt.data.vertices.foreach_get("normal", N)
+    return N.reshape(-1, 3)
+
+
+def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
+    """Skin weights (and the body's fge_* point attributes) from the posed
+    MakeHuman body to the sculpt: nearest points whose normals agree (so an
+    arm resting on the chest does not take chest weights), then a few rounds
+    of smoothing over the sculpt's own edges. Returns the weight matrix."""
+    Vb = rig.verts()
+    Nb = _normals(Vb, rig.faces)
+    Vs, Ns = _verts(sculpt), _sculpt_normals(sculpt)
+    d, j = cKDTree(Vb).query(Vs, k=16)
+    agree = np.clip(np.einsum("vd,vkd->vk", Ns, Nb[j]), 0.0, 1.0) ** 2
+    w = agree / np.maximum(d, 1e-5)
+    w[w.sum(1) < 1e-6] = (1.0 / np.maximum(d, 1e-5))[w.sum(1) < 1e-6]
     w /= w.sum(1, keepdims=True)
-    W = np.einsum("vk,vkb->vb", w, rig.W[j])
-    # keep the 4 strongest influences per vertex, renormalised
+    W = np.einsum("vk,vkb->vb", w, rig.W)
+    edges = np.array([e.vertices[:] for e in sculpt.data.edges])
+    for _ in range(4):
+        acc = np.zeros_like(W)
+        cnt = np.zeros(len(W))
+        np.add.at(acc, edges[:, 0], W[edges[:, 1]])
+        np.add.at(acc, edges[:, 1], W[edges[:, 0]])
+        np.add.at(cnt, edges.ravel(), 1)
+        W = 0.5 * W + 0.5 * acc / np.maximum(cnt, 1)[:, None]
     top = np.argsort(-W, axis=1)[:, :4]
     Wt = np.zeros_like(W)
     np.put_along_axis(Wt, top, np.take_along_axis(W, top, axis=1), axis=1)
     Wt /= np.maximum(Wt.sum(1, keepdims=True), 1e-9)
-    # unpose: v_rest = (sum_b w_b S_b)^-1 v_posed, all in armature space
-    M = rig.pose_matrices()
-    Sk = M @ np.linalg.inv(rig.rest)
-    world_inv = np.linalg.inv(rig.world)
-    Va = (np.c_[Vs, np.ones(len(Vs))] @ world_inv.T)[:, :3]
-    A = np.einsum("vb,bij->vij", Wt, Sk)
-    rest = np.einsum("vij,vj->vi", np.linalg.inv(A), np.c_[Va, np.ones(len(Va))])[:, :3]
-    for v, co in zip(sculpt.data.vertices, rest):
-        v.co = co
-    sculpt.data.update()
-    sculpt.vertex_groups.clear()
-    groups = {n: sculpt.vertex_groups.new(name=n) for n in rig.names}
-    rows, cols = np.nonzero(Wt)
-    for vi, bi in zip(rows.tolist(), cols.tolist()):
-        groups[rig.names[bi]].add([vi], float(Wt[vi, bi]), "REPLACE")
+    for a in body.data.attributes:
+        if a.name.startswith("fge_") and a.domain == "POINT" and a.data_type == "FLOAT":
+            src = np.empty(len(body.data.vertices), dtype=np.float32)
+            a.data.foreach_get("value", src)
+            out = sculpt.data.attributes.new(a.name, "FLOAT", "POINT")
+            out.data.foreach_set("value", np.einsum("vk,vk->v", w, src[j]).astype(np.float32))
+    return Wt
+
+
+def _pose_to(arm, rig: mhfit.Rig, M_target: np.ndarray) -> None:
+    """Pose the (new-rest) armature so every bone reaches its armature-space
+    matrix in M_target (computed against the old rest)."""
+    R = np.array([np.array(arm.data.bones[n].matrix_local) for n in rig.names])
+    for i in rig.order:
+        p = rig.parent[i]
+        base = R[i] if p < 0 else M_target[p] @ np.linalg.inv(R[p]) @ R[i]
+        arm.pose.bones[rig.names[i]].matrix_basis = Matrix((np.linalg.inv(base) @ M_target[i]).tolist())
+
+
+def adopt(path: Path, body, arm, faces: int = 40000, collection=None):
+    """Replace the MakeHuman surface with the sculpt, bound to the same rig.
+
+    The sculpt is bound in its own pose: the rig is fitted to it, that fitted
+    pose becomes the armature's rest pose (so binding changes no vertex), and
+    the reference pose solved by fge.mhbody is re-applied through the bones.
+    Returns the new FET_Body."""
+    from .mhbody import _store_action
+
+    probe = mhfit.Rig(arm, body)
+    probe.read_pose(arm)
+    M_target = probe.pose_matrices()
+    sculpt = import_sculpt(path, collection=collection)
+    reduce(sculpt, faces)
+    rig = mhfit.Rig(arm, body)
+    rig.read_pose(arm)
+    register(sculpt, rig)
+    fit_rig_pose(rig, _verts(sculpt))
+    W = transfer(sculpt, rig, body)
+
+    # the fitted pose becomes the rest pose
+    arm.animation_data_clear()
+    rig.apply_to(arm)
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = arm
+    arm.select_set(True)
+    bpy.ops.object.mode_set(mode="POSE")
+    bpy.ops.pose.select_all(action="SELECT")
+    bpy.ops.pose.armature_apply(selected=False)
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+    # sculpt: armature-local coordinates, parented, weighted
+    sculpt.data.transform(Matrix(np.linalg.inv(np.array(arm.matrix_world)).tolist()))
     sculpt.parent = arm
     sculpt.matrix_parent_inverse = Matrix.Identity(4)
     sculpt.matrix_basis = Matrix.Identity(4)
+    groups = {n: sculpt.vertex_groups.new(name=n) for n in rig.names}
+    rows, cols = np.nonzero(W)
+    for vi, bi in zip(rows.tolist(), cols.tolist()):
+        groups[rig.names[bi]].add([vi], float(W[vi, bi]), "REPLACE")
     mod = sculpt.modifiers.new("rig", "ARMATURE")
     mod.object = arm
     mod.use_deform_preserve_volume = True
     mh.clean_weights(sculpt)
-    print(f"[fge] sculpt bound: {len(sculpt.data.vertices)} verts, {len(rig.names)} bones")
 
-
-SPINE_AND_LIMBS = [
-    "spine05", "spine04", "spine03", "spine02", "spine01", "neck01", "neck02", "neck03", "head",
-    "upperarm01.R", "lowerarm01.R", "wrist.R", "upperarm01.L", "lowerarm01.L", "wrist.L",
-    "upperleg01.R", "lowerleg01.R", "foot.R", "upperleg01.L", "lowerleg01.L", "foot.L",
-]
-
-
-def adopt(path: Path, body, arm, faces: int = 40000, collection=None):
-    """Full pipeline: returns the bound sculpt, posed like `arm` currently is."""
-    probe = mhfit.Rig(arm, body)
-    probe.read_pose(arm)
-    target_local = probe.local.copy()
-    target_world = np.array(arm.matrix_world)
-    sculpt = import_sculpt(path, collection=collection)
-    reduce(sculpt, faces)
-    rig = mhfit.Rig(arm, body)
-    rig.local = target_local.copy()
-    register(sculpt, rig.verts())
-    fit_rig_pose(rig, _verts(sculpt), SPINE_AND_LIMBS)
-    bind(sculpt, body, rig, arm)
-    # back to the reference pose solved by fge.mhbody
-    rig.local = target_local
-    rig.world = target_world
-    rig.apply_to(arm)
+    # back to the reference pose, keyed as before
+    _pose_to(arm, rig, M_target)
+    for act in [a for a in bpy.data.actions if a.name.startswith("FET_W24_Curl")]:
+        bpy.data.actions.remove(act)
+    _store_action(arm, "FET_W24_Curl")
     bpy.context.view_layer.update()
-    body.hide_render = body.hide_viewport = True
+
+    # the MakeHuman body retires; the sculpt takes its name and cord anchor
+    navel = np.array(body.get("fge_navel", (0.0, 0.0, 0.0)))
+    old_mesh = body.data
+    bpy.data.objects.remove(body, do_unlink=True)
+    bpy.data.meshes.remove(old_mesh)
+    sculpt.name = sculpt.data.name = "FET_Body"
+    sculpt.data.shade_smooth()
+    ev = sculpt.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    me = ev.to_mesh()
+    Mw = np.array(sculpt.matrix_world)
+    co = np.array([v.co[:] for v in me.vertices]) @ Mw[:3, :3].T + Mw[:3, 3]
+    nrm = np.array([v.normal[:] for v in me.vertices]) @ Mw[:3, :3].T
+    ev.to_mesh_clear()
+    tree = cKDTree(co)
+    near = tree.query_ball_point(co[tree.query(navel)[1]], 0.004)
+    n = nrm[near].mean(0)
+    sculpt["fge_navel"] = co[near].mean(0).tolist()
+    sculpt["fge_navel_normal"] = (n / np.linalg.norm(n)).tolist()
+    sculpt.data.use_auto_texspace = False
+    sculpt.data.texspace_location = (0.0, 0.0, 0.0)
+    sculpt.data.texspace_size = (1.0, 1.0, 1.0)
+    subd = sculpt.modifiers.new("subd", "SUBSURF")
+    subd.levels, subd.render_levels = 0, 1
     return sculpt
 
-
-del math
