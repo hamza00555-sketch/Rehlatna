@@ -24,7 +24,6 @@ from pathlib import Path
 
 import bpy
 import numpy as np
-from mathutils import Matrix
 from PIL import Image
 from scipy.ndimage import gaussian_filter
 from scipy.optimize import minimize
@@ -86,7 +85,7 @@ def _joint(rig, name):
 def _proportions(rig) -> dict:
     J = {k: np.array(v) for k, v in mhpose.J.items()}
     P = {k: _joint(rig, k) for k in JOINT_BONES}
-    dist = lambda D, a, b: np.linalg.norm(D[b] - D[a])  # noqa: E731
+    dist = lambda D, a, b: np.linalg.norm(D[b] - D[a])
     torso_j, torso_p = dist(J, "pelvis", "neck_base"), dist(P, "pelvis", "neck_base")
     eff = {}
     for bone, a, b in SEGMENTS:
