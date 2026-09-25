@@ -50,7 +50,10 @@ SHAPE_TARGETS = {
     # closed lids sit flatter in the reference: eyeballs pushed back a little
     **{f"eyes/{sd}-eye-push{k}-in.target.gz": 0.7 for sd in ("l", "r") for k in (1, 2)},
     "neck/neck-back-scale-depth-incr.target.gz": 0.5,  # a full nape: the occiput flows into the back
-    "head/head-back-scale-depth-incr.target.gz": 0.4,  # the occiput bulges behind the neck
+    "head/head-back-scale-depth-incr.target.gz": 0.2,  # the occiput bulges behind the neck
+    # fetal frontal bossing: a high, forward-bulging forehead under a round dome
+    "forehead/forehead-trans-forward.target.gz": 0.7,
+    "forehead/forehead-scale-vert-incr.target.gz": 0.5,
 }
 HEAD_SCALE = 1.45
 TRUNK_SCALE = (1.05, 1.08, 1.08)  # lateral, along the spine, depth (bone frame)
@@ -249,7 +252,7 @@ def build(collection=None, max_evals: int = 700):
     mhfit.bake_proportions(rig, arm, ob, _proportions(rig))
     rig = mhfit.Rig(arm, ob)
     ears = mh.region_mask(ASSETS, len(ob.data.vertices), "ears")
-    mhfit.smooth_vault(rig, ob, iterations=100, roundness=0.7, keep=ears)
+    mhfit.smooth_vault(rig, ob, iterations=100, roundness=1.0, keep=ears)
     mhfit.scale_head(rig, arm, ob, HEAD_SCALE, drop=HEAD_DROP)
     arm.rotation_euler = (0.0, 0.0, math.pi / 2)  # MakeHuman faces -Y; the reference fetus faces +X
     bpy.context.view_layer.update()
