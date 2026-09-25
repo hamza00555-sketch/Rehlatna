@@ -89,8 +89,8 @@ def make_world(scene) -> None:
     nt.nodes.clear()
     out = nt.nodes.new("ShaderNodeOutputWorld")
     bg = nt.nodes.new("ShaderNodeBackground")
-    bg.inputs["Color"].default_value = rgba("#9DB3B5")
-    bg.inputs["Strength"].default_value = 0.16
+    bg.inputs["Color"].default_value = rgba("#9DB8BC")
+    bg.inputs["Strength"].default_value = 0.14  # the amniotic surround tints the shadow side teal, as in the reference
     nt.links.new(bg.outputs["Background"], out.inputs["Surface"])
 
 
@@ -114,9 +114,9 @@ def make_lights(target=(0.0, 0.0, 0.02)):
     # crown and back read bright and the face, turned down and away, falls
     # into soft shade, the reference's light balance. Size 1.6 m keeps the
     # terminator across the skull soft.
-    area_light("LGT_Key", (-1.13, -0.30, 1.13), target, "#FFDCC2", 70.0, 1.6, col=col)
+    area_light("LGT_Key", (-1.13, -0.30, 1.13), target, "#FFE6D8", 90.0, 1.6, col=col)
     # Neutral fill low from the front-right lifts the face and belly.
-    area_light("LGT_Fill", (0.90, -1.00, 0.10), target, "#E2E4DF", 14.0, 1.4, col=col)
+    area_light("LGT_Fill", (0.90, -1.00, 0.10), target, "#E2E4DF", 3.0, 1.4, col=col)
     # Soft back light straight behind: a thin environment-like edge all round,
     # and SSS glow through ears, fingers and toes.
     area_light("LGT_Rim", (0.05, 1.00, 0.30), target, "#FFE2D0", 80.0, 0.8, col=col)
@@ -183,9 +183,9 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     ao.samples = 8
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     ramp.color_ramp.elements[0].position = 0.25
-    ramp.color_ramp.elements[0].color = rgba("#B08A80")
+    ramp.color_ramp.elements[0].color = rgba("#B3958D")
     ramp.color_ramp.elements[1].position = 1.0
-    ramp.color_ramp.elements[1].color = rgba("#DAB8AE")
+    ramp.color_ramp.elements[1].color = rgba("#DDC4BC")
     nt.links.new(ao.outputs["AO"], ramp.inputs["Fac"])
     # Faint vessel network (Voronoi cell edges, broken up by noise), strongest on the scalp.
     rest = _rest_coords(nt)
@@ -231,10 +231,25 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     tint.blend_type = "MIX"
     tint.inputs["B"].default_value = rgba("#A8707A")
     nt.links.new(m3.outputs["Value"], tint.inputs["Factor"])
-    nt.links.new(ramp.outputs["Color"], tint.inputs["A"])
+    # soft mottling: large, low-contrast patches between a cooler rose and a warmer beige
+    mottle = nt.nodes.new("ShaderNodeTexNoise")
+    mottle.inputs["Scale"].default_value = 18.0
+    mottle.inputs["Detail"].default_value = 2.0
+    nt.links.new(rest, mottle.inputs["Vector"])
+    mot_mix = nt.nodes.new("ShaderNodeMix")
+    mot_mix.data_type = "RGBA"
+    mot_mix.blend_type = "OVERLAY"
+    mot_mix.inputs["Factor"].default_value = 0.35
+    nt.links.new(ramp.outputs["Color"], mot_mix.inputs["A"])
+    mot_ramp = nt.nodes.new("ShaderNodeValToRGB")
+    mot_ramp.color_ramp.elements[0].color = rgba("#B8888E")
+    mot_ramp.color_ramp.elements[1].color = rgba("#D8B49A")
+    nt.links.new(mottle.outputs["Fac"], mot_ramp.inputs["Fac"])
+    nt.links.new(mot_ramp.outputs["Color"], mot_mix.inputs["B"])
+    nt.links.new(mot_mix.outputs["Result"], tint.inputs["A"])
     nt.links.new(tint.outputs["Result"], bsdf.inputs["Base Color"])
     bsdf.inputs["Subsurface Weight"].default_value = 0.85
-    bsdf.inputs["Subsurface Radius"].default_value = (1.0, 0.55, 0.4)  # less red bleed: the reference skin is pink-beige, not orange
+    bsdf.inputs["Subsurface Radius"].default_value = (1.0, 0.7, 0.55)  # less red bleed: the reference skin is pink-beige, not orange
     bsdf.inputs["Subsurface Scale"].default_value = 0.004 * translucency
     bsdf.inputs["Subsurface IOR"].default_value = 1.38
     bsdf.inputs["Subsurface Anisotropy"].default_value = 0.4
