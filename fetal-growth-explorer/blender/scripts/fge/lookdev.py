@@ -218,12 +218,15 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     nt.links.new(ramp.outputs["Color"], tint.inputs["A"])
     nt.links.new(tint.outputs["Result"], bsdf.inputs["Base Color"])
     bsdf.inputs["Subsurface Weight"].default_value = 0.85
-    bsdf.inputs["Subsurface Radius"].default_value = (1.0, 0.35, 0.2)
+    bsdf.inputs["Subsurface Radius"].default_value = (1.0, 0.55, 0.4)  # less red bleed: the reference skin is pink-beige, not orange
     bsdf.inputs["Subsurface Scale"].default_value = 0.004 * translucency
     bsdf.inputs["Subsurface IOR"].default_value = 1.38
     bsdf.inputs["Subsurface Anisotropy"].default_value = 0.4
-    bsdf.inputs["Roughness"].default_value = 0.42
+    bsdf.inputs["Roughness"].default_value = 0.35
     bsdf.inputs["Specular IOR Level"].default_value = 0.5
+    # thin wet film: the satin highlights on crown and shoulder in the reference
+    bsdf.inputs["Coat Weight"].default_value = 0.25
+    bsdf.inputs["Coat Roughness"].default_value = 0.35
     bsdf.inputs["Sheen Weight"].default_value = 0.12
     bsdf.inputs["Sheen Roughness"].default_value = 0.45
     bsdf.inputs["Sheen Tint"].default_value = rgba("#FFF1EA")
