@@ -264,7 +264,7 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     ear_tint.inputs["B"].default_value = rgba("#C9705E")
     ear_k = nt.nodes.new("ShaderNodeMath")
     ear_k.operation = "MULTIPLY"
-    ear_k.inputs[1].default_value = 0.6
+    ear_k.inputs[1].default_value = 0.35
     nt.links.new(thin.outputs["Fac"], ear_k.inputs[0])
     nt.links.new(ear_k.outputs["Value"], ear_tint.inputs["Factor"])
     base_src = bsdf.inputs["Base Color"].links[0].from_socket
@@ -278,11 +278,11 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     nt.links.new(rad.outputs[1], bsdf.inputs["Subsurface Radius"])
     bsdf.inputs["Subsurface IOR"].default_value = 1.38
     bsdf.inputs["Subsurface Anisotropy"].default_value = 0.4
-    bsdf.inputs["Roughness"].default_value = 0.35
-    bsdf.inputs["Specular IOR Level"].default_value = 0.5
-    # thin wet film: the satin highlights on crown and shoulder in the reference
-    bsdf.inputs["Coat Weight"].default_value = 0.25
-    bsdf.inputs["Coat Roughness"].default_value = 0.35
+    bsdf.inputs["Roughness"].default_value = 0.45
+    bsdf.inputs["Specular IOR Level"].default_value = 0.4
+    # thin wet film: soft satin highlights on crown and shoulder, as in the reference
+    bsdf.inputs["Coat Weight"].default_value = 0.12
+    bsdf.inputs["Coat Roughness"].default_value = 0.45
     bsdf.inputs["Sheen Weight"].default_value = 0.12
     bsdf.inputs["Sheen Roughness"].default_value = 0.45
     bsdf.inputs["Sheen Tint"].default_value = rgba("#FFF1EA")
