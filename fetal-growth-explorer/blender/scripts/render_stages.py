@@ -59,6 +59,7 @@ def main():
     ap.add_argument("--week", type=int, default=24)
     ap.add_argument("--samples", type=int, default=256)
     ap.add_argument("--percent", type=int, default=100)
+    ap.add_argument("--keep-raw", action="store_true", help="keep the unfinished Cycles pass (for grading tests)")
     args = ap.parse_args()
     RENDERS.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.open_mainfile(filepath=str(MASTER))
@@ -70,7 +71,8 @@ def main():
     bpy.ops.render.render(write_still=True)
     final = RENDERS / f"render_W{args.week:02d}.png"
     post.save(post.finish(post.load_png(raw)), final)
-    raw.unlink()
+    if not args.keep_raw:
+        raw.unlink()
     print(f"[fge] wrote {final}")
     if args.week == 24:
         side_by_side(final, RENDERS / "lookdev_W24_vs_reference.jpg")

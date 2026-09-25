@@ -110,18 +110,19 @@ def area_light(name, location, target, color_hex, energy, size, shape="DISK", co
 
 def make_lights(target=(0.0, 0.0, 0.02)):
     col = collection("LIGHTS")
-    # Large soft warm key from the upper left (45° up, a little in front): the
-    # crown and back read bright and the face, turned down and away, falls
-    # into soft shade, the reference's light balance. Size 1.6 m keeps the
-    # terminator across the skull soft.
-    area_light("LGT_Key", (-1.13, -0.30, 1.13), target, "#FFE6D8", 90.0, 1.6, col=col)
+    # Warm key close above-left of the head (0.3 m, 45° up, a little in front),
+    # aimed at the head: its falloff leaves the lower body in shade, the
+    # reference's light gradient from crown to feet (measured per region on
+    # the fetus interior: head/torso/legs within a few levels of the reference
+    # instead of +7/+15/+34 with a distant key).
+    area_light("LGT_Key", (-0.220, -0.056, 0.287), (-0.01, 0.0, 0.08), "#FFE6D8", 3.05, 0.294, col=col)
     # Neutral fill low from the front-right lifts the face and belly.
-    area_light("LGT_Fill", (0.90, -1.00, 0.10), target, "#E2E4DF", 3.0, 1.4, col=col)
+    area_light("LGT_Fill", (0.90, -1.00, 0.10), target, "#E2E4DF", 1.0, 1.4, col=col)
     # Soft back light straight behind: a thin environment-like edge all round,
     # and SSS glow through ears, fingers and toes.
     area_light("LGT_Rim", (0.05, 1.00, 0.30), target, "#FFE2D0", 80.0, 0.8, col=col)
     # Faint low bounce so the underside never goes muddy.
-    area_light("LGT_Bounce", (0.20, -0.80, -0.90), target, "#C9BDB5", 1.5, 1.2, col=col)
+    area_light("LGT_Bounce", (0.20, -0.80, -0.90), target, "#C9BDB5", 0.3, 1.2, col=col)
 
 
 def make_camera(scene, cam: Camera = HERO, focus_point=(0.0185, -0.013, 0.040), name="CAM_Hero"):
