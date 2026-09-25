@@ -134,3 +134,17 @@ fetal-growth-explorer/
    ├─ lookdev/background.json
    └─ renders/
 ```
+
+## External sculpt (optional)
+
+`build_base.py` looks for a fetus sculpt in `blender/assets/sculpt/`
+(`.glb`/`.gltf`/`.obj`/`.fbx`, not committed). `fge/sculpt.py` imports it,
+reduces it to an animation-friendly mesh, registers it to the posed MakeHuman
+body (similarity + symmetric ICP), fits the rig pose to it, carries the skin
+weights over and "unposes" it with the inverse skinning matrices, so the rig
+reproduces the sculpt exactly and can re-pose and animate it (validated on a
+stand-in: 0.4 mm median error after the round trip).
+
+Candidate: "Baby" by joekarava, CC BY 4.0 —
+https://sketchfab.com/3d-models/baby-f05a87806cad49feb75ac7659d55c368
+(attribution required wherever the model is shown).

@@ -15,7 +15,7 @@ MakeHuman path (default):
 SDF path (--sdf):
   FET_Body / FET_Body_Hero  static meshes (hero = subdivided, re-projected).
 
-    python build_base.py [--sdf]    # bpy as a module (pip install bpy==5.2.2)
+    python build_base.py [--sdf] [--no-sculpt]    # bpy as a module (pip install bpy==5.2.2)
     blender -b -P build_base.py     # or inside Blender 5.2
 """
 
@@ -45,7 +45,15 @@ def main():
     else:
         from fge import mhbody
 
-        base, hero, _ = mhbody.build(collection=fetus)
+        base, hero, arm = mhbody.build(collection=fetus)
+        sculpts = sorted(p for ext in ("*.glb", "*.gltf", "*.obj", "*.fbx") for p in (ROOT / "assets" / "sculpt").rglob(ext))
+        if sculpts and "--no-sculpt" not in sys.argv:
+            # a dedicated fetus sculpt (assets/sculpt/README.md) replaces the MakeHuman
+            # surface; the fitted rig, weights and reference pose are kept
+            from fge import sculpt
+
+            print(f"[fge] adopting sculpt {sculpts[0].relative_to(ROOT)}")
+            base = sculpt.adopt(sculpts[0], base, arm, collection=fetus)
     for ob in (base, hero):
         if ob is not None:
             ob["fge_week"] = 24

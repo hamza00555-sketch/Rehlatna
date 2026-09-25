@@ -152,6 +152,16 @@ class Rig:
         out = np.einsum("vb,bij,vj->vi", self.W, S, V)[:, :3]
         return (np.c_[out, np.ones(len(out))] @ self.world.T)[:, :3]
 
+    def read_pose(self, arm) -> None:
+        """Take the armature's current pose (pose-bone basis matrices) as local transforms."""
+        for i, n in enumerate(self.names):
+            B = np.array(arm.pose.bones[n].matrix_basis)
+            sc = np.linalg.norm(B[:3, :3], axis=0)
+            self.scale[i] = sc
+            L = B.copy()
+            L[:3, :3] = B[:3, :3] / sc[None, :]
+            self.local[i] = L
+
     def apply_to(self, arm) -> None:
         """Write local rotations/scales back to Blender pose bones."""
         for i, n in enumerate(self.names):
