@@ -647,42 +647,121 @@ MEMBRANE_SPECS = [
 ]
 
 
-def make_traced_veils(material, path, depths=(0.01, 0.10), film=0.030, seed=3, name="ENV_Veil"):
-    """Veils along the membrane lines traced on the reference (fit_reference_veils.py).
+def traced_veil_material(name="MAT_Veil_Traced", strength=3.5) -> bpy.types.Material:
+    """Silk sheet seen near face-on: a crisp bright edge along the traced line
+    (v = +1) and a translucent body that lifts the backdrop and fades out toward
+    v = -1. Per-object `veil_step` / `veil_edge` (opacities measured on the
+    reference) set how strongly each sheet shows; both ends fade (u)."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    uvn = nt.nodes.new("ShaderNodeUVMap")
+    uvn.uv_map = "veil"
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(uvn.outputs["UV"], sep.inputs["Vector"])
+
+    def node(kind, op=None, **inputs):
+        n = nt.nodes.new(kind)
+        if op:
+            n.operation = op
+        for k, v in inputs.items():
+            n.inputs[int(k[1:]) if k.startswith("i") else k].default_value = v
+        return n
+
+    def attr(name):
+        a = nt.nodes.new("ShaderNodeAttribute")
+        a.attribute_type = "OBJECT"
+        a.attribute_name = name
+        return a.outputs["Fac"]
+
+    edge = nt.nodes.new("ShaderNodeMapRange")
+    edge.interpolation_type = "SMOOTHSTEP"
+    edge.inputs["From Min"].default_value = 0.91
+    edge.inputs["From Max"].default_value = 0.985
+    nt.links.new(sep.outputs["Y"], edge.inputs["Value"])
+    body = nt.nodes.new("ShaderNodeMapRange")
+    body.interpolation_type = "SMOOTHSTEP"
+    body.inputs["From Min"].default_value = -1.0
+    body.inputs["From Max"].default_value = 0.5
+    nt.links.new(sep.outputs["Y"], body.inputs["Value"])
+    e = node("ShaderNodeMath", "MULTIPLY")
+    nt.links.new(edge.outputs["Result"], e.inputs[0])
+    nt.links.new(attr("veil_edge"), e.inputs[1])
+    bd = node("ShaderNodeMath", "MULTIPLY")
+    nt.links.new(body.outputs["Result"], bd.inputs[0])
+    nt.links.new(attr("veil_step"), bd.inputs[1])
+    fac = node("ShaderNodeMath", "ADD")
+    fac.use_clamp = True
+    nt.links.new(e.outputs["Value"], fac.inputs[0])
+    nt.links.new(bd.outputs["Value"], fac.inputs[1])
+    pp = node("ShaderNodeMath", "PINGPONG", i1=0.5)
+    nt.links.new(sep.outputs["X"], pp.inputs[0])
+    ends = nt.nodes.new("ShaderNodeMapRange")
+    ends.interpolation_type = "SMOOTHSTEP"
+    ends.inputs["From Max"].default_value = 0.3
+    nt.links.new(pp.outputs["Value"], ends.inputs["Value"])
+    faded = node("ShaderNodeMath", "MULTIPLY")
+    nt.links.new(fac.outputs["Value"], faded.inputs[0])
+    nt.links.new(ends.outputs["Result"], faded.inputs[1])
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = rgba("#E6F4F6")
+    gain = _backdrop_gain_node(nt)
+    boost = node("ShaderNodeMath", "MULTIPLY", i1=strength)
+    nt.links.new(gain.outputs["Value"], boost.inputs[0])
+    nt.links.new(boost.outputs["Value"], em.inputs["Strength"])
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    nt.links.new(faded.outputs["Value"], mix.inputs["Fac"])
+    nt.links.new(nt.nodes.new("ShaderNodeBsdfTransparent").outputs["BSDF"], mix.inputs[1])
+    nt.links.new(em.outputs["Emission"], mix.inputs[2])
+    nt.links.new(mix.outputs["Shader"], out.inputs["Surface"])
+    return mat
+
+
+def make_traced_veils(material, path, depths=(0.01, 0.10), sheet_px=160.0, seed=3, name="ENV_Veil"):
+    """Silk sheets along the membrane edges traced on the reference
+    (fit_reference_veils.py).
 
     Each traced polyline is back-projected onto a plane behind the fetus (depth
-    varies per line so the lens blur varies) and becomes the bright hem of a
-    thin film that spreads `film` metres outward, away from the fetus, like the
-    edge of a silk fold seen side-on."""
+    varies per line so the lens blur varies) and becomes the crisp edge of a
+    translucent sheet on the side, and with the lift, measured on the
+    reference. On curves the sheet is kept narrower than the radius of
+    curvature so it never folds over itself."""
     import json
 
     spec = json.loads(Path(path).read_text())
     W, H = spec["frame"]
+    bands = spec.get("bands") or [{"side": 1, "step": 6.0, "edge": 8.0}] * len(spec["polylines"])
     f_px = (H / 2.0) / math.tan(HERO.fov_v / 2.0)
     cx, cy, cz = HERO.location
     rng = np.random.default_rng(seed)
-    centre = np.array([W * 0.49, H * 0.45])
     col = collection("MEMBRANES")
     obs = []
-    for k, line in enumerate(spec["polylines"]):
+    for k, (line, band) in enumerate(zip(spec["polylines"], bands)):
         uv = np.asarray(line, float)
         if len(uv) < 4:
             continue
         uv = np.stack([np.convolve(np.pad(uv[:, i], 2, mode="edge"), np.ones(5) / 5, "valid") for i in range(2)], -1)
         d = rng.uniform(*depths)
-        depth = d - cy
-        P = np.stack([cx + (uv[:, 0] - W / 2) * depth / f_px, np.full(len(uv), d), cz - (uv[:, 1] - H / 2) * depth / f_px], -1)
+        m_per_px = (d - cy) / f_px
+        P = np.stack([cx + (uv[:, 0] - W / 2) * m_per_px, np.full(len(uv), d), cz - (uv[:, 1] - H / 2) * m_per_px], -1)
         t = np.gradient(uv, axis=0)
+        t = np.stack([np.convolve(np.pad(t[:, i], 6, mode="edge"), np.ones(13) / 13, "valid") for i in range(2)], -1)
         t /= np.maximum(np.linalg.norm(t, axis=1, keepdims=True), 1e-9)
-        n = np.stack([-t[:, 1], t[:, 0]], -1)  # image-plane normal (px)
-        if np.mean(np.einsum("ij,ij->i", n, uv - centre)) < 0:
-            n = -n  # point away from the fetus
-        n3 = np.stack([n[:, 0], np.zeros(len(n)), -n[:, 1]], -1)  # px (right, down) -> world (x, -z)
-        rows = 12
-        v = np.linspace(1.0, -1.0, rows)  # v = +1 at the traced hem, -1 at the film's far edge
+        n = band["side"] * np.stack([-t[:, 1], t[:, 0]], -1)  # px, toward the sheet body
+        # curvature (px): keep the sheet narrower than the radius on the concave side
+        ds = np.maximum(np.linalg.norm(np.gradient(uv, axis=0), axis=1), 1e-6)
+        kappa = np.gradient(t, axis=0) / ds[:, None]
+        concave = np.einsum("ij,ij->i", kappa, n)
+        limit = np.where(concave > 1e-6, 0.6 / np.maximum(concave, 1e-6), np.inf)
+        width_px = np.minimum(sheet_px, limit)
+        width_px = np.convolve(np.pad(width_px, 8, mode="edge"), np.ones(17) / 17, "valid")
+        n3 = np.stack([n[:, 0], np.zeros(len(n)), -n[:, 1]], -1)
+        rows = 16
+        v = np.linspace(1.0, -1.0, rows)  # +1 on the traced edge, -1 at the sheet's far side
         s_along = np.linspace(0.0, 1.0, len(P))
-        width = film * (0.6 + 0.4 * np.sin(np.pi * s_along)) * rng.uniform(0.7, 1.3)
-        V3 = P[:, None, :] + n3[:, None, :] * (width[:, None] * (1 - v[None, :]) / 2)[..., None]
+        V3 = P[:, None, :] + n3[:, None, :] * ((width_px * m_per_px)[:, None] * (1 - v[None, :]) / 2)[..., None]
         verts = V3.reshape(-1, 3)
         i, j = np.meshgrid(np.arange(len(P) - 1), np.arange(rows - 1), indexing="ij")
         a = (i * rows + j).ravel()
@@ -695,6 +774,9 @@ def make_traced_veils(material, path, depths=(0.01, 0.10), film=0.030, seed=3, n
         uvl.data.foreach_set("uv", UV[np.array([lp.vertex_index for lp in me.loops])].ravel())
         ob = bpy.data.objects.new(me.name, me)
         me.materials.append(material)
+        # measured lifts (8-bit) -> opacities of a near-white emissive film over the backdrop
+        ob["veil_step"] = float(np.clip(band["step"] / 55.0, 0.02, 0.28))
+        ob["veil_edge"] = float(np.clip(band["edge"] / 15.0 + 0.3, 0.3, 1.0))  # calibrated on the render: thin edges lose ~2/3 to lens blur
         camera_only(ob)
         col.objects.link(ob)
         obs.append(ob)

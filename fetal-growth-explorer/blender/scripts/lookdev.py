@@ -58,10 +58,8 @@ def main():
     lookdev.make_cord(lookdev.cord_material(), path=path)
     traced = ROOT / "lookdev" / "reference_veils.json"
     if traced.exists():  # the reference's own membrane lines (fit_reference_veils.py) + soft sheets
-        # soft milky silk well behind (no rims), then the reference's own fold lines on top
-        lookdev.make_membranes(lookdev.membrane_material(opacity=0.35, hem=0.0, haze=0.12))
-        veil = lookdev.membrane_material("MAT_Veil_Traced", one_sided=True, fade_ends=True, haze=0.14, hem=1.0, hem_band=(0.955, 0.985), strength=3.5)
-        lookdev.make_traced_veils(veil, traced, film=0.10)
+        # silk sheets along the reference's own membrane edges (measured side and lift)
+        lookdev.make_traced_veils(lookdev.traced_veil_material(), traced)
     else:
         lookdev.make_membranes(lookdev.membrane_material(), specs=lookdev.MEMBRANE_RINGS + lookdev.MEMBRANE_SPECS)
     lookdev.make_particles(lookdev.particle_material())

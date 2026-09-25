@@ -42,23 +42,45 @@ def main():
     # a low local percentile drops the bright veil lines and the pale cord.
     from scipy.ndimage import percentile_filter
 
-    a = np.stack([percentile_filter(a[..., c], 20, size=9) for c in range(3)], -1)
-    m_img = Image.fromarray((mask * 255).astype(np.uint8)).filter(ImageFilter.MinFilter(5))
-    mask = np.asarray(m_img) > 127
-    num = np.stack([np.asarray(Image.fromarray((a[..., c] * mask * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(14))) for c in range(3)], -1).astype(float)
-    den = np.asarray(Image.fromarray((mask * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(14))).astype(float)
-    plate = np.where(mask[..., None], a, num / np.maximum(den[..., None], 1e-3))
-    h, w, _ = plate.shape
+    a = np.stack([percentile_filter(a[..., c], 20, size=5) for c in range(3)], -1)
+    from scipy.ndimage import binary_dilation
+
+    mask = ~binary_dilation(subject, iterations=2)
+    h, w, _ = a.shape
     v, u = np.mgrid[0:h, 0:w]
-    u = (u + 0.5) / w
-    v = (v + 0.5) / h
-    A = terms(u.ravel(), v.ravel())
-    coeffs = [np.linalg.lstsq(A, plate[..., c].ravel(), rcond=None)[0].tolist() for c in range(3)]
-    fit = np.stack([A @ np.array(c) for c in coeffs], -1).reshape(h, w, 3)
-    err = np.abs(fit - plate)[mask].mean() * 255
+    u = ((u + 0.5) / w).ravel()
+    v = ((v + 0.5) / h).ravel()
+    sel = mask.ravel()
+    P = terms(u, v)
+    # the luminous halo behind the fetus: an elliptical Gaussian on top of the
+    # smooth gradient, its centre and size found by grid search (weighted least
+    # squares on backdrop pixels only; the fetus hides the halo's core)
+    best = None
+    for uc in np.linspace(0.35, 0.65, 7):
+        for vc in np.linspace(0.40, 0.65, 6):
+            for su in (0.15, 0.22, 0.30):
+                for sv in (0.10, 0.15, 0.22):
+                    g = np.exp(-0.5 * (((u - uc) / su) ** 2 + ((v - vc) / sv) ** 2))
+                    A = np.c_[P, g]
+                    err = 0.0
+                    cs = []
+                    for c in range(3):
+                        x, res, *_ = np.linalg.lstsq(A[sel], a[..., c].ravel()[sel], rcond=None)
+                        cs.append(x)
+                        err += float(np.sum((A[sel] @ x - a[..., c].ravel()[sel]) ** 2))
+                    if best is None or err < best[0]:
+                        best = (err, (uc, vc, su, sv), cs)
+    _, halo, cs = best
+    coeffs = [c[:-1].tolist() for c in cs]
+    amp = [float(c[-1]) for c in cs]
+    g = np.exp(-0.5 * (((u - halo[0]) / halo[2]) ** 2 + ((v - halo[1]) / halo[3]) ** 2))
+    fit = np.stack([np.c_[P, g] @ c for c in cs], -1)
+    err = np.abs(fit[sel] - a.reshape(-1, 3)[sel]).mean() * 255
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({"degree": DEGREE, "space": "sRGB", "uv": "u right, v down, 0..1", "coefficients": coeffs, "mean_abs_error_8bit": round(float(err), 2)}, indent=2))
-    print("background fit, mean abs error (8-bit):", round(float(err), 2))
+    OUT.write_text(json.dumps({"degree": DEGREE, "space": "sRGB", "uv": "u right, v down, 0..1", "coefficients": coeffs,
+                               "halo": {"centre": [halo[0], halo[1]], "sigma": [halo[2], halo[3]], "amplitude": amp},
+                               "mean_abs_error_8bit": round(float(err), 2)}, indent=2))
+    print("background fit, mean abs error (8-bit):", round(float(err), 2), "halo", np.round(halo, 2), np.round(np.array(amp) * 255, 1))
 
 
 if __name__ == "__main__":

@@ -58,7 +58,7 @@ def trace(skel: np.ndarray) -> list[list[tuple[int, int]]]:
     return lines
 
 
-def link(lines, max_gap=70.0, max_turn=40.0, min_total=180.0):
+def link(lines, max_gap=70.0, max_turn=40.0, min_total=150.0):
     """Greedily join polylines whose ends meet (gap < max_gap px) and continue in
     the same direction (turn < max_turn deg): the thresholded ridges break
     where a fold fades, but the painted line runs on."""
@@ -100,6 +100,29 @@ def link(lines, max_gap=70.0, max_turn=40.0, min_total=180.0):
     return [[(int(x), int(y)) for x, y in a] for a in L if length(a) >= min_total]
 
 
+def band_profile(uv: np.ndarray, L: np.ndarray) -> dict:
+    """Each traced line is the crisp edge of a translucent sheet: across it the
+    reference steps up by a few levels on the sheet's side, and the edge itself
+    peaks above both. Returns side (+1: sheet on the left normal of the path),
+    step (8-bit levels) and edge (peak above the sheet side)."""
+    t = nd.gaussian_filter1d(np.gradient(uv, axis=0), 3.0, axis=0)
+    t /= np.maximum(np.linalg.norm(t, axis=1, keepdims=True), 1e-9)
+    n = np.stack([-t[:, 1], t[:, 0]], -1)
+    H, W = L.shape
+
+    def at(o):
+        q = uv + n * o
+        x = np.clip(q[:, 0].round().astype(int), 0, W - 1)
+        y = np.clip(q[:, 1].round().astype(int), 0, H - 1)
+        return float(np.median(L[y, x]))
+
+    plus = np.mean([at(o) for o in range(12, 61, 4)])
+    minus = np.mean([at(-o) for o in range(12, 61, 4)])
+    peak = max(at(o) for o in (-2, 0, 2))
+    side = 1 if plus >= minus else -1
+    return {"side": side, "step": float(np.clip(abs(plus - minus), 0, 30)), "edge": float(np.clip(peak - max(plus, minus), 0, 30))}
+
+
 def main():
     global CORD_PATH
     import ast
@@ -119,11 +142,14 @@ def main():
             if 0 <= y < cord.shape[0] and 0 <= x < cord.shape[1]:
                 cord[y, x] = True
     cord = nd.binary_dilation(cord, iterations=45)
-    ridges = (dog > 1.8) & ~body & ~cord
+    ridges = (dog > 1.3) & ~body & ~cord
     ridges = nd.binary_closing(ridges, structure=np.ones((3, 3)), iterations=2)  # bridge small gaps
     ridges = nd.binary_opening(ridges, structure=np.ones((2, 2)))
     lines = link(trace(skeletonize(ridges)))
-    OUT.write_text(json.dumps({"frame": [im.shape[1], im.shape[0]], "polylines": lines}))
+    # Each traced line is the crisp edge of a silk sheet: measure on the
+    # reference which side the sheet lies on and how much it lifts the backdrop.
+    bands = [band_profile(np.asarray(line, float), L) for line in lines]
+    OUT.write_text(json.dumps({"frame": [im.shape[1], im.shape[0]], "polylines": lines, "bands": bands}))
     print(f"[fge] traced {len(lines)} veil lines -> {OUT}")
 
 

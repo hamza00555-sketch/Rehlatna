@@ -48,7 +48,16 @@ def background(width: int, height: int) -> np.ndarray:
     u = (u + 0.5) / width
     v = (v + 0.5) / height
     T = np.stack([u**i * v**j for i in range(deg + 1) for j in range(deg + 1 - i)], axis=-1)
-    return np.clip(np.stack([T @ np.array(c) for c in spec["coefficients"]], axis=-1), 0.0, 1.0)
+    bg = np.stack([T @ np.array(c) for c in spec["coefficients"]], axis=-1)
+    if "halo" in spec:  # luminous glow behind the fetus (fit_background.py)
+        (uc, vc), (su, sv) = spec["halo"]["centre"], spec["halo"]["sigma"]
+        g = np.exp(-0.5 * (((u - uc) / su) ** 2 + ((v - vc) / sv) ** 2))
+        bg = bg + g[..., None] * np.array(spec["halo"]["amplitude"])
+    for c in spec.get("corrections", []):  # calibrate_backdrop.py
+        (uc, vc), (su, sv) = c["centre"], c["sigma"]
+        g = np.exp(-0.5 * (((u - uc) / su) ** 2 + ((v - vc) / sv) ** 2))
+        bg = bg + g[..., None] * np.array(c["amplitude"]) + np.array(c["offset"])
+    return np.clip(bg, 0.0, 1.0)
 
 
 def finish(rgba: np.ndarray, look=LOOK, seed: int = 1) -> np.ndarray:

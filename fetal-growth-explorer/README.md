@@ -32,6 +32,7 @@ cd blender/scripts
 python fetch_makehuman.py            # (once) CC0 MakeHuman base mesh, baby targets, rig → blender/assets/
 python fit_reference_mask.py         # (once) fetus silhouette traced from the reference
 python fit_reference_veils.py        # (once) membrane fold lines traced from the reference
+python calibrate_backdrop.py         # (after a render) backdrop glow calibrated against the reference; re-render
 python build_base.py                 # fitted MakeHuman baby → FET_Body + FET_Body_Hero → fetal_master.blend (~6 min)
                                      # (--sdf: the earlier procedural implicit-surface body)
 python lookdev.py                    # materials, cord, membranes, lights, camera, render settings
