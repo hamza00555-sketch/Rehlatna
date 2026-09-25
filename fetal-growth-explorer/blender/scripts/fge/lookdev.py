@@ -115,7 +115,7 @@ def make_lights(target=(0.0, 0.0, 0.02)):
     # reference's light gradient from crown to feet (measured per region on
     # the fetus interior: head/torso/legs within a few levels of the reference
     # instead of +7/+15/+34 with a distant key).
-    area_light("LGT_Key", (-0.220, -0.056, 0.287), (-0.01, 0.0, 0.08), "#FFE6D8", 3.05, 0.294, col=col)
+    area_light("LGT_Key", (-0.220, -0.056, 0.287), (-0.01, 0.0, 0.08), "#FFE6D8", 2.84, 0.294, col=col)
     # Neutral fill low from the front-right lifts the face and belly.
     area_light("LGT_Fill", (0.90, -1.00, 0.10), target, "#E2E4DF", 1.0, 1.4, col=col)
     # Soft back light straight behind: a thin environment-like edge all round,
@@ -256,8 +256,10 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     thin.attribute_type = "GEOMETRY"
     thin.attribute_name = "fge_thin"
     sss = nt.nodes.new("ShaderNodeMapRange")
-    sss.inputs["To Min"].default_value = 0.004 * translucency
-    sss.inputs["To Max"].default_value = 0.007 * translucency
+    # a deep scatter: the reference skin has soft, low-contrast shading (local
+    # contrast on the body matched against it; 2.5x the earlier depth)
+    sss.inputs["To Min"].default_value = 0.010 * translucency
+    sss.inputs["To Max"].default_value = 0.0175 * translucency
     nt.links.new(thin.outputs["Fac"], sss.inputs["Value"])
     nt.links.new(sss.outputs["Result"], bsdf.inputs["Subsurface Scale"])
     ear_tint = nt.nodes.new("ShaderNodeMix")
@@ -273,7 +275,7 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     nt.links.new(ear_tint.outputs["Result"], bsdf.inputs["Base Color"])
     rad = nt.nodes.new("ShaderNodeMix")  # redder scattering where thin: light through an ear glows red
     rad.data_type = "VECTOR"
-    rad.inputs[4].default_value = (1.0, 0.7, 0.55)  # A (vector)
+    rad.inputs[4].default_value = (1.0, 0.45, 0.3)  # A (vector): red-weighted, or deep scatter turns thin parts waxy white
     rad.inputs[5].default_value = (1.0, 0.3, 0.15)  # B (vector)
     nt.links.new(thin.outputs["Fac"], rad.inputs["Factor"])
     nt.links.new(rad.outputs[1], bsdf.inputs["Subsurface Radius"])
