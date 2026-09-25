@@ -39,7 +39,7 @@ MASK = ROOT / "lookdev" / "reference_mask.png"
 
 SHAPE_TARGETS = {
     "stomach/stomach-pregnant-incr.target.gz": 1.0,  # the round fetal abdomen
-    "torso/torso-scale-depth-incr.target.gz": 0.5,
+    "torso/torso-scale-depth-incr.target.gz": 0.3,
     "buttocks/buttocks-volume-incr.target.gz": 0.5,
     **{f"legs/{sd}-upperleg-fat-incr.target.gz": 0.3 for sd in ("l", "r")},  # soft, full thighs
     **{f"hands/{sd}-hand-scale-decr.target.gz": 0.5 for sd in ("l", "r")},
@@ -48,6 +48,7 @@ SHAPE_TARGETS = {
     **{f"cheek/{sd}-cheek-volume-decr.target.gz": 0.4 for sd in ("l", "r")},
     "nose/nose-scale-depth-incr.target.gz": 0.2,
     "chin/chin-prominent-incr.target.gz": 0.35,
+    "neck/neck-back-scale-depth-incr.target.gz": 1.0,  # a full nape: the occiput flows into the back
 }
 HEAD_SCALE = 1.5
 HEAD_DROP = 0.06
@@ -69,7 +70,7 @@ THORACIC = ("spine03", "spine02", "spine01")
 NECK = ("neck01", "neck02", "neck03")
 FINGER_CURL = tuple(f"finger{f}-{j}.{sd}" for f in range(2, 6) for j in (1, 2, 3) for sd in ("L", "R"))
 FINGER_CURL_DEG = 8.0
-CLAVICLE_DROP_DEG = -12.0  # shoulders down, relaxed (the rest pose reads shrugged under the big head)
+CLAVICLE_DROP_DEG = -25.0  # shoulders down, relaxed (the rest pose reads shrugged under the big head)
 # lumbar flex, thoracic flex, neck flex, head flex (deg, + = flexion), head scale %, scale %, x mm, z mm, roll deg.
 # Lumbar flexion tucks the pelvis under (the reference's round, low rump).
 PRIOR = np.array([25.0, 25.0, 8.0, -5.0, -10.0, 0.0, 0.0, 0.0, 0.0])
