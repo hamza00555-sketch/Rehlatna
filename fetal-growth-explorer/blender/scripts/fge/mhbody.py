@@ -53,6 +53,7 @@ SHAPE_TARGETS = {
     "head/head-back-scale-depth-incr.target.gz": 0.4,  # the occiput bulges behind the neck
 }
 HEAD_SCALE = 1.45
+TRUNK_SCALE = (1.05, 1.08, 1.08)  # lateral, along the spine, depth (bone frame)
 HEAD_DROP = 0.06
 FIT_SIZE = (279, 500)
 REF_FRAME = (1116, 2000)
@@ -101,6 +102,8 @@ def _proportions(rig) -> dict:
         for side in ("R", "L"):
             for part in ("01", "02"):
                 eff[f"{bone}{part}.{side}"] = (1.0, r, 1.0)
+    for b in ("spine05", "spine04", "spine03", "spine02", "spine01"):
+        eff[b] = TRUNK_SCALE  # the reference trunk is longer and fuller relative to the head
     return eff
 
 
@@ -168,6 +171,9 @@ class _Poser:
         return c[0], c[1], math.sqrt(c[2] + c[0] ** 2 + c[1] ** 2)
 
     def loss(self, x):
+        return self.loss_full(x, PRIOR)
+
+    def loss_full(self, x, prior):
         self.pose(x)
         V = self.rig.verts()
         m = gaussian_filter(mhfit.splat(V[self.body_verts], FIT_SIZE, 1).astype(float), 2.0)
@@ -178,11 +184,30 @@ class _Poser:
         idx = list(FACE_POINTS)
         uv, _ = project_points(V[idx], HERO, REF_FRAME)
         face = np.sum((uv - np.array([FACE_POINTS[i] for i in idx])) ** 2) / rr**2
-        return body + 2.0 * head + 2.0 * face + 0.02 * np.sum(((x - PRIOR) / SIGMA) ** 2)
+        return body + 2.0 * head + 2.0 * face + 0.02 * np.sum(((x - prior) / SIGMA) ** 2)
 
-    def solve(self, max_evals=700):
-        simplex = np.vstack([PRIOR] + [PRIOR + np.eye(len(PRIOR))[i] * SIGMA[i] * 0.6 for i in range(len(PRIOR))])
-        res = minimize(self.loss, PRIOR.copy(), method="Nelder-Mead", options={"xatol": 0.2, "fatol": 1e-4, "maxfev": max_evals, "initial_simplex": simplex})
+    def solve(self, max_evals=700, start=None, lock_head_scale=False):
+        """Nelder-Mead from `start` (default: the prior). With lock_head_scale the
+        head-scale parameter is held at 0 (the head size is already in the rest shape)."""
+        x0 = (PRIOR if start is None else np.asarray(start, float)).copy()
+        free = [i for i in range(len(x0)) if not (lock_head_scale and i == 4)]
+        prior = PRIOR.copy()
+        if lock_head_scale:
+            x0[4] = prior[4] = 0.0
+
+        def full(z):
+            x = x0.copy()
+            x[free] = z
+            return x
+
+        def loss(z):
+            x = full(z)
+            return self.loss_full(x, prior)
+
+        z0 = x0[free]
+        simplex = np.vstack([z0] + [z0 + np.eye(len(z0))[i] * SIGMA[free][i] * 0.6 for i in range(len(z0))])
+        res = minimize(loss, z0, method="Nelder-Mead", options={"xatol": 0.2, "fatol": 1e-4, "maxfev": max_evals, "initial_simplex": simplex})
+        res.x = full(res.x)
         self.pose(res.x)
         V = self.rig.verts()
         cr = np.round(self.cranium(V), 1)
@@ -232,10 +257,11 @@ def build(collection=None, max_evals: int = 700):
     x = _Poser(rig).solve(max_evals)
     # The solve sizes the head with a pose-level scale; an animation rig must
     # not carry scale in its pose, so fold it into the rest shape instead.
-    local, world = rig.local.copy(), rig.world.copy()
+    # Folding it in scales about a pivot below the chin rather than the head
+    # joint, which moves the head, so re-solve with the head size locked.
     mhfit.scale_head(mhfit.Rig(arm, ob), arm, ob, 1.0 + x[4] / 100.0, drop=HEAD_DROP)
-    rig = mhfit.Rig(arm, ob)
-    rig.local, rig.world = local, world
+    rig = mhfit.Rig(arm, ob)  # fresh: world = the rig object's placement, as for the first solve
+    _Poser(rig).solve(max_evals // 2, start=x, lock_head_scale=True)
     mh.clean_weights(ob)  # the head-scale weight hand-over adds memberships
     scalp = _scalp_mask(rig)  # rest frame, before the placement is baked
     rig = mhfit.bake_world(rig, arm, ob)

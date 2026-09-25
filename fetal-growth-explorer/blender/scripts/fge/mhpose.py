@@ -22,8 +22,8 @@ J = {
     "skull_base": (-0.016, 0.0, 0.040),
     "shoulder_r": (-0.042, -0.0305, 0.006),
     "elbow_r": (-0.029, -0.0445, -0.0265),
-    "wrist_r": (0.0065, -0.0335, -0.001),
-    "hand_r": (0.0180, -0.0335, 0.0086),  # hand tilted up ~40° toward the chin, as in the reference
+    "wrist_r": (0.0165, -0.0335, 0.004),
+    "hand_r": (0.0280, -0.0335, 0.0136),  # hand tilted up ~40° toward the chin, as in the reference
     "shoulder_l": (-0.0355, 0.027, 0.004),
     "elbow_l": (-0.0215, 0.040, -0.030),
     "wrist_l": (-0.001, 0.025, -0.0305),
