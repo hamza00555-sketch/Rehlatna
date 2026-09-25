@@ -9,8 +9,8 @@
    enlarged about a pivot low on the neck, so the junction cannot fold.
 4. Pose: anatomical flexion of spine, neck and head relative to rest; the
    trunk is turned onto the reference pelvis->neck line; limbs are aimed along
-   the reference landmark skeleton. A Nelder-Mead solve over those three
-   flexion angles, the head size and the placement matches the body to the
+   the reference landmark skeleton. A Nelder-Mead solve over the lumbar,
+   thoracic, neck and head flexion, the head size and the placement matches the body to the
    segmented reference outline (lookdev/reference_mask.png) and the cranium's
    outline circle to the reference cranium, with a prior on every parameter.
 5. Deformation uses volume-preserving skinning plus corrective smoothing; the
@@ -40,7 +40,13 @@ MASK = ROOT / "lookdev" / "reference_mask.png"
 SHAPE_TARGETS = {
     "stomach/stomach-pregnant-incr.target.gz": 1.0,  # the round fetal abdomen
     "torso/torso-scale-depth-incr.target.gz": 0.5,
-    "buttocks/buttocks-volume-incr.target.gz": 0.7,
+    "buttocks/buttocks-volume-incr.target.gz": 1.0,
+    **{f"legs/{sd}-upperleg-fat-incr.target.gz": 0.8 for sd in ("l", "r")},  # the reference's full thighs
+    "legs/measure-thigh-circ-incr.target.gz": 0.5,
+    **{f"hands/{sd}-hand-scale-decr.target.gz": 0.5 for sd in ("l", "r")},
+    # a more defined profile than the chubby newborn default: nose, leaner cheeks
+    **{f"cheek/{sd}-cheek-volume-decr.target.gz": 0.6 for sd in ("l", "r")},
+    "nose/nose-scale-depth-incr.target.gz": 0.5,
 }
 HEAD_SCALE = 1.5
 HEAD_DROP = 0.06
@@ -57,11 +63,13 @@ JOINT_BONES = {
     "pelvis": "spine05", "neck_base": "neck01",
 }
 SEGMENTS = [("upperarm", "shoulder", "elbow"), ("lowerarm", "elbow", "wrist"), ("upperleg", "hip", "knee"), ("lowerleg", "knee", "ankle")]
-SPINE = ("spine05", "spine04", "spine03", "spine02", "spine01")
+LUMBAR = ("spine05", "spine04")
+THORACIC = ("spine03", "spine02", "spine01")
 NECK = ("neck01", "neck02", "neck03")
-# spine flex, neck flex, head flex (deg, + = flexion), head scale %, scale %, x mm, z mm, roll deg
-PRIOR = np.array([40.0, 8.0, -5.0, -10.0, 0.0, 0.0, 0.0, 0.0])
-SIGMA = np.array([20.0, 8.0, 6.0, 15.0, 10.0, 15.0, 15.0, 10.0])
+# lumbar flex, thoracic flex, neck flex, head flex (deg, + = flexion), head scale %, scale %, x mm, z mm, roll deg.
+# Lumbar flexion tucks the pelvis under (the reference's round, low rump).
+PRIOR = np.array([25.0, 25.0, 8.0, -5.0, -10.0, 0.0, 0.0, 0.0, 0.0])
+SIGMA = np.array([20.0, 15.0, 8.0, 6.0, 15.0, 10.0, 15.0, 15.0, 10.0])
 
 
 def _joint(rig, name):
@@ -111,12 +119,14 @@ class _Poser:
 
     def pose(self, x):
         rig = self.rig
-        spine, neck, head, head_scale, scale, tx, tz, roll = x
+        lumbar, thoracic, neck, head, head_scale, scale, tx, tz, roll = x
         rig.reset()
         rig.world = self.world0.copy()
         rig.scale[self.head] = 1 + head_scale / 100
-        for b in SPINE:
-            rig.bend(b, [1, 0, 0], spine / len(SPINE))
+        for b in LUMBAR:
+            rig.bend(b, [1, 0, 0], lumbar / len(LUMBAR))
+        for b in THORACIC:
+            rig.bend(b, [1, 0, 0], thoracic / len(THORACIC))
         for b in NECK:
             rig.bend(b, [1, 0, 0], neck / len(NECK))
         rig.bend("head", [1, 0, 0], head)
@@ -156,7 +166,7 @@ class _Poser:
         res = minimize(self.loss, PRIOR.copy(), method="Nelder-Mead", options={"xatol": 0.2, "fatol": 1e-4, "maxfev": max_evals, "initial_simplex": simplex})
         self.pose(res.x)
         cr = np.round(self.cranium(self.rig.verts()), 1)
-        print(f"[fge] pose: spine {res.x[0]:.0f}°, neck {res.x[1]:.0f}°, head {res.x[2]:.0f}°; loss {res.fun:.3f}; cranium circle {cr} vs {REF_CRANIUM}")
+        print(f"[fge] pose: lumbar {res.x[0]:.0f}°, thoracic {res.x[1]:.0f}°, neck {res.x[2]:.0f}°, head {res.x[3]:.0f}°; loss {res.fun:.3f}; cranium {cr} vs {REF_CRANIUM}")
         return res.x
 
 
@@ -178,10 +188,20 @@ def build(collection=None, max_evals: int = 700):
     bpy.context.view_layer.update()
 
     ob.modifiers["rig"].use_deform_preserve_volume = True
+    # Corrective smooth only below the head: it reads the head's scale as
+    # deformation and pulled the lips apart.
+    head = rig.index["head"]
+    sub = [i for i in range(len(rig.names)) if mhfit._descends(rig, i, head)]
+    body_w = 1.0 - np.clip(rig.W[:, sub].sum(axis=1) * 1.5, 0.0, 1.0)
+    vg = ob.vertex_groups.new(name="corrective_mask")
+    for i, wt in enumerate(body_w):
+        if wt > 0:
+            vg.add([i], float(wt), "REPLACE")
     cs = ob.modifiers.new("corrective", "CORRECTIVE_SMOOTH")
     cs.rest_source = "ORCO"
     cs.smooth_type = "LENGTH_WEIGHTED"
     cs.iterations = 20
+    cs.vertex_group = vg.name
     deps = bpy.context.evaluated_depsgraph_get()
     mesh = bpy.data.meshes.new_from_object(ob.evaluated_get(deps))
     mesh.transform(ob.matrix_world)

@@ -117,7 +117,7 @@ def make_lights(target=(0.0, 0.0, 0.02)):
     area_light("LGT_Fill", (0.90, -1.00, 0.10), target, "#E2E4DF", 8.0, 1.4, col=col)
     # Soft back light straight behind: a thin environment-like edge all round,
     # and SSS glow through ears, fingers and toes.
-    area_light("LGT_Rim", (0.05, 1.00, 0.30), target, "#FFE2D0", 45.0, 0.8, col=col)
+    area_light("LGT_Rim", (0.05, 1.00, 0.30), target, "#FFE2D0", 80.0, 0.8, col=col)
     # Faint low bounce so the underside never goes muddy.
     area_light("LGT_Bounce", (0.20, -0.80, -0.90), target, "#C9BDB5", 1.5, 1.2, col=col)
 
@@ -217,12 +217,12 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     nt.links.new(m3.outputs["Value"], tint.inputs["Factor"])
     nt.links.new(ramp.outputs["Color"], tint.inputs["A"])
     nt.links.new(tint.outputs["Result"], bsdf.inputs["Base Color"])
-    bsdf.inputs["Subsurface Weight"].default_value = 0.55
+    bsdf.inputs["Subsurface Weight"].default_value = 0.85
     bsdf.inputs["Subsurface Radius"].default_value = (1.0, 0.35, 0.2)
-    bsdf.inputs["Subsurface Scale"].default_value = 0.0024 * translucency
+    bsdf.inputs["Subsurface Scale"].default_value = 0.004 * translucency
     bsdf.inputs["Subsurface IOR"].default_value = 1.38
     bsdf.inputs["Subsurface Anisotropy"].default_value = 0.4
-    bsdf.inputs["Roughness"].default_value = 0.5
+    bsdf.inputs["Roughness"].default_value = 0.42
     bsdf.inputs["Specular IOR Level"].default_value = 0.5
     bsdf.inputs["Sheen Weight"].default_value = 0.12
     bsdf.inputs["Sheen Roughness"].default_value = 0.45
@@ -476,12 +476,17 @@ def make_particles(material, count=60, seed=7, name="ENV_Particles"):
     me_src.shade_smooth()
     me_src.materials.append(material)
     obs = []
-    for i in range(count):
+    placed = 0
+    while placed < count:
         # Shell around the fetus, denser toward the camera-side volume.
         r = rng.uniform(0.09, 0.30)
         th = rng.uniform(0, 2 * math.pi)
         ph = rng.uniform(-1.0, 1.0)
         p = (r * math.cos(th) * math.sqrt(1 - ph * ph), rng.uniform(-0.35, 0.45), r * ph * 1.6)
+        if p[1] < 0.10 and (p[0] / 0.10) ** 2 + (p[2] / 0.15) ** 2 < 1.0:
+            continue  # in front of / beside the body it reads as a speck on the skin
+        i = placed
+        placed += 1
         ob = bpy.data.objects.new(f"{name}_{i:03d}", me_src)
         s = rng.uniform(0.00025, 0.0007)
         ob.scale = (s, s, s)
