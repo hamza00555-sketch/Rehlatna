@@ -260,18 +260,53 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
 
 
 def cord_material(name="MAT_Cord") -> bpy.types.Material:
+    """Soft, slightly translucent pink-white cord with the faint helical twist of
+    its vessels (bump from a stripe that winds around the curve's UV)."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nt = mat.node_tree
     bsdf, _ = _principled(nt)
     bsdf.subsurface_method = "RANDOM_WALK"
-    bsdf.inputs["Base Color"].default_value = rgba("#E4EEEF")
-    bsdf.inputs["Subsurface Weight"].default_value = 0.35
-    bsdf.inputs["Subsurface Radius"].default_value = (0.8, 0.85, 0.9)
-    bsdf.inputs["Subsurface Scale"].default_value = 0.004
+    bsdf.inputs["Base Color"].default_value = rgba("#E6E2E4")
+    bsdf.inputs["Subsurface Weight"].default_value = 0.4
+    bsdf.inputs["Subsurface Radius"].default_value = (1.0, 0.6, 0.6)  # pink glow from within
+    bsdf.inputs["Subsurface Scale"].default_value = 0.0012  # shorter than the cord radius, or the streaks blur away
     bsdf.inputs["Roughness"].default_value = 0.45
     bsdf.inputs["Coat Weight"].default_value = 0.15
     bsdf.inputs["Coat Roughness"].default_value = 0.15
+    # helix: stripe phase = turns * u + v (u along the cord, v around it, 0..1)
+    uv = nt.nodes.new("ShaderNodeUVMap")
+    uv.uv_map = "UVMap"
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(uv.outputs["UV"], sep.inputs["Vector"])
+    turns = nt.nodes.new("ShaderNodeMath")
+    turns.operation = "MULTIPLY_ADD"
+    turns.inputs[1].default_value = 11.0  # full twists along the visible length
+    nt.links.new(sep.outputs["X"], turns.inputs[0])
+    nt.links.new(sep.outputs["Y"], turns.inputs[2])
+    wave = nt.nodes.new("ShaderNodeMath")
+    wave.operation = "SINE"
+    k = nt.nodes.new("ShaderNodeMath")
+    k.operation = "MULTIPLY"
+    k.inputs[1].default_value = 2.0 * math.pi  # one broad ridge per turn: the vessels read as a soft spiral
+    nt.links.new(turns.outputs["Value"], k.inputs[0])
+    nt.links.new(k.outputs["Value"], wave.inputs[0])
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.35
+    bump.inputs["Distance"].default_value = 0.0008
+    nt.links.new(wave.outputs["Value"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    # the vessels also show as faint cool-grey spiral streaks under the jelly
+    streak = nt.nodes.new("ShaderNodeMapRange")
+    streak.inputs["From Min"].default_value = -1.0
+    streak.inputs["To Max"].default_value = 0.6
+    nt.links.new(wave.outputs["Value"], streak.inputs["Value"])
+    tint = nt.nodes.new("ShaderNodeMix")
+    tint.data_type = "RGBA"
+    tint.inputs["A"].default_value = rgba("#E8E2E3")
+    tint.inputs["B"].default_value = rgba("#BFC8D0")
+    nt.links.new(streak.outputs["Result"], tint.inputs["Factor"])
+    nt.links.new(tint.outputs["Result"], bsdf.inputs["Base Color"])
     return mat
 
 
@@ -466,7 +501,7 @@ def attach_cord(path, navel, normal, reach=4):
     return [tuple(p) for p in out]
 
 
-def make_cord(material, radius=0.0030, path=CORD_PATH, name="FET_Cord"):
+def make_cord(material, radius=0.0040, path=CORD_PATH, name="FET_Cord"):
     curve = bpy.data.curves.new(name, "CURVE")
     curve.dimensions = "3D"
     curve.resolution_u = 24
@@ -479,11 +514,23 @@ def make_cord(material, radius=0.0030, path=CORD_PATH, name="FET_Cord"):
         p.co = (*co, 1.0)
     spline.use_endpoint_u = True
     spline.order_u = 4
-    # Slightly thicker where it leaves the belly.
+    # Thicker where it leaves the belly, tapering toward the placenta side.
+    n = len(spline.points)
     for i, p in enumerate(spline.points):
-        p.radius = 1.12 if i < 2 else 1.0
-    ob = bpy.data.objects.new(name, curve)
-    ob.data.materials.append(material)
+        p.radius = 1.12 - 0.25 * (i / max(n - 1, 1))
+    tmp = bpy.data.objects.new(name + "_curve", curve)
+    bpy.context.scene.collection.objects.link(tmp)
+    bpy.context.view_layer.update()
+    # Bake to a mesh: glTF has no curves, and the render needs the sweep's UVs
+    # (u along the cord, v around it) for the twist.
+    mesh = bpy.data.meshes.new_from_object(tmp.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+    mesh.name = name
+    bpy.data.objects.remove(tmp, do_unlink=True)
+    bpy.data.curves.remove(curve)
+    ob = bpy.data.objects.new(name, mesh)
+    mesh.materials.clear()
+    mesh.materials.append(material)
+    mesh.shade_smooth()
     collection("CORD").objects.link(ob)
     return ob
 
