@@ -8,6 +8,7 @@ from the brief and were tuned against the north-star reference.
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 import bpy
 import numpy as np
@@ -374,7 +375,7 @@ class _Out:
         self.outputs = {"Value": socket}
 
 
-def membrane_material(name="MAT_Membrane", opacity=0.75, hem=0.9, haze=0.05, strength=3.0, one_sided=False) -> bpy.types.Material:
+def membrane_material(name="MAT_Membrane", opacity=0.75, hem=0.9, haze=0.05, strength=3.0, one_sided=False, fade_ends=False, hem_band=(0.955, 0.99)) -> bpy.types.Material:
     """Thin silk veil: a faint milky film, white where seen edge-on (fresnel), with
     a thin bright hem along both long edges — the crisp lines the reference's
     veils draw across the frame."""
@@ -405,14 +406,28 @@ def membrane_material(name="MAT_Membrane", opacity=0.75, hem=0.9, haze=0.05, str
     nt.links.new(sep.outputs["Y"], absv.inputs[0])
     band = nt.nodes.new("ShaderNodeMapRange")
     band.interpolation_type = "SMOOTHSTEP"
-    band.inputs["From Min"].default_value = 0.955
-    band.inputs["From Max"].default_value = 0.99
+    band.inputs["From Min"].default_value = hem_band[0]
+    band.inputs["From Max"].default_value = hem_band[1]
     band.inputs["To Max"].default_value = hem
     nt.links.new(absv.outputs["Value"], band.inputs["Value"])
     fac = nt.nodes.new("ShaderNodeMath")
     fac.operation = "MAXIMUM"
     nt.links.new(scale.outputs["Result"], fac.inputs[0])
     nt.links.new(band.outputs["Result"], fac.inputs[1])
+    if fade_ends:  # traced veils: soften both ends (u = 0..1 along the line)
+        u1 = nt.nodes.new("ShaderNodeMath")
+        u1.operation = "PINGPONG"
+        u1.inputs[1].default_value = 0.5
+        nt.links.new(sep.outputs["X"], u1.inputs[0])
+        ends = nt.nodes.new("ShaderNodeMapRange")
+        ends.interpolation_type = "SMOOTHSTEP"
+        ends.inputs["From Max"].default_value = 0.2
+        nt.links.new(u1.outputs["Value"], ends.inputs["Value"])
+        faded = nt.nodes.new("ShaderNodeMath")
+        faded.operation = "MULTIPLY"
+        nt.links.new(fac.outputs["Value"], faded.inputs[0])
+        nt.links.new(ends.outputs["Result"], faded.inputs[1])
+        fac = faded
     transp = nt.nodes.new("ShaderNodeBsdfTransparent")
     # unlit: the key light is warm, and lit veils picked up a pink cast the reference doesn't have
     veil = nt.nodes.new("ShaderNodeEmission")
@@ -594,7 +609,7 @@ def veil(name, center, radii, tilt_deg, start, sweep, width, depth, twist, folds
     return ob
 
 
-MEMBRANE_SPECS = [
+MEMBRANE_RINGS = [  # procedural orbits (used when no traced veils exist)
     # start, sweep, width, depth(y), twist, folds, fold amp, extra clearance, tilt, centre offset (x, z)
     (0.4, 5.4, 0.220, 0.25, 0.35, 2.0, 0.018, 0.000, 8.0, (0.000, 0.000)),
     (2.5, 5.0, 0.300, 0.45, 0.45, 2.5, 0.024, 0.020, -12.0, (0.010, 0.015)),
@@ -605,6 +620,9 @@ MEMBRANE_SPECS = [
     (0.8, 5.2, 0.420, 1.00, 0.55, 3.0, 0.034, 0.070, 22.0, (0.020, -0.006)),
     (1.7, 3.4, 0.500, 1.35, 0.60, 3.5, 0.045, 0.110, -32.0, (-0.040, 0.060)),
     (4.7, 3.2, 0.480, 1.55, 0.55, 3.0, 0.042, 0.130, 26.0, (0.050, -0.070)),
+]
+
+MEMBRANE_SPECS = [
     # wide silk sheets well behind the fetus (they can never cross the body):
     # the soft folded fabric the reference frames the fetus with
     (2.9, 3.0, 0.900, 0.45, 0.20, 1.5, 0.030, 0.100, 6.0, (0.000, -0.030)),
@@ -612,6 +630,60 @@ MEMBRANE_SPECS = [
     (-0.9, 2.4, 0.950, 0.60, 0.20, 1.5, 0.034, 0.140, -10.0, (0.030, 0.000)),
     (4.3, 2.0, 1.200, 1.10, 0.25, 2.0, 0.046, 0.260, 14.0, (0.040, -0.050)),
 ]
+
+
+def make_traced_veils(material, path, depths=(0.01, 0.10), film=0.030, seed=3, name="ENV_Veil"):
+    """Veils along the membrane lines traced on the reference (fit_reference_veils.py).
+
+    Each traced polyline is back-projected onto a plane behind the fetus (depth
+    varies per line so the lens blur varies) and becomes the bright hem of a
+    thin film that spreads `film` metres outward, away from the fetus, like the
+    edge of a silk fold seen side-on."""
+    import json
+
+    spec = json.loads(Path(path).read_text())
+    W, H = spec["frame"]
+    f_px = (H / 2.0) / math.tan(HERO.fov_v / 2.0)
+    cx, cy, cz = HERO.location
+    rng = np.random.default_rng(seed)
+    centre = np.array([W * 0.49, H * 0.45])
+    col = collection("MEMBRANES")
+    obs = []
+    for k, line in enumerate(spec["polylines"]):
+        uv = np.asarray(line, float)
+        if len(uv) < 4:
+            continue
+        uv = np.stack([np.convolve(np.pad(uv[:, i], 2, mode="edge"), np.ones(5) / 5, "valid") for i in range(2)], -1)
+        d = rng.uniform(*depths)
+        depth = d - cy
+        P = np.stack([cx + (uv[:, 0] - W / 2) * depth / f_px, np.full(len(uv), d), cz - (uv[:, 1] - H / 2) * depth / f_px], -1)
+        t = np.gradient(uv, axis=0)
+        t /= np.maximum(np.linalg.norm(t, axis=1, keepdims=True), 1e-9)
+        n = np.stack([-t[:, 1], t[:, 0]], -1)  # image-plane normal (px)
+        if np.mean(np.einsum("ij,ij->i", n, uv - centre)) < 0:
+            n = -n  # point away from the fetus
+        n3 = np.stack([n[:, 0], np.zeros(len(n)), -n[:, 1]], -1)  # px (right, down) -> world (x, -z)
+        rows = 12
+        v = np.linspace(1.0, -1.0, rows)  # v = +1 at the traced hem, -1 at the film's far edge
+        s_along = np.linspace(0.0, 1.0, len(P))
+        width = film * (0.6 + 0.4 * np.sin(np.pi * s_along)) * rng.uniform(0.7, 1.3)
+        V3 = P[:, None, :] + n3[:, None, :] * (width[:, None] * (1 - v[None, :]) / 2)[..., None]
+        verts = V3.reshape(-1, 3)
+        i, j = np.meshgrid(np.arange(len(P) - 1), np.arange(rows - 1), indexing="ij")
+        a = (i * rows + j).ravel()
+        faces = np.stack([a, a + 1, a + rows + 1, a + rows], axis=1)
+        me = bpy.data.meshes.new(f"{name}_{k:02d}")
+        me.from_pydata(verts, [], faces)
+        me.shade_smooth()
+        uvl = me.uv_layers.new(name="veil")
+        UV = np.stack(np.broadcast_arrays(s_along[:, None], v[None, :]), -1).reshape(-1, 2)
+        uvl.data.foreach_set("uv", UV[np.array([lp.vertex_index for lp in me.loops])].ravel())
+        ob = bpy.data.objects.new(me.name, me)
+        me.materials.append(material)
+        camera_only(ob)
+        col.objects.link(ob)
+        obs.append(ob)
+    return obs
 
 
 def make_membranes(material, center=(0.008, 0.0, -0.003), clearance=0.070, specs=None, width_scale=1.0):
