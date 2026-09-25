@@ -80,12 +80,15 @@ def baby_offsets(data: Path, n: int, weight: float = 0.5, muscle: float = 0.5) -
     return d
 
 
-def region_mask(data: Path, n: int, folder: str, prefix: str = "") -> np.ndarray:
+def region_mask(data: Path, n: int, folder: str, prefix: str = "", rel: float = 0.0) -> np.ndarray:
     """Vertices any target in targets/<folder> moves (e.g. "ears"): a region
-    selection that comes straight from the MakeHuman modelling targets."""
+    selection that comes straight from the MakeHuman modelling targets. With
+    `rel`, only vertices moved by at least that fraction of the target's
+    largest displacement (translation targets also nudge the surroundings)."""
     mask = np.zeros(n, dtype=bool)
     for f in sorted((data / "targets" / folder).glob(f"{prefix}*.target.gz")):
-        mask |= np.abs(read_target(f, n)).sum(axis=1) > 1e-6
+        m = np.linalg.norm(read_target(f, n), axis=1)
+        mask |= m > max(1e-6, rel * m.max())  # rel > 0: only the vertices the target really shapes
     return mask
 
 

@@ -250,7 +250,32 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     nt.links.new(tint.outputs["Result"], bsdf.inputs["Base Color"])
     bsdf.inputs["Subsurface Weight"].default_value = 0.85
     bsdf.inputs["Subsurface Radius"].default_value = (1.0, 0.7, 0.55)  # less red bleed: the reference skin is pink-beige, not orange
-    bsdf.inputs["Subsurface Scale"].default_value = 0.004 * translucency
+    # thin parts (ears, fge_thin from the body builder) let far more light through, glowing red
+    thin = nt.nodes.new("ShaderNodeAttribute")
+    thin.attribute_type = "GEOMETRY"
+    thin.attribute_name = "fge_thin"
+    sss = nt.nodes.new("ShaderNodeMapRange")
+    sss.inputs["To Min"].default_value = 0.004 * translucency
+    sss.inputs["To Max"].default_value = 0.007 * translucency
+    nt.links.new(thin.outputs["Fac"], sss.inputs["Value"])
+    nt.links.new(sss.outputs["Result"], bsdf.inputs["Subsurface Scale"])
+    ear_tint = nt.nodes.new("ShaderNodeMix")
+    ear_tint.data_type = "RGBA"
+    ear_tint.inputs["B"].default_value = rgba("#C9705E")
+    ear_k = nt.nodes.new("ShaderNodeMath")
+    ear_k.operation = "MULTIPLY"
+    ear_k.inputs[1].default_value = 0.6
+    nt.links.new(thin.outputs["Fac"], ear_k.inputs[0])
+    nt.links.new(ear_k.outputs["Value"], ear_tint.inputs["Factor"])
+    base_src = bsdf.inputs["Base Color"].links[0].from_socket
+    nt.links.new(base_src, ear_tint.inputs["A"])
+    nt.links.new(ear_tint.outputs["Result"], bsdf.inputs["Base Color"])
+    rad = nt.nodes.new("ShaderNodeMix")  # redder scattering where thin: light through an ear glows red
+    rad.data_type = "VECTOR"
+    rad.inputs[4].default_value = (1.0, 0.7, 0.55)  # A (vector)
+    rad.inputs[5].default_value = (1.0, 0.3, 0.15)  # B (vector)
+    nt.links.new(thin.outputs["Fac"], rad.inputs["Factor"])
+    nt.links.new(rad.outputs[1], bsdf.inputs["Subsurface Radius"])
     bsdf.inputs["Subsurface IOR"].default_value = 1.38
     bsdf.inputs["Subsurface Anisotropy"].default_value = 0.4
     bsdf.inputs["Roughness"].default_value = 0.35

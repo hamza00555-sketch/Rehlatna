@@ -274,6 +274,24 @@ def build(collection=None, max_evals: int = 700):
 
     attr = ob.data.attributes.new("fge_scalp", "FLOAT", "POINT")
     attr.data.foreach_set("value", scalp.astype(np.float32))
+    # thin, translucent parts (ears): MakeHuman's ear targets mark them
+    nv = len(ob.data.vertices)
+    thin = np.zeros(nv, dtype=bool)
+    for part in ("flap", "wing", "lobe", "shape"):  # the auricle itself; ear-trans/rot also move the scalp
+        for sd in ("l", "r"):
+            thin |= mh.region_mask(ASSETS, nv, "ears", f"{sd}-ear-{part}", rel=0.25)
+    thin = thin.astype(float)
+    edges = np.array([e.vertices[:] for e in ob.data.edges])
+    core = thin.copy()
+    for _ in range(0):  # (per-point values already fade linearly across the boundary faces)
+        acc = np.zeros_like(thin)
+        cnt = np.zeros_like(thin)
+        np.add.at(acc, edges[:, 0], thin[edges[:, 1]])
+        np.add.at(acc, edges[:, 1], thin[edges[:, 0]])
+        np.add.at(cnt, edges.ravel(), 1)
+        thin = np.maximum(core, acc / np.maximum(cnt, 1))
+    attr = ob.data.attributes.new("fge_thin", "FLOAT", "POINT")
+    attr.data.foreach_set("value", thin.astype(np.float32))
     # skin textures read the undeformed position (Generated = rest coords with this texture space)
     ob.data.use_auto_texspace = False
     ob.data.texspace_location = (0.0, 0.0, 0.0)
