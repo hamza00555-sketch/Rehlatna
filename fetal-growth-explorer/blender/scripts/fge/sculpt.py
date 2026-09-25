@@ -301,7 +301,7 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
     w = agree / np.maximum(d, 1e-5)
     w[w.sum(1) < 1e-6] = (1.0 / np.maximum(d, 1e-5))[w.sum(1) < 1e-6]
     w /= w.sum(1, keepdims=True)
-    W = np.einsum("vk,vkb->vb", w, rig.W)
+    W = np.einsum("vk,vkb->vb", w, rig.W[j])
     edges = np.array([e.vertices[:] for e in sculpt.data.edges])
     for _ in range(4):
         acc = np.zeros_like(W)
