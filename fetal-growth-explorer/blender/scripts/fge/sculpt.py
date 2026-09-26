@@ -29,6 +29,21 @@ from . import mh, mhfit
 
 
 HEAD_NAMES = ("head", "testa", "kopf", "tete", "cabeza", "skull")
+_PARTS: dict = {}  # sculpt name -> (head part points, body part points), import frame
+
+
+def label_head(ob) -> np.ndarray | None:
+    """Per-vertex head membership (1.0 = came from the sculpt's separate head
+    part), stored as the point attribute fge_headpart. Call before moving the mesh."""
+    if ob.name not in _PARTS:
+        return None
+    H, B = _PARTS.pop(ob.name)
+    V = _verts(ob)
+    lab = (cKDTree(H).query(V)[0] < cKDTree(B).query(V)[0]).astype(np.float32)
+    attr = ob.data.attributes.new("fge_headpart", "FLOAT", "POINT")
+    attr.data.foreach_set("value", lab)
+    print(f"[fge] sculpt head part: {int(lab.sum())} of {len(lab)} verts")
+    return lab
 
 
 def import_sculpt(path: Path, name: str = "FET_Sculpt", collection=None):
@@ -59,10 +74,11 @@ def import_sculpt(path: Path, name: str = "FET_Sculpt", collection=None):
     bpy.context.view_layer.objects.active = meshes[0]
     others = [o.name for o in new if o.type != "MESH"]
     head = [o for o in meshes if any(k in o.name.lower() for k in HEAD_NAMES)]
-    head_box = None
-    if head:
-        H = np.vstack([np.array([v.co[:] for v in o.data.vertices]) for o in head])
-        head_box = (H.min(0).tolist(), H.max(0).tolist())
+    parts = None
+    if head and len(head) < len(meshes):
+        pts = lambda obs: np.vstack([np.array([v.co[:] for v in o.data.vertices]) for o in obs])
+        H, B = pts(head), pts([o for o in meshes if o not in head])
+        parts = (H[:: max(1, len(H) // 20000)], B[:: max(1, len(B) // 40000)])
     if len(meshes) > 1:
         bpy.ops.object.join()
     ob = bpy.context.view_layer.objects.active
@@ -86,8 +102,8 @@ def import_sculpt(path: Path, name: str = "FET_Sculpt", collection=None):
     bpy.context.view_layer.objects.active = ob
     bpy.ops.object.modifier_apply(modifier=mod.name)
     _keep_largest_island(ob)
-    if head_box is not None:
-        ob["fge_head_min"], ob["fge_head_max"] = head_box
+    if parts is not None:
+        _PARTS[ob.name] = parts
     print(f"[fge] sculpt fused: {len(ob.data.vertices)} verts (voxel {extent / 400.0:.4g})")
     return ob
 
@@ -209,11 +225,8 @@ def register(sculpt, rig: mhfit.Rig) -> None:
     T = rig.verts()
     head_bones = _descendants(rig, "head")
     head_t = T[rig.W[:, head_bones].sum(1) > 0.5]
-    if "fge_head_min" in sculpt:
-        lo, hi = np.array(sculpt["fge_head_min"]), np.array(sculpt["fge_head_max"])
-        head_s = S[np.all((S >= lo) & (S <= hi), axis=1)]
-    else:
-        head_s = S
+    lab = _head_label(sculpt)
+    head_s = S[lab > 0.5] if lab is not None else S
     rms = lambda P: float(np.sqrt(((P - P.mean(0)) ** 2).sum(1).mean()))
     s0 = rms(head_t) / rms(head_s)
     M = rig.pose_matrices()
@@ -249,7 +262,7 @@ STAGES = [
 ]
 
 
-def fit_rig_pose(rig: mhfit.Rig, sculpt_pts: np.ndarray, max_evals: int = 1200) -> None:
+def fit_rig_pose(rig: mhfit.Rig, sculpt_pts: np.ndarray, max_evals: int = 1200, head_label=None) -> None:
     """Bend the rig so the posed MakeHuman body lies on the sculpt surface:
     trunk first, then arms, then legs, then everything together (symmetric
     chamfer on subsampled points, NumPy LBS)."""
@@ -257,9 +270,21 @@ def fit_rig_pose(rig: mhfit.Rig, sculpt_pts: np.ndarray, max_evals: int = 1200) 
     sub = np.arange(0, len(rig.rest_verts), 3)
     ssub = sculpt_pts[:: max(1, len(sculpt_pts) // 8000)]
 
+    head_m = rig.W[:, _descendants(rig, "head")].sum(1) > 0.5
+    if head_label is not None:
+        hs = sculpt_pts[head_label > 0.5]
+        hs = hs[:: max(1, len(hs) // 3000)]
+        tree_h = cKDTree(hs)
+        hsub = np.where(head_m)[0][::3]
+
     def chamfer():
-        V = rig.verts()[sub]
-        return tree_s.query(V)[0].mean() + cKDTree(V).query(ssub)[0].mean()
+        Vall = rig.verts()
+        V = Vall[sub]
+        c = tree_s.query(V)[0].mean() + cKDTree(V).query(ssub)[0].mean()
+        if head_label is not None:  # the head part onto the head: orients the face
+            Vh = Vall[hsub]
+            c += tree_h.query(Vh)[0].mean() + cKDTree(Vh).query(hs)[0].mean()
+        return c
 
     start = chamfer()
     for bones in STAGES + [sum(STAGES, [])]:
@@ -282,6 +307,15 @@ def fit_rig_pose(rig: mhfit.Rig, sculpt_pts: np.ndarray, max_evals: int = 1200) 
     print(f"[fge] rig pose fitted to sculpt: chamfer {start * 500:.2f} -> {chamfer() * 500:.2f} mm")
 
 
+def _head_label(sculpt):
+    a = sculpt.data.attributes.get("fge_headpart")
+    if a is None:
+        return None
+    lab = np.empty(len(sculpt.data.vertices), dtype=np.float32)
+    a.data.foreach_get("value", lab)
+    return lab
+
+
 def _sculpt_normals(sculpt) -> np.ndarray:
     N = np.empty(len(sculpt.data.vertices) * 3)
     sculpt.data.vertices.foreach_get("normal", N)
@@ -297,6 +331,16 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
     Nb = _normals(Vb, rig.faces)
     Vs, Ns = _verts(sculpt), _sculpt_normals(sculpt)
     d, j = cKDTree(Vb).query(Vs, k=16)
+    lab = _head_label(sculpt)
+    if lab is not None:
+        # the sculpt's head part takes weights only from the MakeHuman head and
+        # the rest only from the rest (a tucked face must not follow the chest)
+        head_m = rig.W[:, _descendants(rig, "head")].sum(1) > 0.5
+        for want in (True, False):
+            src = np.where(head_m == want)[0]
+            sel = (lab > 0.5) == want
+            dd, jj = cKDTree(Vb[src]).query(Vs[sel], k=16)
+            d[sel], j[sel] = dd, src[jj]
     agree = np.clip(np.einsum("vd,vkd->vk", Ns, Nb[j]), 0.0, 1.0) ** 2
     w = agree / np.maximum(d, 1e-5)
     w[w.sum(1) < 1e-6] = (1.0 / np.maximum(d, 1e-5))[w.sum(1) < 1e-6]
@@ -351,10 +395,11 @@ def adopt(path: Path, body, arm, faces: int = 40000, collection=None):
     M_target = probe.pose_matrices()
     sculpt = import_sculpt(path, collection=collection)
     reduce(sculpt, faces)
+    label_head(sculpt)
     rig = mhfit.Rig(arm, body)
     rig.read_pose(arm)
     register(sculpt, rig)
-    fit_rig_pose(rig, _verts(sculpt))
+    fit_rig_pose(rig, _verts(sculpt), head_label=_head_label(sculpt))
     W = transfer(sculpt, rig, body)
 
     # the fitted pose becomes the rest pose
