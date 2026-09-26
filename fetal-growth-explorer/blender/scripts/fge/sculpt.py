@@ -412,6 +412,122 @@ def _diffuse(W0: np.ndarray, edges: np.ndarray, anchor: np.ndarray) -> np.ndarra
     return W
 
 
+
+REF_SIZE = (558, 1000)
+POSE_BONES_X = ["spine05", "spine04", "spine03", "spine02", "spine01", "neck01", "neck02", "neck03", "head"]
+POSE_BONES_XZ = [
+    "upperarm01.L", "lowerarm01.L", "wrist.L", "upperarm01.R", "lowerarm01.R", "wrist.R",
+    "upperleg01.L", "lowerleg01.L", "foot.L", "upperleg01.R", "lowerleg01.R", "foot.R",
+]
+
+
+def _similarity(A: np.ndarray, B: np.ndarray) -> np.ndarray:
+    """4x4 similarity mapping point set A onto B (least squares, proper rotation)."""
+    ca, cb = A.mean(0), B.mean(0)
+    H = (A - ca).T @ (B - cb)
+    U, sv, Vt = np.linalg.svd(H)
+    D = np.diag([1, 1, np.sign(np.linalg.det(Vt.T @ U.T))])
+    R = Vt.T @ D @ U.T
+    s = float(np.sum(sv * np.diag(D)) / np.sum((A - ca) ** 2))
+    M = np.eye(4)
+    M[:3, :3] = s * R
+    M[:3, 3] = cb - s * R @ ca
+    return M
+
+
+def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int = 2500) -> float:
+    """Pose the sculpt-rigged body onto the reference silhouette starting from
+    the sculpt's own pose: a global similarity (initialised so the body lands
+    where `start_verts`, the MakeHuman-solved placement, put it) plus small
+    bends of spine, neck, head and limbs with a prior at zero. The data term is
+    the soft IoU of the whole outline plus the cranium circle; the prior keeps
+    the sculpt's surface from stretching away from what was sculpted."""
+    from PIL import Image
+    from scipy.ndimage import gaussian_filter
+    from scipy.spatial import ConvexHull
+
+    from .camera import HERO, project_points
+    from .mhbody import MASK, REF_CRANIUM, REF_FRAME
+
+    mask = np.asarray(Image.open(MASK).convert("L").resize(REF_SIZE)) > 127
+    target = gaussian_filter(mask.astype(float), 1.5)
+    head_verts = rig.W[:, _descendants(rig, "head")].sum(1) > 0.6
+    rig.reset()
+    V0 = rig.verts()
+    world0 = _similarity(V0[::7], start_verts[::7]) @ rig.world
+    centre = (V0.mean(0) @ world0[:3, :3].T)  # rotate about the body centre
+    bx = [b for b in POSE_BONES_X if b in rig.index]
+    bxz = [b for b in POSE_BONES_XZ if b in rig.index]
+    n_glob = 7
+    sigma = np.r_[[30.0, 30.0, 30.0, 8.0, 8.0, 8.0, 5.0], np.full(len(bx) + 2 * len(bxz), 10.0)]
+
+    def apply(x):
+        rig.reset()
+        tx, ty, tz, rx, ry, rz, sc = x[:n_glob]
+        R = _rot_x(rx) @ _rot_y_(ry) @ _rot_z(rz)
+        G = np.eye(4)
+        G[:3, :3] = R * (1 + sc / 100)
+        c = world0[:3, 3] + centre
+        G[:3, 3] = c - G[:3, :3] @ c + np.array([tx, ty, tz]) / 1000
+        rig.world = G @ world0
+        k = n_glob
+        for b in bx:
+            rig.bend(b, [1, 0, 0], x[k])
+            k += 1
+        for b in bxz:
+            rig.bend(b, [1, 0, 0], x[k])
+            rig.bend(b, [0, 0, 1], x[k + 1])
+            k += 2
+
+    def cranium(V):
+        uv, _ = project_points(V[head_verts], HERO, REF_FRAME)
+        hull = uv[ConvexHull(uv).vertices]
+        hull = hull[hull[:, 1] < hull[:, 1].min() + 230]
+        c = np.linalg.lstsq(np.c_[2 * hull, np.ones(len(hull))], (hull**2).sum(1), rcond=None)[0]
+        return c[0], c[1], math.sqrt(max(c[2] + c[0] ** 2 + c[1] ** 2, 1e-9))
+
+    def terms(x):
+        apply(x)
+        V = rig.verts()
+        m = gaussian_filter(mhfit.splat(V[::2], REF_SIZE, 2).astype(float), 1.5)
+        iou = (m * target).sum() / (m + target - m * target).sum()
+        cx, cy, r = cranium(V)
+        rx_, ry_, rr = REF_CRANIUM
+        head = ((cx - rx_) ** 2 + (cy - ry_) ** 2 + (r - rr) ** 2) / rr**2
+        return iou, head
+
+    def loss(x):
+        iou, head = terms(x)
+        return 1 - iou + 1.0 * head + 0.01 * np.sum((x / sigma) ** 2)
+
+    x0 = np.zeros(len(sigma))
+    iou0, head0 = terms(x0)
+    # global placement first, then everything
+    glob = list(range(n_glob))
+    for free in (glob, list(range(len(x0)))):
+        def sub(z, free=free):
+            x = x0.copy()
+            x[free] = z
+            return x
+
+        res = minimize(lambda z: loss(sub(z)), x0[free], method="Powell", options={"xtol": 0.2, "ftol": 1e-6, "maxfev": max_evals})
+        x0 = sub(res.x)
+    iou1, head1 = terms(x0)
+    apply(x0)
+    print(f"[fge] reference pose from the sculpt: soft IoU {iou0:.3f} -> {iou1:.3f}, cranium err {head0:.3f} -> {head1:.3f}, largest bend {np.abs(x0[n_glob:]).max():.1f} deg")
+    return iou1
+
+
+def _rot_y_(deg: float) -> np.ndarray:
+    a = math.radians(deg)
+    return np.array([[math.cos(a), 0, math.sin(a)], [0, 1, 0], [-math.sin(a), 0, math.cos(a)]])
+
+
+def _rot_z(deg: float) -> np.ndarray:
+    a = math.radians(deg)
+    return np.array([[math.cos(a), -math.sin(a), 0], [math.sin(a), math.cos(a), 0], [0, 0, 1]])
+
+
 def _pose_to(arm, rig: mhfit.Rig, M_target: np.ndarray) -> None:
     """Pose the (new-rest) armature so every bone reaches its armature-space
     matrix in M_target (computed against the old rest)."""
@@ -472,8 +588,16 @@ def adopt(path: Path, body, arm, faces: int = 40000, collection=None):
     mod.use_deform_preserve_volume = True
     mh.clean_weights(sculpt)
 
-    # back to the reference pose, keyed as before
+    # the reference pose: the MakeHuman solve gives the placement, then the
+    # sculpt is posed onto the reference outline from its own pose (small bends)
     _pose_to(arm, rig, M_target)
+    bpy.context.view_layer.update()
+    rig2 = mhfit.Rig(arm, sculpt)
+    rig2.read_pose(arm)
+    start = rig2.verts()
+    solve_reference_pose(rig2, start)
+    rig2 = mhfit.bake_world(rig2, arm, sculpt)
+    rig2.apply_to(arm)
     for act in [a for a in bpy.data.actions if a.name.startswith("FET_W24_Curl")]:
         bpy.data.actions.remove(act)
     _store_action(arm, "FET_W24_Curl")
