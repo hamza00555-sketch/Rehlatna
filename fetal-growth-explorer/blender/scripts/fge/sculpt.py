@@ -353,9 +353,21 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
     w = agree / np.maximum(d, 1e-5)
     w[w.sum(1) < 1e-6] = (1.0 / np.maximum(d, 1e-5))[w.sum(1) < 1e-6]
     w /= w.sum(1, keepdims=True)
-    W = np.einsum("vk,vkb->vb", w, rig.W[j])
+    W0 = np.einsum("vk,vkb->vb", w, rig.W[j])
+    # Anchors: vertices whose nearest body points agree on the dominant bone
+    # and face the same way (the neighbours are one surface, not a contact
+    # between two). Everything else (chin on chest, thigh on thigh, seam)
+    # takes its weights by diffusion over the sculpt's own surface.
+    dom = np.argmax(rig.W[j], axis=2)  # (v, k)
+    mode = np.array([np.bincount(r).argmax() for r in dom])
+    conf = ((dom == mode[:, None]) & (agree > 0.25)).mean(1)
+    anchor = (conf >= 0.75) & (d[:, 0] < 0.012)
+    if lab is not None:
+        anchor &= ~seam
     edges = np.array([e.vertices[:] for e in sculpt.data.edges])
-    for _ in range(8):
+    W = _diffuse(W0, edges, anchor)
+    print(f"[fge] weights: {int(anchor.sum())} anchors of {len(anchor)} verts, rest diffused")
+    for _ in range(3):
         acc = np.zeros_like(W)
         cnt = np.zeros(len(W))
         np.add.at(acc, edges[:, 0], W[edges[:, 1]])
@@ -373,6 +385,31 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
             out = sculpt.data.attributes.new(a.name, "FLOAT", "POINT")
             out.data.foreach_set("value", np.einsum("vk,vk->v", w, src[j]).astype(np.float32))
     return Wt
+
+
+def _diffuse(W0: np.ndarray, edges: np.ndarray, anchor: np.ndarray) -> np.ndarray:
+    """Harmonic interpolation over the mesh graph: anchored rows keep W0, free
+    rows solve L W = 0 (uniform Laplacian), one sparse factorisation for all bones."""
+    import scipy.sparse as sp
+    from scipy.sparse.linalg import splu
+
+    n = len(W0)
+    if anchor.all():
+        return W0
+    i = np.r_[edges[:, 0], edges[:, 1]]
+    k = np.r_[edges[:, 1], edges[:, 0]]
+    A = sp.coo_matrix((np.ones(len(i)), (i, k)), shape=(n, n)).tocsr()
+    deg = np.asarray(A.sum(1)).ravel()
+    L = sp.diags(deg) - A
+    free = np.where(~anchor)[0]
+    fixed = np.where(anchor)[0]
+    Lff = L[free][:, free].tocsc()
+    Lfa = L[free][:, fixed]
+    rhs = -Lfa @ W0[fixed]
+    sol = splu(Lff).solve(np.asarray(rhs))
+    W = W0.copy()
+    W[free] = np.clip(sol, 0.0, None)
+    return W
 
 
 def _pose_to(arm, rig: mhfit.Rig, M_target: np.ndarray) -> None:
