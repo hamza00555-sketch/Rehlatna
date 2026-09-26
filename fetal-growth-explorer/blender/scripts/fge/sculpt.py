@@ -259,6 +259,7 @@ STAGES = [
     ["root", "spine05", "spine04", "spine03", "spine02", "spine01", "neck01", "neck02", "neck03", "head"],
     ["shoulder01.L", "upperarm01.L", "lowerarm01.L", "wrist.L", "shoulder01.R", "upperarm01.R", "lowerarm01.R", "wrist.R"],
     ["pelvis.L", "upperleg01.L", "lowerleg01.L", "foot.L", "pelvis.R", "upperleg01.R", "lowerleg01.R", "foot.R"],
+    ["wrist.L", "toe1-1.L", "toe3-1.L", "wrist.R", "toe1-1.R", "toe3-1.R", "foot.L", "foot.R"],
 ]
 
 
@@ -333,12 +334,19 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
     d, j = cKDTree(Vb).query(Vs, k=16)
     lab = _head_label(sculpt)
     if lab is not None:
-        # the sculpt's head part takes weights only from the MakeHuman head and
-        # the rest only from the rest (a tucked face must not follow the chest)
+        # the sculpt's head part takes weights from the MakeHuman head only (a
+        # tucked face must not follow the chest); the body part from the rest.
+        # Within ~1.5 cm of the split (neck) both sources compete on distance.
         head_m = rig.W[:, _descendants(rig, "head")].sum(1) > 0.5
+        is_head = lab > 0.5
+        other = cKDTree(Vs[~is_head]).query(Vs[is_head])[0]
+        other_b = cKDTree(Vs[is_head]).query(Vs[~is_head])[0]
+        seam = np.zeros(len(Vs), dtype=bool)
+        seam[np.where(is_head)[0][other < 0.015]] = True
+        seam[np.where(~is_head)[0][other_b < 0.015]] = True
         for want in (True, False):
             src = np.where(head_m == want)[0]
-            sel = (lab > 0.5) == want
+            sel = (is_head == want) & ~seam
             dd, jj = cKDTree(Vb[src]).query(Vs[sel], k=16)
             d[sel], j[sel] = dd, src[jj]
     agree = np.clip(np.einsum("vd,vkd->vk", Ns, Nb[j]), 0.0, 1.0) ** 2
@@ -347,7 +355,7 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
     w /= w.sum(1, keepdims=True)
     W = np.einsum("vk,vkb->vb", w, rig.W[j])
     edges = np.array([e.vertices[:] for e in sculpt.data.edges])
-    for _ in range(4):
+    for _ in range(8):
         acc = np.zeros_like(W)
         cnt = np.zeros(len(W))
         np.add.at(acc, edges[:, 0], W[edges[:, 1]])
