@@ -327,6 +327,10 @@ def _pose_to(arm, rig: mhfit.Rig, M_target: np.ndarray) -> None:
     """Pose the (new-rest) armature so every bone reaches its armature-space
     matrix in M_target (computed against the old rest)."""
     R = np.array([np.array(arm.data.bones[n].matrix_local) for n in rig.names])
+    # pose scale (the head enlargement) is already in the sculpt's size, and
+    # armature_apply keeps no scale in the rest pose: rotations only
+    M_target = M_target.copy()
+    M_target[:, :3, :3] /= np.linalg.norm(M_target[:, :3, :3], axis=1, keepdims=True)
     for i in rig.order:
         p = rig.parent[i]
         base = R[i] if p < 0 else M_target[p] @ np.linalg.inv(R[p]) @ R[i]
