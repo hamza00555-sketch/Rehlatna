@@ -358,12 +358,12 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
     Vb = rig.verts()
     Nb = _normals(Vb, rig.faces)
     Vs_out = _verts(sculpt)
-    src = _src(sculpt)
-    mesh = src if src is not None else sculpt
+    srcob = _src(sculpt)
+    mesh = srcob if srcob is not None else sculpt
     Vs, Ns = _verts(mesh), _sculpt_normals(mesh)
     d, j = cKDTree(Vb).query(Vs, k=16)
     lab = _head_label(sculpt)
-    if lab is not None and src is not None:  # head label lives on the fused mesh
+    if lab is not None and srcob is not None:  # head label lives on the fused mesh
         lab = lab[cKDTree(Vs_out).query(Vs)[1]]
     if lab is not None:
         # the sculpt's head part takes weights from the MakeHuman head only (a
@@ -402,7 +402,7 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
         anchor &= ~seam
     edges = np.array([e.vertices[:] for e in mesh.data.edges])
     W = _diffuse(W0, edges, anchor)
-    print(f"[fge] weights: {int(anchor.sum())} anchors of {len(anchor)} verts ({'source' if src is not None else 'fused'} connectivity), rest diffused")
+    print(f"[fge] weights: {int(anchor.sum())} anchors of {len(anchor)} verts ({'source' if srcob is not None else 'fused'} connectivity), rest diffused")
     for _ in range(3):
         acc = np.zeros_like(W)
         cnt = np.zeros(len(W))
@@ -410,15 +410,15 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
         np.add.at(acc, edges[:, 1], W[edges[:, 0]])
         np.add.at(cnt, edges.ravel(), 1)
         W = 0.5 * W + 0.5 * acc / np.maximum(cnt, 1)[:, None]
-    if src is not None:  # onto the fused mesh, then drop the source copy
+    if srcob is not None:  # onto the fused mesh, then drop the source copy
         dd, jj = cKDTree(Vs).query(Vs_out, k=3)
         ww = 1.0 / np.maximum(dd, 1e-6)
         ww /= ww.sum(1, keepdims=True)
         W = np.einsum("vk,vkb->vb", ww, W[jj])
         w = np.einsum("vk,vkm->vm", ww, w[jj])
         j = j[jj[:, 0]]
-        me = src.data
-        bpy.data.objects.remove(src, do_unlink=True)
+        me = srcob.data
+        bpy.data.objects.remove(srcob, do_unlink=True)
         bpy.data.meshes.remove(me)
         del sculpt["fge_src"]
     top = np.argsort(-W, axis=1)[:, :4]
