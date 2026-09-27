@@ -1,0 +1,514 @@
+<title>رحلة الجنين</title>
+<meta name="description" content="Interactive 3D fetus viewer prototype: week 24, rigged, touch to react.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;600&display=swap">
+<style>
+  /* One visual world: the amniotic sac. Deliberately single-theme. */
+  :root {
+    color-scheme: dark;
+    --deep: #0B1E22;        /* far water */
+    --water: #16363B;       /* mid water */
+    --mist: #8FB3B2;        /* membrane haze */
+    --ink: #E9F1EF;         /* text */
+    --ink-dim: #9DB7B5;     /* secondary text */
+    --skin: #E7B7A5;        /* accent: fetal skin under warm light */
+    --line: rgba(233, 241, 239, 0.14);
+    --panel: rgba(11, 30, 34, 0.72);
+    --display: "Reem Kufi", "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+    --body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--deep);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.55;
+    overflow: hidden;
+  }
+  .app {
+    position: relative;
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+  #stage {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: pointer;
+    background: radial-gradient(120% 90% at 55% 38%, #2A5156 0%, var(--water) 38%, var(--deep) 100%);
+  }
+  header, footer { position: relative; z-index: 1; padding-inline: 16px; }
+  header {
+    padding-block: 18px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    pointer-events: none;
+  }
+  .brand {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 22px;
+    letter-spacing: 0.01em;
+    margin: 0;
+  }
+  .brand span { color: var(--skin); }
+  .hint {
+    color: var(--ink-dim);
+    font-size: 13px;
+    margin: 0;
+  }
+  footer {
+    padding-block: 0 18px;
+    display: grid;
+    gap: 14px;
+  }
+  .card {
+    background: var(--panel);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    max-width: 720px;
+    width: 100%;
+    margin-inline: auto;
+    box-sizing: border-box;
+  }
+  .week-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .week {
+    font-family: var(--display);
+    font-size: 30px;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+  .week small {
+    font-family: var(--body);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-dim);
+    margin-inline-start: 6px;
+  }
+  .stats {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .stats li { display: grid; gap: 0; }
+  .stats dt, .stats .k { font-size: 12px; color: var(--ink-dim); letter-spacing: 0.02em; }
+  .stats .v { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 16px; }
+  .note { color: var(--ink-dim); margin: 8px 0 0; font-size: 13.5px; max-width: 62ch; }
+  .timeline { margin-top: 12px; }
+  .ticks {
+    position: relative;
+    height: 34px;
+    display: grid;
+    grid-template-columns: repeat(40, 1fr);
+    align-items: end;
+    direction: ltr; /* gestational weeks run left to right on the scale */
+  }
+  .tick {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    background: none;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    cursor: not-allowed;
+  }
+  .tick i {
+    display: block;
+    width: 2px;
+    height: 10px;
+    border-radius: 1px;
+    background: var(--line);
+  }
+  .tick.major i { height: 16px; background: rgba(233, 241, 239, 0.3); }
+  .tick.live { cursor: pointer; }
+  .tick.live i { width: 4px; height: 30px; background: var(--skin); box-shadow: 0 0 12px rgba(231, 183, 165, 0.6); }
+  .tick:focus-visible { outline: 2px solid var(--skin); outline-offset: 2px; border-radius: 3px; }
+  .scale {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    color: var(--ink-dim);
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    margin-top: 4px;
+  }
+  .phases {
+    display: grid;
+    grid-template-columns: 3fr 5fr 32fr;
+    gap: 4px;
+    margin-top: 8px;
+    direction: ltr;
+    font-size: 11px;
+    color: var(--ink-dim);
+  }
+  .phases span {
+    border-top: 2px solid var(--line);
+    padding-top: 4px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .phases span.on { border-color: var(--skin); color: var(--ink); }
+  .credit { font-size: 11.5px; color: var(--ink-dim); text-align: center; margin: 0; }
+  .credit a { color: var(--ink-dim); }
+  [hidden] { display: none !important; }
+  .status {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    z-index: 1;
+    pointer-events: none;
+    color: var(--ink-dim);
+    font-size: 14px;
+  }
+  .toast {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    font-size: 13px;
+    color: var(--ink);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  @media (max-width: 480px) {
+    .week { font-size: 26px; }
+    .phases { font-size: 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .toast { transition: none; }
+  }
+</style>
+
+<div class="app" dir="rtl" lang="ar">
+  <canvas id="stage" aria-label="نموذج ثلاثي الأبعاد للجنين في الأسبوع ٢٤. اسحب للتدوير، والمس الجنين ليتحرك."></canvas>
+  <div class="status" id="status">جارٍ تحميل الجنين…</div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <header>
+    <h1 class="brand">رحلة <span>الجنين</span></h1>
+    <p class="hint">اسحب للتدوير · المس الجنين ليتحرك</p>
+  </header>
+
+  <div></div>
+
+  <footer>
+    <section class="card" aria-labelledby="wk">
+      <div class="week-row">
+        <h2 class="week" id="wk">الأسبوع ٢٤ <small>الثلث الثاني</small></h2>
+        <ul class="stats">
+          <li><span class="k">الطول (الرأس–الكعب)</span><span class="v">≈ ٣٠ سم</span></li>
+          <li><span class="k">الوزن</span><span class="v">≈ ٦٠٠ غ</span></li>
+        </ul>
+      </div>
+      <p class="note">الرئتان تبدآن تكوين المادة المُفعّلة للسطح، والجلد رقيق شبه شفاف، والجنين يستجيب للّمس والصوت بحركات واضحة.</p>
+
+      <div class="timeline" aria-label="الخط الزمني للحمل من الأسبوع ١ إلى ٤٠">
+        <div class="ticks" id="ticks"></div>
+        <div class="scale" aria-hidden="true"><span>1</span><span>8</span><span>12</span><span>20</span><span>24</span><span>28</span><span>36</span><span>40</span></div>
+        <div class="phases" aria-hidden="true">
+          <span>خلوية ١–٣</span>
+          <span>مُضغة ٤–٨</span>
+          <span class="on">جنين ٩–٤٠</span>
+        </div>
+      </div>
+    </section>
+    <p class="credit">نموذج أولي · الأسبوع ٢٤ فقط متاح الآن · الشكل مبني على <a href="https://sketchfab.com/3d-models/baby-f05a87806cad49feb75ac7659d55c368" target="_blank" rel="noopener">“Baby” by joekarava</a> (CC BY 4.0)</p>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  const LIVE_WEEK = 24;
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---- timeline ticks (only week 24 is live in this prototype) ----
+  const ticks = document.getElementById("ticks");
+  for (let w = 1; w <= 40; w++) {
+    const b = document.createElement("button");
+    b.className = "tick" + (w % 4 === 0 ? " major" : "") + (w === LIVE_WEEK ? " live" : "");
+    b.type = "button";
+    b.setAttribute("aria-label", w === LIVE_WEEK ? "الأسبوع " + w + " (المعروض)" : "الأسبوع " + w + " (قريباً)");
+    if (w !== LIVE_WEEK) b.setAttribute("aria-disabled", "true");
+    b.appendChild(document.createElement("i"));
+    b.addEventListener("click", () => toast(w === LIVE_WEEK ? "أنت في الأسبوع ٢٤" : "الأسبوع " + w + " قريباً"));
+    ticks.appendChild(b);
+  }
+
+  const toastEl = document.getElementById("toast");
+  let toastTimer = 0;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1400);
+  }
+
+  // ---- scene ----
+  const canvas = document.getElementById("stage");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.physicallyCorrectLights = true;
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x16363b, 0.35);
+  const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 50);
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.enablePan = false;
+  controls.rotateSpeed = 0.6;
+
+  // lighting: warm key from upper front-left, teal fill from the water, rim from behind
+  scene.add(new THREE.HemisphereLight(0xcfe6e3, 0x0b1e22, 0.9));
+  const key = new THREE.DirectionalLight(0xfff0e6, 3.6);
+  key.position.set(-1.2, 1.6, 1.4);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0x9cc9c6, 0.9);
+  fill.position.set(1.5, -0.4, 1.0);
+  scene.add(fill);
+  const rim = new THREE.DirectionalLight(0xffe2d2, 2.2);
+  rim.position.set(0.4, 0.8, -1.8);
+  scene.add(rim);
+
+  const root = new THREE.Group();
+  scene.add(root);
+
+  // ---- reactions: damped springs added on top of the posed bones ----
+  // Each impulse bends a set of bones about their local X/Z axes and decays.
+  const REACTIONS = {
+    legs:  { label: "ركلة!",         bones: [["upperleg01", 1, -0.55], ["lowerleg01", 1, 0.9], ["foot", 1, -0.5]] },
+    arms:  { label: "رفرفة يد",      bones: [["upperarm01", 1, 0.5], ["lowerarm01", 1, -0.6], ["wrist", 3, 0.4]] },
+    head:  { label: "إيماءة",        bones: [["neck01", 1, 0.22], ["head", 1, 0.3]] },
+    trunk: { label: "تمدّد",         bones: [["spine03", 1, -0.12], ["spine05", 1, -0.1], ["upperleg01", 1, -0.3], ["upperarm01", 1, 0.25]] },
+  };
+  let bones = [];                 // {bone, base: Quaternion, name}
+  const springs = new Map();      // bone -> {angle, vel, axis}
+  let body = null;
+
+  function boneFamily(name) {
+    const n = name.toLowerCase();
+    if (/(upperleg|lowerleg|foot|toe|pelvis)/.test(n)) return "legs";
+    if (/(upperarm|lowerarm|wrist|finger|metacarpal|shoulder|clavicle)/.test(n)) return "arms";
+    if (/(head|neck|jaw|eye|ear|tongue|oris|levator|temporalis|special)/.test(n)) return "head";
+    return "trunk";
+  }
+
+  function kick(kind, side) {
+    const r = REACTIONS[kind];
+    toast(r.label);
+    for (const b of bones) {
+      const n = b.name.toLowerCase();
+      for (const [prefix, axisIdx, amp] of r.bones) {
+        if (!n.startsWith(prefix)) continue;
+        const isL = /l$/.test(n), isR = /r$/.test(n);
+        // side-specific for limbs; both sides get a softer echo
+        const gain = side ? ((side === "L" && isL) || (side === "R" && isR) ? 1 : 0.35) : 1;
+        const s = springs.get(b.bone) || { angle: 0, vel: 0, axis: axisIdx };
+        s.axis = axisIdx;
+        s.vel += amp * gain * 9;
+        springs.set(b.bone, s);
+      }
+    }
+  }
+
+  // ---- load the fetus ----
+  const loader = new THREE.GLTFLoader();
+  const status = document.getElementById("status");
+  const embedded = document.getElementById("glb-data");
+  const onLoad = (gltf) => {
+    const model = gltf.scene;
+    root.add(model);
+
+    // apply the solved week-24 pose (a one-frame action) and freeze it as the base
+    if (gltf.animations.length) {
+      const mixer = new THREE.AnimationMixer(model);
+      const clip = gltf.animations.find((a) => /Curl/.test(a.name)) || gltf.animations[0];
+      mixer.clipAction(clip).play();
+      mixer.update(0);
+    }
+    model.traverse((o) => {
+      if (o.isBone) bones.push({ bone: o, base: o.quaternion.clone(), name: o.name });
+      if (o.isSkinnedMesh && /Body/.test(o.name)) body = o;
+      if (o.isMesh) {
+        o.frustumCulled = false;
+        const m = o.material;
+        if (m && m.isMeshStandardMaterial) {
+          m.envMapIntensity = 0.6;
+          if (/Skin/.test(m.name)) {
+            m.map = null;
+            m.color.set(0xd99a86);
+            m.roughness = 0.52;
+            m.sheen = m.sheen || 0.4;
+            if (m.sheenColor) m.sheenColor.set(0xffc8b8);
+          }
+        }
+      }
+    });
+
+    // frame the fetus on its skinned (posed) vertices, not the bind geometry
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    if (body) {
+      body.skeleton.update();
+      const pos = body.geometry.attributes.position, v = new THREE.Vector3();
+      const step = Math.max(1, Math.floor(pos.count / 4000));
+      for (let i = 0; i < pos.count; i += step) {
+        v.fromBufferAttribute(pos, i);
+        body.boneTransform(i, v);
+        v.applyMatrix4(body.matrixWorld);
+        box.expandByPoint(v);
+      }
+    } else {
+      box.setFromObject(model);
+    }
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    root.position.sub(center);
+    const radius = size.length() * 0.5;
+    // fit by the narrower field of view (portrait phones are width-limited)
+    const vfov = THREE.MathUtils.degToRad(camera.fov);
+    const aspect = Math.max(canvas.clientWidth, 1) / Math.max(canvas.clientHeight, 1);
+    const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
+    const dist = (radius * 1.15) / Math.sin(Math.min(vfov, hfov) / 2);
+    camera.position.set(0, radius * 0.15, dist);
+    camera.near = radius / 50;
+    camera.far = radius * 40;
+    camera.updateProjectionMatrix();
+    // keep the fetus clear of the info card: aim below it in proportion to the card height
+    const cardH = document.querySelector("footer").getBoundingClientRect().height;
+    const lift = (cardH / Math.max(canvas.clientHeight, 1)) * radius * 1.5;
+    controls.target.set(0, -lift, 0);
+    controls.minDistance = dist * 0.45;
+    controls.maxDistance = dist * 1.8;
+    scene.fog.density = 0.06 / radius;
+    status.hidden = true;
+  };
+  const onError = () => { status.textContent = "تعذّر تحميل النموذج. أعد تحميل الصفحة."; };
+  if (embedded) {
+    // published build: the model ships inside the page
+    const bin = atob(embedded.textContent.trim());
+    const buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    loader.parse(buf.buffer, "", onLoad, onError);
+  } else {
+    loader.load("fetus_W24.glb", onLoad, (ev) => {
+      if (ev.total) status.textContent = "جارٍ تحميل الجنين… " + Math.round((ev.loaded / ev.total) * 100) + "٪";
+    }, onError);
+  }
+
+  // ---- touch: pick the bone family under the finger ----
+  const ray = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  let downAt = null;
+  canvas.addEventListener("pointerdown", (e) => { downAt = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+  canvas.addEventListener("pointerup", (e) => {
+    if (!downAt || !body) return;
+    const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
+    const quick = performance.now() - downAt.t < 350;
+    downAt = null;
+    if (moved > 8 || !quick) return; // it was a drag (orbit), not a tap
+    const rect = canvas.getBoundingClientRect();
+    ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObject(body, false)[0];
+    if (!hit) return;
+    // nearest bone to the hit point decides the reaction
+    let best = null, bestD = Infinity;
+    const p = new THREE.Vector3();
+    for (const b of bones) {
+      b.bone.getWorldPosition(p);
+      const d = p.distanceToSquared(hit.point);
+      if (d < bestD) { bestD = d; best = b; }
+    }
+    if (!best) return;
+    const fam = boneFamily(best.name);
+    const side = /l$/i.test(best.name) ? "L" : /r$/i.test(best.name) ? "R" : null;
+    kick(fam, side);
+  });
+
+  // ---- loop ----
+  const axes = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
+  const q = new THREE.Quaternion();
+  let last = performance.now();
+  function resize() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) {
+      renderer.setSize(w, h, false);
+      camera.aspect = w / Math.max(h, 1);
+      camera.updateProjectionMatrix();
+    }
+  }
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    resize();
+    // floating in the fluid: slow bob and sway
+    if (!reduceMotion) {
+      const t = now / 1000;
+      root.rotation.z = Math.sin(t * 0.35) * 0.04;
+      root.rotation.x = Math.sin(t * 0.27 + 1.3) * 0.03;
+      root.position.y = (root.userData.y0 ?? (root.userData.y0 = root.position.y)) + Math.sin(t * 0.5) * 0.004;
+    }
+    // springs: critically-ish damped return to the pose
+    for (const b of bones) {
+      const s = springs.get(b.bone);
+      if (!s) continue;
+      const k = 55, c = 9;
+      s.vel += (-k * s.angle - c * s.vel) * dt;
+      s.angle += s.vel * dt;
+      q.setFromAxisAngle(axes[s.axis === 3 ? 2 : s.axis - 1 < 0 ? 0 : s.axis - 1], s.angle);
+      b.bone.quaternion.copy(b.base).multiply(q);
+      if (Math.abs(s.angle) < 1e-4 && Math.abs(s.vel) < 1e-3) {
+        b.bone.quaternion.copy(b.base);
+        springs.delete(b.bone);
+      }
+    }
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
