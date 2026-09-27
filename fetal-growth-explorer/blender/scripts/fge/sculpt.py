@@ -454,12 +454,26 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
     head_verts = rig.W[:, _descendants(rig, "head")].sum(1) > 0.6
     rig.reset()
     V0 = rig.verts()
+    # a fixed vertex subset for the optimiser (LBS on 40k verts is the cost)
+    keep = np.zeros(len(V0), dtype=bool)
+    keep[::3] = True
+    keep |= head_verts & (np.arange(len(V0)) % 2 == 0)
+    sub_idx = np.where(keep)[0]
+    head_sub = head_verts[sub_idx]
+    Wsub, Rsub = rig.W[sub_idx], np.c_[rig.rest_verts[sub_idx], np.ones(len(sub_idx))]
+    rest_inv = np.linalg.inv(rig.rest)
+
+    def verts_sub():
+        S = rig.pose_matrices() @ rest_inv
+        out = np.einsum("vb,bij,vj->vi", Wsub, S, Rsub)[:, :3]
+        return (np.c_[out, np.ones(len(out))] @ rig.world.T)[:, :3]
     world0 = _similarity(V0[::7], start_verts[::7]) @ rig.world
     centre = (V0.mean(0) @ world0[:3, :3].T)  # rotate about the body centre
     bx = [b for b in POSE_BONES_X if b in rig.index]
     bxz = [b for b in POSE_BONES_XZ if b in rig.index]
     n_glob = 7
-    sigma = np.r_[[30.0, 30.0, 30.0, 8.0, 8.0, 8.0, 5.0], np.full(len(bx) + 2 * len(bxz), 10.0)]
+    # trunk/neck/head bends stay small (the sculpt's curl is right); limbs may move
+    sigma = np.r_[[30.0, 30.0, 30.0, 10.0, 10.0, 10.0, 6.0], np.full(len(bx), 8.0), np.full(2 * len(bxz), 25.0)]
 
     def apply(x):
         rig.reset()
@@ -480,7 +494,7 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
             k += 2
 
     def cranium(V):
-        uv, _ = project_points(V[head_verts], HERO, REF_FRAME)
+        uv, _ = project_points(V[head_sub], HERO, REF_FRAME)
         hull = uv[ConvexHull(uv).vertices]
         hull = hull[hull[:, 1] < hull[:, 1].min() + 230]
         c = np.linalg.lstsq(np.c_[2 * hull, np.ones(len(hull))], (hull**2).sum(1), rcond=None)[0]
@@ -488,8 +502,8 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
 
     def terms(x):
         apply(x)
-        V = rig.verts()
-        m = gaussian_filter(mhfit.splat(V[::2], REF_SIZE, 2).astype(float), 1.5)
+        V = verts_sub()
+        m = gaussian_filter(mhfit.splat(V, REF_SIZE, 2).astype(float), 1.5)
         iou = (m * target).sum() / (m + target - m * target).sum()
         cx, cy, r = cranium(V)
         rx_, ry_, rr = REF_CRANIUM
@@ -498,19 +512,20 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
 
     def loss(x):
         iou, head = terms(x)
-        return 1 - iou + 1.0 * head + 0.01 * np.sum((x / sigma) ** 2)
+        return 1 - iou + 1.0 * head + 0.004 * np.sum((x / sigma) ** 2)
 
     x0 = np.zeros(len(sigma))
     iou0, head0 = terms(x0)
     # global placement first, then everything
     glob = list(range(n_glob))
-    for free in (glob, list(range(len(x0)))):
+    limbs = glob + list(range(n_glob + len(bx), len(x0)))
+    for free in (glob, limbs, list(range(len(x0)))):
         def sub(z, free=free):
             x = x0.copy()
             x[free] = z
             return x
 
-        res = minimize(lambda z: loss(sub(z)), x0[free], method="Powell", options={"xtol": 0.2, "ftol": 1e-6, "maxfev": max_evals})
+        res = minimize(lambda z: loss(sub(z)), x0[free], method="Powell", options={"xtol": 0.3, "ftol": 1e-5, "maxfev": max_evals})
         x0 = sub(res.x)
     iou1, head1 = terms(x0)
     apply(x0)
