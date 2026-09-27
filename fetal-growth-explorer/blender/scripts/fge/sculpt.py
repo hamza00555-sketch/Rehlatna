@@ -576,6 +576,16 @@ def _similarity(A: np.ndarray, B: np.ndarray) -> np.ndarray:
 FAR_HAND_PX = None
 
 
+def _far_side(rig: mhfit.Rig, V: np.ndarray) -> str:
+    """'.L' or '.R': the arm farther from the camera (camera looks along +Y)."""
+    depth = {}
+    for side in (".L", ".R"):
+        m = rig.W[:, rig.index["wrist" + side]] > 0.5 if "wrist" + side in rig.index else None
+        if m is not None and m.any():
+            depth[side] = V[m, 1].mean()
+    return max(depth, key=depth.get) if len(depth) == 2 else ".L"
+
+
 def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int = 2500) -> float:
     """Pose the sculpt-rigged body onto the reference silhouette starting from
     the sculpt's own pose: a global similarity (initialised so the body lands
@@ -625,10 +635,16 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
             sigma[n_glob + len(bx) + 2 * k : n_glob + len(bx) + 2 * k + 2] = 6.0
     # hard limits: the sculpt's pose is already a fetal curl, so no parameter
     # may leave the plausible range whatever the outline term prefers
-    bound = np.r_[[40.0, 40.0, 40.0, 15.0, 15.0, 15.0, 8.0], np.full(len(bx), 15.0), np.full(2 * len(bxz), 40.0)]
+    bound = np.r_[[40.0, 40.0, 40.0, 15.0, 15.0, 15.0, 8.0], np.full(len(bx), 12.0), np.full(2 * len(bxz), 30.0)]
+    # the far arm is hidden behind the near one and its open hand reads as a
+    # blade from this camera: it keeps the sculpt's pose
+    far_arm = _far_side(rig, start_verts)
     for k, b in enumerate(bxz):
+        sl = slice(n_glob + len(bx) + 2 * k, n_glob + len(bx) + 2 * k + 2)
         if b.startswith(("wrist", "foot")):
-            bound[n_glob + len(bx) + 2 * k : n_glob + len(bx) + 2 * k + 2] = 12.0
+            bound[sl], sigma[sl] = 8.0, 4.0
+        if b.startswith(("upperarm", "lowerarm", "wrist")) and b.endswith(far_arm):
+            bound[sl], sigma[sl] = 6.0, 3.0
 
     def apply(x):
         rig.reset()
