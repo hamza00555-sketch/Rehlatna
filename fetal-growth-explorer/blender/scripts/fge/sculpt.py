@@ -330,7 +330,25 @@ def fit_rig_pose(rig: mhfit.Rig, sculpt_pts: np.ndarray, max_evals: int = 1200, 
             apply(x)
             return chamfer() + 2e-7 * np.sum(x**2)
 
-        res = minimize(loss, np.zeros(3 * len(idx)), method="Powell", options={"xtol": 0.2, "ftol": 1e-7, "maxfev": max_evals})
+        # limb stages: Powell finds the nearest valley, and a folded limb is
+        # often a whole flexion away, so try several pre-flexions and keep the best
+        prox = [k for k, b in enumerate(idx) if b.startswith(("upperarm01", "upperleg01"))]
+        dist = [k for k, b in enumerate(idx) if b.startswith(("lowerarm01", "lowerleg01"))]
+        x0 = np.zeros(3 * len(idx))
+        if prox and dist:
+            best = None
+            for a in (0.0, 35.0, -35.0):
+                for c in (0.0, 35.0, -35.0):
+                    x = x0.copy()
+                    for k in prox:
+                        x[3 * k] = a
+                    for k in dist:
+                        x[3 * k] = c
+                    r = minimize(loss, x, method="Powell", options={"xtol": 0.3, "ftol": 1e-6, "maxfev": max_evals // 4})
+                    if best is None or r.fun < best.fun:
+                        best = r
+            x0 = best.x
+        res = minimize(loss, x0, method="Powell", options={"xtol": 0.2, "ftol": 1e-7, "maxfev": max_evals})
         apply(res.x)
     print(f"[fge] rig pose fitted to sculpt: chamfer {start * 500:.2f} -> {chamfer() * 500:.2f} mm")
 
