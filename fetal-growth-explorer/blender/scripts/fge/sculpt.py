@@ -619,10 +619,16 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
     bxz = [b for b in POSE_BONES_XZ if b in rig.index]
     n_glob = 7
     # trunk/neck/head bends stay small (the sculpt's curl is right); limbs may move
-    sigma = np.r_[[30.0, 30.0, 30.0, 10.0, 10.0, 10.0, 6.0], np.full(len(bx), 8.0), np.full(2 * len(bxz), 35.0)]
+    sigma = np.r_[[30.0, 30.0, 30.0, 10.0, 10.0, 10.0, 6.0], np.full(len(bx), 8.0), np.full(2 * len(bxz), 30.0)]
     for k, b in enumerate(bxz):  # hands and feet: small corrections only
         if b.startswith(("wrist", "foot")):
             sigma[n_glob + len(bx) + 2 * k : n_glob + len(bx) + 2 * k + 2] = 6.0
+    # hard limits: the sculpt's pose is already a fetal curl, so no parameter
+    # may leave the plausible range whatever the outline term prefers
+    bound = np.r_[[40.0, 40.0, 40.0, 15.0, 15.0, 15.0, 8.0], np.full(len(bx), 15.0), np.full(2 * len(bxz), 40.0)]
+    for k, b in enumerate(bxz):
+        if b.startswith(("wrist", "foot")):
+            bound[n_glob + len(bx) + 2 * k : n_glob + len(bx) + 2 * k + 2] = 12.0
 
     def apply(x):
         rig.reset()
@@ -688,7 +694,9 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
             x[free] = z
             return x
 
-        res = minimize(lambda z: loss(sub(z)), x_start[free], method="Powell", options={"xtol": 0.3, "ftol": 1e-5, "maxfev": evals})
+        bnds = [(-bound[i], bound[i]) for i in free]
+        z0 = np.clip(x_start[free], -bound[free] * 0.95, bound[free] * 0.95)
+        res = minimize(lambda z: loss(sub(z)), z0, method="Powell", bounds=bnds, options={"xtol": 0.3, "ftol": 1e-5, "maxfev": evals})
         return sub(res.x), res.fun
 
     x0, _ = solve(x0, glob, max_evals)
