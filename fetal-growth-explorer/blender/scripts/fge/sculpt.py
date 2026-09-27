@@ -576,14 +576,18 @@ def _similarity(A: np.ndarray, B: np.ndarray) -> np.ndarray:
 FAR_HAND_PX = None
 
 
-def _far_side(rig: mhfit.Rig, V: np.ndarray) -> str:
-    """'.L' or '.R': the arm farther from the camera (camera looks along +Y)."""
-    depth = {}
+def _tucked_side(rig: mhfit.Rig, V: np.ndarray) -> str:
+    """'.L' or '.R': the arm whose hand sits lower in the frame. In the fetal
+    curl one hand is up at the chin and the other tucked against the body;
+    the tucked one is the one the outline cannot see and must not move."""
+    from .camera import HERO, project_points
+
+    row = {}
     for side in (".L", ".R"):
         m = rig.W[:, rig.index["wrist" + side]] > 0.5 if "wrist" + side in rig.index else None
         if m is not None and m.any():
-            depth[side] = V[m, 1].mean()
-    return max(depth, key=depth.get) if len(depth) == 2 else ".L"
+            row[side] = project_points(V[m], HERO, (1080, 1920))[0][:, 1].mean()
+    return max(row, key=row.get) if len(row) == 2 else ".L"
 
 
 def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int = 2500) -> float:
@@ -636,9 +640,11 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
     # hard limits: the sculpt's pose is already a fetal curl, so no parameter
     # may leave the plausible range whatever the outline term prefers
     bound = np.r_[[40.0, 40.0, 40.0, 15.0, 15.0, 15.0, 8.0], np.full(len(bx), 12.0), np.full(2 * len(bxz), 30.0)]
-    # the far arm is hidden behind the near one and its open hand reads as a
-    # blade from this camera: it keeps the sculpt's pose
-    far_arm = _far_side(rig, start_verts)
+    # the tucked arm (hand low, against the body) is what the outline cannot
+    # place, and this sculpt's open hand reads as a blade if it is lifted into
+    # view: it keeps the sculpt's pose
+    far_arm = _tucked_side(rig, start_verts)
+    print(f"[fge] tucked arm: {far_arm}")
     for k, b in enumerate(bxz):
         sl = slice(n_glob + len(bx) + 2 * k, n_glob + len(bx) + 2 * k + 2)
         if b.startswith(("wrist", "foot")):
