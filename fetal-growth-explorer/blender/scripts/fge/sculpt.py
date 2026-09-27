@@ -419,10 +419,12 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
     if lab is not None:
         anchor &= ~seam
     edges = np.array([e.vertices[:] for e in mesh.data.edges])
-    # free vertices: bone proximity in the fitted pose, then smoothed into the anchors
-    Wnb = _nearest_bone_weights(rig, body.parent, Vs)
-    W0[~anchor] = Wnb[~anchor]
-    W = _smooth_free(W0, edges, anchor)
+    W = _diffuse(W0, edges, anchor)
+    # hands and feet: diffusion crosses their contacts (a foot tucked against a
+    # thigh), so anything within reach of a wrist/foot bone belongs to it
+    W, ext = _extremity_override(rig, body.parent, Vs, W)
+    anchor = anchor | ext
+    W = _smooth_free(W, edges, anchor, rounds=4)
     print(f"[fge] weights: {int(anchor.sum())} anchors of {len(anchor)} verts ({'source' if srcob is not None else 'fused'} connectivity), rest diffused")
     for _ in range(3):
         acc = np.zeros_like(W)
@@ -480,6 +482,31 @@ def _nearest_bone_weights(rig: mhfit.Rig, arm, P: np.ndarray, sigma: float = 0.0
     Wt = np.zeros_like(W)
     np.put_along_axis(Wt, top, np.take_along_axis(W, top, axis=1), axis=1)
     return Wt / np.maximum(Wt.sum(1, keepdims=True), 1e-12)
+
+
+def _extremity_override(rig: mhfit.Rig, arm, P: np.ndarray, W: np.ndarray, radius: float = 0.012):
+    """Vertices within `radius` of a wrist/foot bone segment take that bone
+    alone. Returns the weights and the mask of overridden vertices."""
+    M = rig.pose_matrices()
+    heads = M[:, :3, 3]
+    lengths = np.array([arm.data.bones[n].length for n in rig.names])
+    tails = heads + M[:, :3, 1] * lengths[:, None]
+    Rw, tw = rig.world[:3, :3], rig.world[:3, 3]
+    heads, tails = heads @ Rw.T + tw, tails @ Rw.T + tw
+    ext = [i for i, n in enumerate(rig.names) if n.startswith(("wrist", "foot"))]
+    D = np.full((len(P), len(ext)), np.inf)
+    for c, i in enumerate(ext):
+        a, b = heads[i], tails[i]
+        ab = b - a
+        t = np.clip(((P - a) @ ab) / max(ab @ ab, 1e-12), 0.0, 1.0)
+        D[:, c] = np.linalg.norm(P - (a + t[:, None] * ab), axis=1)
+    near = D.min(1) < radius
+    which = np.array(ext)[D.argmin(1)]
+    W = W.copy()
+    W[near] = 0.0
+    W[np.where(near)[0], which[near]] = 1.0
+    print(f"[fge] extremities: {int(near.sum())} verts snapped to wrist/foot bones")
+    return W, near
 
 
 def _smooth_free(W: np.ndarray, edges: np.ndarray, anchor: np.ndarray, rounds: int = 12) -> np.ndarray:
