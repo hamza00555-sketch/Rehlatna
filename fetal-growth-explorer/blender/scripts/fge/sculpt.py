@@ -419,7 +419,10 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
     if lab is not None:
         anchor &= ~seam
     edges = np.array([e.vertices[:] for e in mesh.data.edges])
-    W = _diffuse(W0, edges, anchor)
+    # free vertices: bone proximity in the fitted pose, then smoothed into the anchors
+    Wnb = _nearest_bone_weights(rig, body.parent, Vs)
+    W0[~anchor] = Wnb[~anchor]
+    W = _smooth_free(W0, edges, anchor)
     print(f"[fge] weights: {int(anchor.sum())} anchors of {len(anchor)} verts ({'source' if srcob is not None else 'fused'} connectivity), rest diffused")
     for _ in range(3):
         acc = np.zeros_like(W)
@@ -450,6 +453,46 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
             out = sculpt.data.attributes.new(a.name, "FLOAT", "POINT")
             out.data.foreach_set("value", np.einsum("vk,vk->v", w, src[j]).astype(np.float32))
     return Wt
+
+
+MAIN_BONES = ("root", "pelvis", "spine", "neck", "head", "clavicle", "shoulder", "upperarm", "lowerarm", "wrist", "upperleg", "lowerleg", "foot")
+
+
+def _nearest_bone_weights(rig: mhfit.Rig, arm, P: np.ndarray, sigma: float = 0.008) -> np.ndarray:
+    """Weights from proximity to the posed bone segments (main deform bones
+    only): a foot tucked against a thigh is still nearest the foot bone."""
+    M = rig.pose_matrices()
+    heads = M[:, :3, 3]
+    lengths = np.array([arm.data.bones[n].length for n in rig.names])
+    tails = heads + M[:, :3, 1] * lengths[:, None]
+    Rw, tw = rig.world[:3, :3], rig.world[:3, 3]
+    heads, tails = heads @ Rw.T + tw, tails @ Rw.T + tw
+    main = [i for i, n in enumerate(rig.names) if n.startswith(MAIN_BONES)]
+    D = np.full((len(P), len(rig.names)), np.inf)
+    for i in main:
+        a, b = heads[i], tails[i]
+        ab = b - a
+        t = np.clip(((P - a) @ ab) / max(ab @ ab, 1e-12), 0.0, 1.0)
+        D[:, i] = np.linalg.norm(P - (a + t[:, None] * ab), axis=1)
+    W = np.exp(-((D / sigma) ** 2))
+    W[~np.isfinite(D)] = 0.0
+    top = np.argsort(-W, axis=1)[:, :3]
+    Wt = np.zeros_like(W)
+    np.put_along_axis(Wt, top, np.take_along_axis(W, top, axis=1), axis=1)
+    return Wt / np.maximum(Wt.sum(1, keepdims=True), 1e-12)
+
+
+def _smooth_free(W: np.ndarray, edges: np.ndarray, anchor: np.ndarray, rounds: int = 12) -> np.ndarray:
+    """Laplacian smoothing of the free rows (anchored rows fixed)."""
+    free = ~anchor
+    for _ in range(rounds):
+        acc = np.zeros_like(W)
+        cnt = np.zeros(len(W))
+        np.add.at(acc, edges[:, 0], W[edges[:, 1]])
+        np.add.at(acc, edges[:, 1], W[edges[:, 0]])
+        np.add.at(cnt, edges.ravel(), 1)
+        W[free] = 0.5 * W[free] + 0.5 * acc[free] / np.maximum(cnt[free], 1)[:, None]
+    return W
 
 
 def _diffuse(W0: np.ndarray, edges: np.ndarray, anchor: np.ndarray) -> np.ndarray:
