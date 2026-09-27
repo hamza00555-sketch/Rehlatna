@@ -576,7 +576,7 @@ def _similarity(A: np.ndarray, B: np.ndarray) -> np.ndarray:
 # The reference's far hand sits at the chin beside the near fist (1080x1920
 # frame). Off by default: this sculpt's far hand is an open, spread hand and
 # reads as a blade from the shot camera, so it stays tucked out of view.
-FAR_HAND_PX = (600.0, 980.0)
+FAR_HAND_PX = None
 
 
 def _tucked_side(rig: mhfit.Rig, V: np.ndarray) -> str:
