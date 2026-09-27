@@ -503,16 +503,21 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
     V0 = rig.verts()
     # a fixed vertex subset for the optimiser (LBS on 40k verts is the cost)
     keep = np.zeros(len(V0), dtype=bool)
-    keep[::3] = True
-    keep |= head_verts & (np.arange(len(V0)) % 2 == 0)
+    keep[::2] = True
+    keep |= head_verts
     sub_idx = np.where(keep)[0]
     head_sub = head_verts[sub_idx]
-    Wsub, Rsub = rig.W[sub_idx], np.c_[rig.rest_verts[sub_idx], np.ones(len(sub_idx))]
+    Rsub = np.c_[rig.rest_verts[sub_idx], np.ones(len(sub_idx))]
     rest_inv = np.linalg.inv(rig.rest)
+    # sparse skinning: the 4 strongest influences per vertex (clean_weights)
+    Wsub = rig.W[sub_idx]
+    top = np.argsort(-Wsub, axis=1)[:, :4]
+    wts = np.take_along_axis(Wsub, top, axis=1)
+    wts /= np.maximum(wts.sum(1, keepdims=True), 1e-9)
 
     def verts_sub():
         S = rig.pose_matrices() @ rest_inv
-        out = np.einsum("vb,bij,vj->vi", Wsub, S, Rsub)[:, :3]
+        out = np.einsum("vk,vkij,vj->vi", wts, S[top], Rsub)[:, :3]
         return (np.c_[out, np.ones(len(out))] @ rig.world.T)[:, :3]
     world0 = _similarity(V0[::7], start_verts[::7]) @ rig.world
     centre = (V0.mean(0) @ world0[:3, :3].T)  # rotate about the body centre
@@ -520,7 +525,7 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
     bxz = [b for b in POSE_BONES_XZ if b in rig.index]
     n_glob = 7
     # trunk/neck/head bends stay small (the sculpt's curl is right); limbs may move
-    sigma = np.r_[[30.0, 30.0, 30.0, 10.0, 10.0, 10.0, 6.0], np.full(len(bx), 8.0), np.full(2 * len(bxz), 25.0)]
+    sigma = np.r_[[30.0, 30.0, 30.0, 10.0, 10.0, 10.0, 6.0], np.full(len(bx), 8.0), np.full(2 * len(bxz), 35.0)]
     for k, b in enumerate(bxz):  # hands and feet: small corrections only
         if b.startswith(("wrist", "foot")):
             sigma[n_glob + len(bx) + 2 * k : n_glob + len(bx) + 2 * k + 2] = 6.0
@@ -562,21 +567,41 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
 
     def loss(x):
         iou, head = terms(x)
-        return 1 - iou + 1.0 * head + 0.004 * np.sum((x / sigma) ** 2)
+        return 1 - iou + 1.0 * head + 0.003 * np.sum((x / sigma) ** 2)
 
     x0 = np.zeros(len(sigma))
     iou0, head0 = terms(x0)
     # global placement first, then everything
     glob = list(range(n_glob))
     limbs = glob + list(range(n_glob + len(bx), len(x0)))
-    for free in (glob, limbs, list(range(len(x0)))):
-        def sub(z, free=free):
-            x = x0.copy()
+
+    def solve(x_start, free, evals):
+        def sub(z):
+            x = x_start.copy()
             x[free] = z
             return x
 
-        res = minimize(lambda z: loss(sub(z)), x0[free], method="Powell", options={"xtol": 0.3, "ftol": 1e-5, "maxfev": max_evals})
-        x0 = sub(res.x)
+        res = minimize(lambda z: loss(sub(z)), x_start[free], method="Powell", options={"xtol": 0.3, "ftol": 1e-5, "maxfev": evals})
+        return sub(res.x), res.fun
+
+    x0, _ = solve(x0, glob, max_evals)
+    # legs: Powell settles in the nearest valley, so start the leg stage from
+    # several hip/knee pre-flexions and keep the best
+    leg_x = {b: n_glob + len(bx) + 2 * k for k, b in enumerate(bxz) if b.startswith(("upperleg", "lowerleg"))}
+    starts = []
+    for hip in (0.0, 25.0, -25.0):
+        for knee in (0.0, 25.0, -25.0):
+            x = x0.copy()
+            for b, k in leg_x.items():
+                x[k] = hip if b.startswith("upperleg") else knee
+            starts.append(x)
+    best = None
+    for x in starts:
+        xs, f = solve(x, limbs, max_evals // 4)
+        if best is None or f < best[1]:
+            best = (xs, f)
+    x0 = best[0]
+    x0, _ = solve(x0, list(range(len(x0))), max_evals)
     iou1, head1 = terms(x0)
     apply(x0)
     print(f"[fge] reference pose from the sculpt: soft IoU {iou0:.3f} -> {iou1:.3f}, cranium err {head0:.3f} -> {head1:.3f}, largest bend {np.abs(x0[n_glob:]).max():.1f} deg")
