@@ -184,9 +184,9 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     ao.samples = 8
     ramp = nt.nodes.new("ShaderNodeValToRGB")
     ramp.color_ramp.elements[0].position = 0.25
-    ramp.color_ramp.elements[0].color = rgba("#B3958D")
+    ramp.color_ramp.elements[0].color = rgba("#B48470")
     ramp.color_ramp.elements[1].position = 1.0
-    ramp.color_ramp.elements[1].color = rgba("#DDC4BC")
+    ramp.color_ramp.elements[1].color = rgba("#E3BFB0")
     nt.links.new(ao.outputs["AO"], ramp.inputs["Fac"])
     # Faint vessel network (Voronoi cell edges, broken up by noise), strongest on the scalp.
     rest = _rest_coords(nt)

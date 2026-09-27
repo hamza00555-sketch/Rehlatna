@@ -570,6 +570,9 @@ def _similarity(A: np.ndarray, B: np.ndarray) -> np.ndarray:
     return M
 
 
+FAR_HAND_PX = (600.0, 980.0)  # the reference's far hand, at the chin beside the near fist (1080x1920 frame)
+
+
 def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int = 2500) -> float:
     """Pose the sculpt-rigged body onto the reference silhouette starting from
     the sculpt's own pose: a global similarity (initialised so the body lands
@@ -643,6 +646,15 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
         c = np.linalg.lstsq(np.c_[2 * hull, np.ones(len(hull))], (hull**2).sum(1), rcond=None)[0]
         return c[0], c[1], math.sqrt(max(c[2] + c[0] ** 2 + c[1] ** 2, 1e-9))
 
+    # the far hand is hidden behind the near arm, so the outline cannot place
+    # it: a landmark pulls it to the chin as in the reference
+    hands = {n: (wts * (top == rig.index[n])).sum(1) > 0.5 for n in ("wrist.L", "wrist.R") if n in rig.index}
+    far_hand = None
+    if len(hands) == 2:
+        depth = {n: start_verts[sub_idx][m, 1].mean() for n, m in hands.items() if m.any()}
+        far_hand = hands[max(depth, key=depth.get)] if len(depth) == 2 else None
+    frame = (1080, 1920)
+
     def terms(x):
         apply(x)
         V = verts_sub()
@@ -651,14 +663,18 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
         cx, cy, r = cranium(V)
         rx_, ry_, rr = REF_CRANIUM
         head = ((cx - rx_) ** 2 + (cy - ry_) ** 2 + (r - rr) ** 2) / rr**2
-        return iou, head
+        hand = 0.0
+        if far_hand is not None:
+            uv, _ = project_points(V[far_hand], HERO, frame)
+            hand = float(np.sum((uv.mean(0) - np.array(FAR_HAND_PX)) ** 2)) / rr**2
+        return iou, head, hand
 
     def loss(x):
-        iou, head = terms(x)
-        return 1 - iou + 1.0 * head + 0.003 * np.sum((x / sigma) ** 2)
+        iou, head, hand = terms(x)
+        return 1 - iou + 1.0 * head + 0.3 * hand + 0.003 * np.sum((x / sigma) ** 2)
 
     x0 = np.zeros(len(sigma))
-    iou0, head0 = terms(x0)
+    iou0, head0, hand0 = terms(x0)
     # global placement first, then everything
     glob = list(range(n_glob))
     limbs = glob + list(range(n_glob + len(bx), len(x0)))
@@ -690,9 +706,9 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
             best = (xs, f)
     x0 = best[0]
     x0, _ = solve(x0, list(range(len(x0))), max_evals)
-    iou1, head1 = terms(x0)
+    iou1, head1, hand1 = terms(x0)
     apply(x0)
-    print(f"[fge] reference pose from the sculpt: soft IoU {iou0:.3f} -> {iou1:.3f}, cranium err {head0:.3f} -> {head1:.3f}, largest bend {np.abs(x0[n_glob:]).max():.1f} deg")
+    print(f"[fge] reference pose from the sculpt: soft IoU {iou0:.3f} -> {iou1:.3f}, cranium err {head0:.3f} -> {head1:.3f}, far hand err {hand0:.3f} -> {hand1:.3f}, largest bend {np.abs(x0[n_glob:]).max():.1f} deg")
     return iou1
 
 
