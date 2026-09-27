@@ -73,6 +73,8 @@ def main():
     ap.add_argument("--rounds", type=int, default=7)
     ap.add_argument("--outside", type=float, default=1.5, help="px outside the reference that pulls any vertex in")
     ap.add_argument("--retract", action="store_true", help="outside vertices retract toward their own body part")
+    ap.add_argument("--rigid-ends", dest="rigid_ends", action="store_true", help="hands and feet move semi-rigidly (keeps toes/fingers, costs outline fit)")
+    ap.add_argument("--end-keep", dest="end_keep", type=float, default=0.35, help="share of each hand/foot vertex's own move kept around the part's mean")
     ap.add_argument("--cap-hole", dest="cap_hole", type=float, default=60.0, help="max retraction per round, px")
     ap.add_argument("--cap", type=float, default=28.0, help="max move per round, px at 1080x1920")
     ap.add_argument("--smooth", type=int, default=12, help="Laplacian rounds on the displacement field")
@@ -116,6 +118,17 @@ def main():
 
     fams = np.array([_family(rig.names[b]) for b in rig.W.argmax(1)])
     part_of_vertex = fams
+
+    def _end(name):
+        n = name.lower()
+        side = "L" if n.endswith(".l") else "R" if n.endswith(".r") else ""
+        if _re.search("foot|toe", n):
+            return "foot" + side
+        if _re.search("wrist|finger|metacarpal|thumb", n):
+            return "hand" + side
+        return ""
+
+    ends = np.array([_end(rig.names[b]) for b in rig.W.argmax(1)])
     S = rig.pose_matrices() @ np.linalg.inv(rig.rest)  # armature-space skinning
     A = np.einsum("vb,bij->vij", rig.W, S[:, :3, :3])  # per-vertex linear part
     A_inv = np.linalg.inv(A)
@@ -187,6 +200,14 @@ def main():
             np.add.at(acc, edges[:, 1], D[edges[:, 0]])
             np.add.at(cnt, edges.ravel(), 1)
             D[~far] = 0.5 * D[~far] + 0.5 * (acc[~far] / np.maximum(cnt[~far], 1)[:, None])
+        # hands and feet move as rigid pieces (their own mean move): per-vertex
+        # pulls smear toes and fingers
+        if args.rigid_ends:
+            for e in np.unique(ends):
+                if e:
+                    m = ends == e
+                    mu = D[m].mean(0)
+                    D[m] = mu + args.end_keep * (D[m] - mu)
         # world -> armature -> rest (inverse of the blended skinning matrix)
         D_arm = D @ R_arm_inv.T
         D_rest = np.einsum("vij,vj->vi", A_inv, D_arm)
