@@ -361,7 +361,11 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
     dom = np.argmax(rig.W[j], axis=2)  # (v, k)
     mode = np.array([np.bincount(r).argmax() for r in dom])
     conf = ((dom == mode[:, None]) & (agree > 0.25)).mean(1)
-    anchor = (conf >= 0.75) & (d[:, 0] < 0.012)
+    # mutual nearest neighbours: a hand resting on the face is near the head
+    # surface, but the head surface's own nearest sculpt point is the face
+    back = cKDTree(Vs).query(Vb[j[:, 0]])[1]
+    mutual = np.linalg.norm(Vs[back] - Vs, axis=1) < 0.006
+    anchor = (conf >= 0.75) & (d[:, 0] < 0.010) & mutual
     if lab is not None:
         anchor &= ~seam
     edges = np.array([e.vertices[:] for e in sculpt.data.edges])
