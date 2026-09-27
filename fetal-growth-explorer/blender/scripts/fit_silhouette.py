@@ -70,7 +70,8 @@ def outline_vertices(P, faces):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--rounds", type=int, default=5)
+    ap.add_argument("--rounds", type=int, default=7)
+    ap.add_argument("--outside", type=float, default=1.5, help="px outside the reference that pulls any vertex in")
     ap.add_argument("--cap", type=float, default=28.0, help="max move per round, px at 1080x1920")
     ap.add_argument("--smooth", type=int, default=12, help="Laplacian rounds on the displacement field")
     args = ap.parse_args()
@@ -106,6 +107,14 @@ def main():
     for r in range(args.rounds):
         P = posed_world(ob)
         idx = outline_vertices(P, faces)
+        # plus every vertex that lands outside the reference: the reference has
+        # holes (under the chin, between forearm and belly, between the legs)
+        # that the outer rim alone cannot open
+        uv_all, _ = project_points(P, HERO, FRAME)
+        from scipy.ndimage import map_coordinates as _mc
+
+        s_all = _mc(sdf, np.vstack([np.clip(uv_all[:, 1], 0, FRAME[1] - 1), np.clip(uv_all[:, 0], 0, FRAME[0] - 1)]), order=1)
+        idx = np.union1d(idx, np.where(s_all > args.outside)[0])
         uv, depth = project_points(P[idx], HERO, FRAME)
         # sub-pixel samples of the reference distance field
         from scipy.ndimage import map_coordinates
