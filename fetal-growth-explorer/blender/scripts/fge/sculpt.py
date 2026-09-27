@@ -415,7 +415,10 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
     # surface, but the head surface's own nearest sculpt point is the face
     back = cKDTree(Vs).query(Vb[j[:, 0]])[1]
     mutual = np.linalg.norm(Vs[back] - Vs, axis=1) < 0.006
-    anchor = (conf >= 0.75) & (d[:, 0] < 0.010) & mutual
+    # 5 mm: a hand lying on a forearm or a thigh is thicker than that, so its
+    # back cannot anchor to the surface under it (the fit itself is ~7 mm off
+    # on average, so the rest is left to diffusion along the surface)
+    anchor = (conf >= 0.75) & (d[:, 0] < 0.005) & mutual
     if lab is not None:
         anchor &= ~seam
     edges = np.array([e.vertices[:] for e in mesh.data.edges])
