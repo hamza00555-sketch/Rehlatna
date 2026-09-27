@@ -72,6 +72,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rounds", type=int, default=7)
     ap.add_argument("--outside", type=float, default=1.5, help="px outside the reference that pulls any vertex in")
+    ap.add_argument("--retract", action="store_true", help="outside vertices retract toward their own body part")
+    ap.add_argument("--cap-hole", dest="cap_hole", type=float, default=60.0, help="max retraction per round, px")
     ap.add_argument("--cap", type=float, default=28.0, help="max move per round, px at 1080x1920")
     ap.add_argument("--smooth", type=int, default=12, help="Laplacian rounds on the displacement field")
     args = ap.parse_args()
@@ -99,6 +101,21 @@ def main():
 
     rig = mhfit.Rig(arm, ob)
     rig.read_pose(arm)
+    import re as _re
+
+    def _family(name):
+        n = name.lower()
+        side = "L" if n.endswith(".l") else "R" if n.endswith(".r") else ""
+        if _re.search("upperleg|lowerleg|foot|toe", n):
+            return "leg" + side
+        if _re.search("upperarm|lowerarm|wrist|finger|metacarpal|thumb", n):
+            return "arm" + side
+        if _re.search("head|neck|jaw|eye|ear|tongue|oris|levator|temporalis|special|lip|cheek|nose|brow", n):
+            return "head"
+        return "trunk"
+
+    fams = np.array([_family(rig.names[b]) for b in rig.W.argmax(1)])
+    part_of_vertex = fams
     S = rig.pose_matrices() @ np.linalg.inv(rig.rest)  # armature-space skinning
     A = np.einsum("vb,bij->vij", rig.W, S[:, :3, :3])  # per-vertex linear part
     A_inv = np.linalg.inv(A)
@@ -114,7 +131,8 @@ def main():
         from scipy.ndimage import map_coordinates as _mc
 
         s_all = _mc(sdf, np.vstack([np.clip(uv_all[:, 1], 0, FRAME[1] - 1), np.clip(uv_all[:, 0], 0, FRAME[0] - 1)]), order=1)
-        idx = np.union1d(idx, np.where(s_all > args.outside)[0])
+        outside = np.where(s_all > args.outside)[0]
+        idx = np.union1d(idx, outside)
         uv, depth = project_points(P[idx], HERO, FRAME)
         # sub-pixel samples of the reference distance field
         from scipy.ndimage import map_coordinates
@@ -123,8 +141,30 @@ def main():
         d = map_coordinates(sdf, coords, order=1)
         du = -d * map_coordinates(gx, coords, order=1)
         dv = -d * map_coordinates(gy, coords, order=1)
+        if args.retract:
+            # a vertex outside the reference retracts toward its own body part
+            # (belly toward the trunk, forearm toward the arm): the first point
+            # along that ray that lies inside the reference
+            fam = part_of_vertex
+            cen = {k: uv_all[fam == k].mean(0) for k in np.unique(fam)}
+            sel = np.where(np.isin(idx, outside))[0]
+            for k in sel:
+                v = idx[k]
+                c = cen[fam[v]]
+                dirv = c - uv[k]
+                L = np.hypot(*dirv)
+                if L < 1e-3:
+                    continue
+                dirv /= L
+                steps = np.arange(1, min(args.cap_hole, L) + 1)
+                pts = uv[k][None, :] + steps[:, None] * dirv[None, :]
+                sv = map_coordinates(sdf, np.vstack([np.clip(pts[:, 1], 0, FRAME[1] - 1), np.clip(pts[:, 0], 0, FRAME[0] - 1)]), order=1)
+                hit = np.where(sv <= 0)[0]
+                if len(hit):
+                    du[k], dv[k] = steps[hit[0]] * dirv[0], steps[hit[0]] * dirv[1]
         mag = np.hypot(du, dv)
-        scale = np.minimum(1.0, args.cap / np.maximum(mag, 1e-6))
+        cap = np.where(np.isin(idx, outside), args.cap_hole if args.retract else args.cap, args.cap)
+        scale = np.minimum(1.0, cap / np.maximum(mag, 1e-6))
         du, dv = du * scale, dv * scale
         # pixel motion -> world motion in the image plane at each vertex's depth
         dw = np.zeros((len(idx), 3))
