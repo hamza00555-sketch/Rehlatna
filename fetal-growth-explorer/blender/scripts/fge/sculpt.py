@@ -570,7 +570,10 @@ def _similarity(A: np.ndarray, B: np.ndarray) -> np.ndarray:
     return M
 
 
-FAR_HAND_PX = (600.0, 980.0)  # the reference's far hand, at the chin beside the near fist (1080x1920 frame)
+# The reference's far hand sits at the chin beside the near fist (1080x1920
+# frame). Off by default: this sculpt's far hand is an open, spread hand and
+# reads as a blade from the shot camera, so it stays tucked out of view.
+FAR_HAND_PX = None
 
 
 def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int = 2500) -> float:
@@ -650,7 +653,7 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
     # it: a landmark pulls it to the chin as in the reference
     hands = {n: (wts * (top == rig.index[n])).sum(1) > 0.5 for n in ("wrist.L", "wrist.R") if n in rig.index}
     far_hand = None
-    if len(hands) == 2:
+    if len(hands) == 2 and FAR_HAND_PX is not None:
         depth = {n: start_verts[sub_idx][m, 1].mean() for n, m in hands.items() if m.any()}
         far_hand = hands[max(depth, key=depth.get)] if len(depth) == 2 else None
     frame = (1080, 1920)
