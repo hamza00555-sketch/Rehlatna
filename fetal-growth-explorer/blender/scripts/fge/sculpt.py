@@ -576,7 +576,7 @@ def _similarity(A: np.ndarray, B: np.ndarray) -> np.ndarray:
 # The reference's far hand sits at the chin beside the near fist (1080x1920
 # frame). Off by default: this sculpt's far hand is an open, spread hand and
 # reads as a blade from the shot camera, so it stays tucked out of view.
-FAR_HAND_PX = None
+FAR_HAND_PX = (600.0, 980.0)
 
 
 def _tucked_side(rig: mhfit.Rig, V: np.ndarray) -> str:
@@ -652,7 +652,7 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
         sl = slice(n_glob + len(bx) + 2 * k, n_glob + len(bx) + 2 * k + 2)
         if b.startswith(("wrist", "foot")):
             bound[sl], sigma[sl] = 8.0, 4.0
-        if b.startswith(("upperarm", "lowerarm", "wrist")) and b.endswith(far_arm):
+        if FAR_HAND_PX is None and b.startswith(("upperarm", "lowerarm", "wrist")) and b.endswith(far_arm):
             bound[sl], sigma[sl] = 6.0, 3.0
 
     def apply(x):
