@@ -117,7 +117,7 @@ def make_lights(target=(0.0, 0.0, 0.02)):
     # instead of +7/+15/+34 with a distant key).
     area_light("LGT_Key", (-0.220, -0.056, 0.287), (-0.01, 0.0, 0.08), "#FFE6D8", 2.84, 0.294, col=col)
     # Neutral fill low from the front-right lifts the face and belly.
-    area_light("LGT_Fill", (0.90, -1.00, 0.10), target, "#E2E4DF", 1.0, 1.4, col=col)
+    area_light("LGT_Fill", (0.90, -1.00, 0.10), target, "#E2E4DF", 1.4, 1.4, col=col)
     # Soft back light straight behind: a thin environment-like edge all round,
     # and SSS glow through ears, fingers and toes.
     area_light("LGT_Rim", (0.05, 1.00, 0.30), target, "#FFE2D0", 80.0, 0.8, col=col)
@@ -186,7 +186,7 @@ def skin_material(name="MAT_Skin", translucency: float = 1.0, vessels: float = 1
     ramp.color_ramp.elements[0].position = 0.25
     ramp.color_ramp.elements[0].color = rgba("#B47E74")
     ramp.color_ramp.elements[1].position = 1.0
-    ramp.color_ramp.elements[1].color = rgba("#E6C3B8")
+    ramp.color_ramp.elements[1].color = rgba("#EBCBC1")
     nt.links.new(ao.outputs["AO"], ramp.inputs["Fac"])
     # Faint vessel network (Voronoi cell edges, broken up by noise), strongest on the scalp.
     rest = _rest_coords(nt)
