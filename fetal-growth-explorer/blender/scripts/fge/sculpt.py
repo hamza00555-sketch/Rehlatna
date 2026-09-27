@@ -95,6 +95,20 @@ def import_sculpt(path: Path, name: str = "FET_Sculpt", collection=None):
     V = np.empty(len(ob.data.vertices) * 3)
     ob.data.vertices.foreach_get("co", V)
     extent = float(np.ptp(V.reshape(-1, 3), axis=0).max())
+    # welded copy of the original surface: its connectivity keeps touching
+    # parts (a hand on a thigh) separate, which the voxel fuse below cannot
+    import bmesh
+
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=extent * 1e-6)
+    bm.to_mesh(ob.data)
+    bm.free()
+    src = bpy.data.objects.new(name + "Src", ob.data.copy())
+    src.hide_render = src.hide_viewport = True
+    for c in ob.users_collection:
+        c.objects.link(src)
+    ob["fge_src"] = src.name
     mod = ob.modifiers.new("fuse", "REMESH")
     mod.mode = "VOXEL"
     mod.voxel_size = extent / 400.0
@@ -167,6 +181,19 @@ def reduce(ob, faces: int = 40000, quads: bool = True) -> None:
     mod = ob.modifiers.new("decimate", "DECIMATE")
     mod.ratio = ratio
     bpy.ops.object.modifier_apply(modifier=mod.name)
+
+
+def _src(sculpt):
+    """The welded original-connectivity copy made at import, if still present."""
+    name = sculpt.get("fge_src")
+    return bpy.data.objects.get(name) if name else None
+
+
+def _transform(sculpt, M: Matrix) -> None:
+    sculpt.data.transform(M)
+    src = _src(sculpt)
+    if src is not None:
+        src.data.transform(M)
 
 
 def _verts(ob) -> np.ndarray:
@@ -248,7 +275,7 @@ def register(sculpt, rig: mhfit.Rig) -> None:
     Mx = np.eye(4)
     Mx[:3, :3] = s * R
     Mx[:3, 3] = t
-    sculpt.data.transform(Matrix(Mx.tolist()) @ sculpt.matrix_world)
+    _transform(sculpt, Matrix(Mx.tolist()) @ sculpt.matrix_world)
     sculpt.matrix_world = Matrix.Identity(4)
     X = _verts(sculpt)
     gap = cKDTree(T).query(X[::10])[0].mean() + cKDTree(X).query(T[::10])[0].mean()
@@ -330,9 +357,14 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
     of smoothing over the sculpt's own edges. Returns the weight matrix."""
     Vb = rig.verts()
     Nb = _normals(Vb, rig.faces)
-    Vs, Ns = _verts(sculpt), _sculpt_normals(sculpt)
+    Vs_out = _verts(sculpt)
+    src = _src(sculpt)
+    mesh = src if src is not None else sculpt
+    Vs, Ns = _verts(mesh), _sculpt_normals(mesh)
     d, j = cKDTree(Vb).query(Vs, k=16)
     lab = _head_label(sculpt)
+    if lab is not None and src is not None:  # head label lives on the fused mesh
+        lab = lab[cKDTree(Vs_out).query(Vs)[1]]
     if lab is not None:
         # the sculpt's head part takes weights from the MakeHuman head only (a
         # tucked face must not follow the chest); the body part from the rest.
@@ -368,9 +400,9 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
     anchor = (conf >= 0.75) & (d[:, 0] < 0.010) & mutual
     if lab is not None:
         anchor &= ~seam
-    edges = np.array([e.vertices[:] for e in sculpt.data.edges])
+    edges = np.array([e.vertices[:] for e in mesh.data.edges])
     W = _diffuse(W0, edges, anchor)
-    print(f"[fge] weights: {int(anchor.sum())} anchors of {len(anchor)} verts, rest diffused")
+    print(f"[fge] weights: {int(anchor.sum())} anchors of {len(anchor)} verts ({'source' if src is not None else 'fused'} connectivity), rest diffused")
     for _ in range(3):
         acc = np.zeros_like(W)
         cnt = np.zeros(len(W))
@@ -378,6 +410,17 @@ def transfer(sculpt, rig: mhfit.Rig, body) -> np.ndarray:
         np.add.at(acc, edges[:, 1], W[edges[:, 0]])
         np.add.at(cnt, edges.ravel(), 1)
         W = 0.5 * W + 0.5 * acc / np.maximum(cnt, 1)[:, None]
+    if src is not None:  # onto the fused mesh, then drop the source copy
+        dd, jj = cKDTree(Vs).query(Vs_out, k=3)
+        ww = 1.0 / np.maximum(dd, 1e-6)
+        ww /= ww.sum(1, keepdims=True)
+        W = np.einsum("vk,vkb->vb", ww, W[jj])
+        w = np.einsum("vk,vkm->vm", ww, w[jj])
+        j = j[jj[:, 0]]
+        me = src.data
+        bpy.data.objects.remove(src, do_unlink=True)
+        bpy.data.meshes.remove(me)
+        del sculpt["fge_src"]
     top = np.argsort(-W, axis=1)[:, :4]
     Wt = np.zeros_like(W)
     np.put_along_axis(Wt, top, np.take_along_axis(W, top, axis=1), axis=1)
@@ -633,7 +676,7 @@ def adopt(path: Path, body, arm, faces: int = 40000, collection=None):
     bpy.ops.object.mode_set(mode="OBJECT")
 
     # sculpt: armature-local coordinates, parented, weighted
-    sculpt.data.transform(Matrix(np.linalg.inv(np.array(arm.matrix_world)).tolist()))
+    _transform(sculpt, Matrix(np.linalg.inv(np.array(arm.matrix_world)).tolist()))
     sculpt.parent = arm
     sculpt.matrix_parent_inverse = Matrix.Identity(4)
     sculpt.matrix_basis = Matrix.Identity(4)
