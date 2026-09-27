@@ -474,6 +474,9 @@ def solve_reference_pose(rig: mhfit.Rig, start_verts: np.ndarray, max_evals: int
     n_glob = 7
     # trunk/neck/head bends stay small (the sculpt's curl is right); limbs may move
     sigma = np.r_[[30.0, 30.0, 30.0, 10.0, 10.0, 10.0, 6.0], np.full(len(bx), 8.0), np.full(2 * len(bxz), 25.0)]
+    for k, b in enumerate(bxz):  # hands and feet: small corrections only
+        if b.startswith(("wrist", "foot")):
+            sigma[n_glob + len(bx) + 2 * k : n_glob + len(bx) + 2 * k + 2] = 6.0
 
     def apply(x):
         rig.reset()
@@ -543,6 +546,42 @@ def _rot_z(deg: float) -> np.ndarray:
     return np.array([[math.cos(a), -math.sin(a), 0], [math.sin(a), math.cos(a), 0], [0, 0, 1]])
 
 
+def rigid_extremities(ob, arm) -> None:
+    """Fold finger/toe/metacarpal weights into the wrist/foot bone: the sculpt
+    has no finger topology to speak of after remeshing, and transferred finger
+    weights only tear the hands when the arm moves. Hands and feet then move
+    as one piece (finger animation can be re-weighted later)."""
+    names = {b.name: b for b in arm.data.bones}
+    target = {}
+    for n, b in names.items():
+        p = b
+        while p is not None and not (p.name.startswith("wrist") or p.name.startswith("foot")):
+            p = p.parent
+        if p is not None and p.name != n:
+            target[n] = p.name
+    W = {}
+    for vg in ob.vertex_groups:
+        if vg.name in target:
+            for v in ob.data.vertices:
+                for g in v.groups:
+                    if g.group == vg.index and g.weight > 0:
+                        W.setdefault((v.index, target[vg.name]), 0.0)
+                        W[(v.index, target[vg.name])] += g.weight
+    for (vi, dst), w in W.items():
+        dvg = ob.vertex_groups[dst]
+        cur = 0.0
+        for g in ob.data.vertices[vi].groups:
+            if g.group == dvg.index:
+                cur = g.weight
+        dvg.add([vi], cur + w, "REPLACE")
+    for vg in list(ob.vertex_groups):
+        if vg.name in target:
+            ob.vertex_groups.remove(vg)
+    for n in target:  # keep an empty group so the bone list stays complete
+        ob.vertex_groups.new(name=n)
+    mh.clean_weights(ob)
+
+
 def _pose_to(arm, rig: mhfit.Rig, M_target: np.ndarray) -> None:
     """Pose the (new-rest) armature so every bone reaches its armature-space
     matrix in M_target (computed against the old rest)."""
@@ -602,6 +641,7 @@ def adopt(path: Path, body, arm, faces: int = 40000, collection=None):
     mod.object = arm
     mod.use_deform_preserve_volume = True
     mh.clean_weights(sculpt)
+    rigid_extremities(sculpt, arm)
 
     # the reference pose: the MakeHuman solve gives the placement, then the
     # sculpt is posed onto the reference outline from its own pose (small bends)
