@@ -1,0 +1,24 @@
+{
+  "_about": "Per-week fetal size and proportions for the stage shape keys and the timeline tool. Biometry (BPD, HC, AC, FL in mm) is Hadlock 1984 (16-40 w, via babymed.com); 12-15 w are extrapolated along the same curves and marked approx. Length/weight are the commonly cited growth-chart averages (crown-rump to 13 w, crown-heel after; perinatology.com, WHO-based charts). Values are population means for illustration, not diagnostic.",
+  "base_week": 24,
+  "weeks": {
+    "12": {"crl_cm": 5.4,  "ch_cm": 8.0,  "weight_g": 14,   "bpd": 20.0, "hc": 72.0,  "ac": 56.0,  "fl": 8.0,  "approx": true},
+    "16": {"crl_cm": 11.6, "ch_cm": 18.6, "weight_g": 100,  "bpd": 32.3, "hc": 124.4, "ac": 99.1,  "fl": 20.5},
+    "20": {"crl_cm": 16.4, "ch_cm": 25.6, "weight_g": 300,  "bpd": 46.4, "hc": 176.8, "ac": 149.1, "fl": 32.7},
+    "24": {"crl_cm": 21.0, "ch_cm": 30.0, "weight_g": 600,  "bpd": 59.3, "hc": 224.4, "ac": 195.9, "fl": 43.8},
+    "28": {"crl_cm": 25.0, "ch_cm": 37.6, "weight_g": 1005, "bpd": 70.8, "hc": 266.1, "ac": 239.6, "fl": 53.8},
+    "32": {"crl_cm": 28.0, "ch_cm": 42.4, "weight_g": 1702, "bpd": 80.7, "hc": 300.9, "ac": 280.0, "fl": 62.7},
+    "36": {"crl_cm": 32.0, "ch_cm": 47.4, "weight_g": 2622, "bpd": 88.8, "hc": 327.9, "ac": 317.3, "fl": 70.6},
+    "40": {"crl_cm": 36.0, "ch_cm": 51.2, "weight_g": 3462, "bpd": 94.8, "hc": 346.1, "ac": 351.3, "fl": 77.3}
+  },
+  "appearance": {
+    "12": "Head about half the body; limbs short and thin; skin thin and translucent; eyelids fused.",
+    "16": "Neck lengthens, head less dominant; limbs lengthen; skin translucent with visible vessels.",
+    "20": "Lanugo covers the body; vernix begins; skin red and wrinkled, little fat.",
+    "24": "Skin reddish, wrinkled and semi-translucent; body lean; lungs begin surfactant.",
+    "28": "Eyelids open (26-28 w); fat begins to fill in, skin smoothing.",
+    "32": "Body rounding with subcutaneous fat; skin less translucent.",
+    "36": "Skin pink and smooth, body rounded; lanugo mostly shed.",
+    "40": "Full-term: plump, rounded limbs; head roughly a quarter of body length."
+  }
+}
