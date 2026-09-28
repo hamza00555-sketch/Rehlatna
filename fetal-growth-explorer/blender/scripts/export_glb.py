@@ -36,6 +36,8 @@ def main():
         export_skins=True,
         export_animations=True,
         export_morph=True,
+        export_morph_normal=False,
+        export_morph_tangent=False,
         export_yup=True,
         export_draco_mesh_compression_enable=True,
         export_draco_mesh_compression_level=6,

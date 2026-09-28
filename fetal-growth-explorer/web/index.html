@@ -146,6 +146,8 @@
     background: var(--line);
   }
   .tick.major i { height: 16px; background: rgba(233, 241, 239, 0.3); }
+  .tick.avail { cursor: pointer; }
+  .tick.avail i { background: rgba(231, 183, 165, 0.45); }
   .tick.live { cursor: pointer; }
   .tick.live i { width: 4px; height: 30px; background: var(--skin); box-shadow: 0 0 12px rgba(231, 183, 165, 0.6); }
   .tick:focus-visible { outline: 2px solid var(--skin); outline-offset: 2px; border-radius: 3px; }
@@ -176,6 +178,15 @@
     text-overflow: ellipsis;
   }
   .phases span.on { border-color: var(--skin); color: var(--ink); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  #week-range {
+    width: 100%;
+    margin: 4px 0 2px;
+    direction: ltr;
+    accent-color: var(--skin);
+    height: 28px;
+  }
+  #week-range:focus-visible { outline: 2px solid var(--skin); outline-offset: 2px; border-radius: 6px; }
   .credit { font-size: 11.5px; color: var(--ink-dim); text-align: center; margin: 0; }
   .credit a { color: var(--ink-dim); }
   [hidden] { display: none !important; }
@@ -230,15 +241,17 @@
   <footer>
     <section class="card" aria-labelledby="wk">
       <div class="week-row">
-        <h2 class="week" id="wk">الأسبوع ٢٤ <small>الثلث الثاني</small></h2>
+        <h2 class="week" id="wk">الأسبوع ٢٤ <small id="tri">الثلث الثاني</small></h2>
         <ul class="stats">
-          <li><span class="k">الطول (الرأس–الكعب)</span><span class="v">≈ ٣٠ سم</span></li>
-          <li><span class="k">الوزن</span><span class="v">≈ ٦٠٠ غ</span></li>
+          <li><span class="k" id="len-k">الطول (الرأس–الكعب)</span><span class="v" id="len">≈ ٣٠ سم</span></li>
+          <li><span class="k">الوزن</span><span class="v" id="wt">≈ ٦٠٠ غ</span></li>
         </ul>
       </div>
-      <p class="note">الرئتان تبدآن تكوين المادة المُفعّلة للسطح، والجلد رقيق شبه شفاف، والجنين يستجيب للّمس والصوت بحركات واضحة.</p>
+      <p class="note" id="note">الرئتان تبدآن تكوين المادة المُفعّلة للسطح، والجلد رقيق شبه شفاف، والجنين يستجيب للّمس والصوت بحركات واضحة.</p>
 
       <div class="timeline" aria-label="الخط الزمني للحمل من الأسبوع ١ إلى ٤٠">
+        <label class="sr" for="week-range">الأسبوع</label>
+        <input type="range" id="week-range" min="12" max="40" step="0.1" value="24">
         <div class="ticks" id="ticks"></div>
         <div class="scale" aria-hidden="true"><span>1</span><span>8</span><span>12</span><span>20</span><span>24</span><span>28</span><span>36</span><span>40</span></div>
         <div class="phases" aria-hidden="true">
@@ -248,7 +261,7 @@
         </div>
       </div>
     </section>
-    <p class="credit">نموذج أولي · الأسبوع ٢٤ فقط متاح الآن · الشكل مبني على <a href="https://sketchfab.com/3d-models/baby-f05a87806cad49feb75ac7659d55c368" target="_blank" rel="noopener">“Baby” by joekarava</a> (CC BY 4.0)</p>
+    <p class="credit">نموذج أولي · الأسابيع ١٢–٤٠ من قياسات النمو (Hadlock) · الأسابيع ١–١١ قريباً · الشكل مبني على <a href="https://sketchfab.com/3d-models/baby-f05a87806cad49feb75ac7659d55c368" target="_blank" rel="noopener">“Baby” by joekarava</a> (CC BY 4.0)</p>
   </footer>
 </div>
 
@@ -257,19 +270,39 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 (function () {
-  const LIVE_WEEK = 24;
+  const FIRST = 12, LAST = 40;
+  // per-week data (data/fetal_growth.json): crown-heel length (crown-rump before 14 w) and weight
+  const WEEKS = {
+    12: { len: 5.4, crl: true, ch: 8.0, g: 14 },   16: { len: 18.6, g: 100 },  20: { len: 25.6, g: 300 },
+    24: { len: 30.0, g: 600 },            28: { len: 37.6, g: 1005 }, 32: { len: 42.4, g: 1702 },
+    36: { len: 47.4, g: 2622 },           40: { len: 51.2, g: 3462 },
+  };
+  const NOTES = {
+    12: "الرأس تقريباً نصف طول الجسم، والأطراف قصيرة ونحيلة، والجلد رقيق شفاف، والجفون ملتصقة.",
+    16: "الرقبة تطول والرأس يصير أقل هيمنة، والأطراف تطول، والجلد شفاف تظهر من تحته الأوعية.",
+    20: "الزغب الناعم يغطي الجسم وتبدأ الطبقة الدهنية الواقية على الجلد، والجلد أحمر ومجعّد.",
+    24: "الرئتان تبدآن تكوين المادة المُفعّلة للسطح، والجلد رقيق شبه شفاف، والجنين يستجيب للّمس والصوت بحركات واضحة.",
+    28: "الجفون تبدأ تنفتح بين الأسبوع ٢٦ و٢٨، والدهون تبدأ تملأ الجسم فيصير الجلد أنعم.",
+    32: "الجسم يستدير بالدهون تحت الجلد، والجلد أقل شفافية.",
+    36: "الجلد وردي وناعم والجسم ممتلئ، ومعظم الزغب يتساقط.",
+    40: "مكتمل النمو: ممتلئ بأطراف مستديرة، والرأس تقريباً ربع طول الجسم.",
+  };
+  const KEY_WEEKS = Object.keys(WEEKS).map(Number).sort((a, b) => a - b);
+  const ar = (n, d = 0) => Number(n).toLocaleString("ar-EG", { maximumFractionDigits: d, minimumFractionDigits: d });
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // ---- timeline ticks (only week 24 is live in this prototype) ----
   const ticks = document.getElementById("ticks");
   for (let w = 1; w <= 40; w++) {
     const b = document.createElement("button");
-    b.className = "tick" + (w % 4 === 0 ? " major" : "") + (w === LIVE_WEEK ? " live" : "");
+    const live = w >= FIRST && w <= LAST;
+    b.className = "tick" + (w % 4 === 0 ? " major" : "") + (live ? " avail" : "");
     b.type = "button";
-    b.setAttribute("aria-label", w === LIVE_WEEK ? "الأسبوع " + w + " (المعروض)" : "الأسبوع " + w + " (قريباً)");
-    if (w !== LIVE_WEEK) b.setAttribute("aria-disabled", "true");
+    b.dataset.week = w;
+    b.setAttribute("aria-label", live ? "الأسبوع " + w : "الأسبوع " + w + " (قريباً)");
+    if (!live) b.setAttribute("aria-disabled", "true");
     b.appendChild(document.createElement("i"));
-    b.addEventListener("click", () => toast(w === LIVE_WEEK ? "أنت في الأسبوع ٢٤" : "الأسبوع " + w + " قريباً"));
+    b.addEventListener("click", () => live ? animateTo(w) : toast("الأسبوع " + ar(w) + " قريباً"));
     ticks.appendChild(b);
   }
 
@@ -312,8 +345,10 @@
   rim.position.set(0.4, 0.8, -1.8);
   scene.add(rim);
 
+  const pivot = new THREE.Group();
+  scene.add(pivot);
   const root = new THREE.Group();
-  scene.add(root);
+  pivot.add(root);
 
   // ---- reactions: damped springs added on top of the posed bones ----
   // Each impulse bends a set of bones about their local X/Z axes and decays.
@@ -374,15 +409,20 @@
       if (o.isMesh) {
         o.frustumCulled = false;
         const m = o.material;
-        if (m && m.isMeshStandardMaterial) {
-          m.envMapIntensity = 0.6;
-          if (/Skin/.test(m.name)) {
-            m.map = null;
-            m.color.set(0xd99a86);
-            m.roughness = 0.52;
-            m.sheen = m.sheen || 0.4;
-            if (m.sheenColor) m.sheenColor.set(0xffc8b8);
-          }
+        if (m && /Skin/.test(m.name)) {
+          // the Blender skin is a Cycles SSS network; the web gets a matched physical skin
+          o.material = new THREE.MeshPhysicalMaterial({
+            name: "WebSkin",
+            color: 0xe0a28c,
+            roughness: 0.48,
+            clearcoat: 0.12,
+            clearcoatRoughness: 0.5,
+            sheen: 0.6,
+            sheenRoughness: 0.5,
+            sheenColor: new THREE.Color(0xffb8a0),
+          });
+        } else if (m && /Cord/.test(m.name)) {
+          o.material = new THREE.MeshPhysicalMaterial({ color: 0xe9cfc8, roughness: 0.35, clearcoat: 0.3, sheen: 0.4, sheenColor: new THREE.Color(0xffffff) });
         }
       }
     });
@@ -411,19 +451,20 @@
     const vfov = THREE.MathUtils.degToRad(camera.fov);
     const aspect = Math.max(canvas.clientWidth, 1) / Math.max(canvas.clientHeight, 1);
     const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
-    const dist = (radius * 1.15) / Math.sin(Math.min(vfov, hfov) / 2);
+    const dist = (radius * 1.35) / Math.sin(Math.min(vfov, hfov) / 2);
     camera.position.set(0, radius * 0.15, dist);
     camera.near = radius / 50;
     camera.far = radius * 40;
     camera.updateProjectionMatrix();
     // keep the fetus clear of the info card: aim below it in proportion to the card height
     const cardH = document.querySelector("footer").getBoundingClientRect().height;
-    const lift = (cardH / Math.max(canvas.clientHeight, 1)) * radius * 1.5;
+    const lift = (cardH / Math.max(canvas.clientHeight, 1)) * radius * 2.4;
     controls.target.set(0, -lift, 0);
     controls.minDistance = dist * 0.45;
     controls.maxDistance = dist * 1.8;
     scene.fog.density = 0.06 / radius;
     status.hidden = true;
+    setWeek(Number(range.value));
   };
   const onError = () => { status.textContent = "تعذّر تحميل النموذج. أعد تحميل الصفحة."; };
   if (embedded) {
@@ -437,6 +478,62 @@
       if (ev.total) status.textContent = "جارٍ تحميل الجنين… " + Math.round((ev.loaded / ev.total) * 100) + "٪";
     }, onError);
   }
+
+  // ---- weeks: morph between neighbouring stage keys, scale to real size ----
+  const range = document.getElementById("week-range");
+  const wkEl = document.getElementById("wk"), triEl = document.getElementById("tri");
+  const lenEl = document.getElementById("len"), lenK = document.getElementById("len-k");
+  const wtEl = document.getElementById("wt"), noteEl = document.getElementById("note");
+  let shownWeek = null;
+  function lerpWeek(w, f) {
+    const i = Math.max(0, KEY_WEEKS.findIndex((k) => k >= w) - 1);
+    const a = KEY_WEEKS[i], b = KEY_WEEKS[Math.min(i + 1, KEY_WEEKS.length - 1)];
+    const t = b === a ? 0 : Math.min(Math.max((w - a) / (b - a), 0), 1);
+    return { a, b, t, v: f(WEEKS[a]) * (1 - t) + f(WEEKS[b]) * t };
+  }
+  function setWeek(w) {
+    w = Math.min(Math.max(w, FIRST), LAST);
+    const m = lerpWeek(w, (d) => d.ch || d.len);
+    if (body && body.morphTargetDictionary) {
+      const dict = body.morphTargetDictionary, inf = body.morphTargetInfluences;
+      for (const k of KEY_WEEKS) {
+        const idx = dict["W" + String(k).padStart(2, "0")];
+        if (idx === undefined) continue;
+        inf[idx] = k === m.a ? 1 - m.t : k === m.b ? m.t : 0;
+      }
+    }
+    // real size, softened so early weeks stay readable (the label carries the true value)
+    const s = Math.pow(m.v / 30, 0.45);
+    pivot.scale.setScalar(s);
+    const whole = Math.round(w);
+    if (whole !== shownWeek) {
+      shownWeek = whole;
+      wkEl.firstChild.nodeValue = "الأسبوع " + ar(whole) + " ";
+      triEl.textContent = whole <= 13 ? "الثلث الأول" : whole <= 27 ? "الثلث الثاني" : "الثلث الثالث";
+      const L = lerpWeek(whole, (d) => d.len), G = lerpWeek(whole, (d) => d.g);
+      const crl = whole < 14;
+      lenK.textContent = crl ? "الطول (الرأس–المقعدة)" : "الطول (الرأس–الكعب)";
+      lenEl.textContent = "≈ " + ar(crl ? 5.4 + (whole - 12) * 2.0 : L.v, L.v < 20 ? 1 : 0) + " سم";
+      wtEl.textContent = G.v >= 1000 ? "≈ " + ar(G.v / 1000, 1) + " كغ" : "≈ " + ar(Math.round(G.v / 5) * 5) + " غ";
+      const near = KEY_WEEKS.reduce((p, k) => (Math.abs(k - whole) < Math.abs(p - whole) ? k : p), KEY_WEEKS[0]);
+      noteEl.textContent = NOTES[near];
+      for (const t of ticks.children) t.classList.toggle("live", Number(t.dataset.week) === whole);
+    }
+  }
+  let anim = null;
+  function animateTo(target) {
+    const from = Number(range.value), t0 = performance.now(), dur = reduceMotion ? 0 : 700;
+    cancelAnimationFrame(anim);
+    const step = (now) => {
+      const k = dur ? Math.min((now - t0) / dur, 1) : 1;
+      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      range.value = from + (target - from) * e;
+      setWeek(Number(range.value));
+      if (k < 1) anim = requestAnimationFrame(step);
+    };
+    anim = requestAnimationFrame(step);
+  }
+  range.addEventListener("input", () => { cancelAnimationFrame(anim); setWeek(Number(range.value)); });
 
   // ---- touch: pick the bone family under the finger ----
   const ray = new THREE.Raycaster();
