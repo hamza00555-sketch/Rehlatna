@@ -162,7 +162,7 @@
   }
   .phases {
     display: grid;
-    grid-template-columns: 3fr 5fr 32fr;
+    grid-template-columns: 2fr 3fr 5fr 30fr;
     gap: 4px;
     margin-top: 8px;
     direction: ltr;
@@ -251,17 +251,18 @@
 
       <div class="timeline" aria-label="الخط الزمني للحمل من الأسبوع ١ إلى ٤٠">
         <label class="sr" for="week-range">الأسبوع</label>
-        <input type="range" id="week-range" min="12" max="40" step="0.1" value="24">
+        <input type="range" id="week-range" min="1" max="40" step="0.1" value="24">
         <div class="ticks" id="ticks"></div>
         <div class="scale" aria-hidden="true"><span>1</span><span>8</span><span>12</span><span>20</span><span>24</span><span>28</span><span>36</span><span>40</span></div>
-        <div class="phases" aria-hidden="true">
-          <span>خلوية ١–٣</span>
-          <span>مُضغة ٤–٨</span>
-          <span class="on">جنين ٩–٤٠</span>
+        <div class="phases" id="phases" aria-hidden="true">
+          <span data-from="1" data-to="2">قبل الإخصاب</span>
+          <span data-from="3" data-to="5">خلوية</span>
+          <span data-from="6" data-to="10">مُضغة</span>
+          <span data-from="11" data-to="40" class="on">جنين ١١–٤٠</span>
         </div>
       </div>
     </section>
-    <p class="credit">نموذج أولي · الأسابيع ١٢–٤٠ من قياسات النمو (Hadlock) · الأسابيع ١–١١ قريباً · الشكل مبني على <a href="https://sketchfab.com/3d-models/baby-f05a87806cad49feb75ac7659d55c368" target="_blank" rel="noopener">“Baby” by joekarava</a> (CC BY 4.0)</p>
+    <p class="credit">نموذج أولي · الأسابيع تُحسب من آخر دورة · ١–٥ مرحلة الخلايا · ٦–١١ قيد البناء · ١٢–٤٠ من قياسات النمو (Hadlock) · الشكل مبني على <a href="https://sketchfab.com/3d-models/baby-f05a87806cad49feb75ac7659d55c368" target="_blank" rel="noopener">“Baby” by joekarava</a> (CC BY 4.0)</p>
   </footer>
 </div>
 
@@ -270,7 +271,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 (function () {
-  const FIRST = 12, LAST = 40;
+  const FIRST = 12, LAST = 40, EARLY_LAST = 5;
   // per-week data (data/fetal_growth.json): crown-heel length (crown-rump before 14 w) and weight
   const WEEKS = {
     12: { len: 5.4, crl: true, ch: 8.0, g: 14 },   16: { len: 18.6, g: 100 },  20: { len: 25.6, g: 300 },
@@ -288,6 +289,15 @@
     40: "مكتمل النمو: ممتلئ بأطراف مستديرة، والرأس تقريباً ربع طول الجسم.",
   };
   const KEY_WEEKS = Object.keys(WEEKS).map(Number).sort((a, b) => a - b);
+  // gestational weeks 1-5 (counted from the last period; conception near the end of week 2)
+  const EARLY = {
+    1: { size: "≈ ٠٫١٢ مم", label: "قطر البويضة", note: "يُحسب الحمل من أول يوم لآخر دورة، فالجنين لم يتكوّن بعد. في نهاية الأسبوع الثاني تخرج البويضة وحولها طبقة من الخلايا الداعمة." },
+    2: { size: "≈ ٠٫١٢ مم", label: "قطر البويضة", note: "يُحسب الحمل من أول يوم لآخر دورة، فالجنين لم يتكوّن بعد. في نهاية الأسبوع الثاني تخرج البويضة وحولها طبقة من الخلايا الداعمة." },
+    3: { size: "≈ ٠٫١٥ مم", label: "القطر", note: "الإخصاب: البويضة المخصّبة تنقسم إلى ٢ ثم ٤ ثم ٨ خلايا في طريقها عبر قناة فالوب، ثم تصير كرة من ١٦–٣٢ خلية (التوتة)." },
+    4: { size: "≈ ٠٫٢ مم", label: "القطر", note: "الكرة تصير كيسة أريمية مجوّفة فيها كتلة خلايا داخلية، وتنغرس في جدار الرحم." },
+    5: { size: "≈ ١٫٥ مم", label: "طول القرص الجنيني", note: "الكتلة الداخلية تصير قرصاً جنينياً من ثلاث طبقات تتكوّن منها أعضاء الجسم كلها، ويحيط به الكيس المحي والسلى." },
+  };
+  const EMBRYO_NOTE = "مرحلة المُضغة: يبدأ القلب بالنبض، ويتكوّن الأنبوب العصبي وبراعم الأطراف وملامح الوجه. هذه المرحلة قيد البناء في النموذج.";
   const ar = (n, d = 0) => Number(n).toLocaleString("ar-EG", { maximumFractionDigits: d, minimumFractionDigits: d });
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -295,7 +305,7 @@
   const ticks = document.getElementById("ticks");
   for (let w = 1; w <= 40; w++) {
     const b = document.createElement("button");
-    const live = w >= FIRST && w <= LAST;
+    const live = (w >= FIRST && w <= LAST) || w <= EARLY_LAST;
     b.className = "tick" + (w % 4 === 0 ? " major" : "") + (live ? " avail" : "");
     b.type = "button";
     b.dataset.week = w;
@@ -460,6 +470,7 @@
     const cardH = document.querySelector("footer").getBoundingClientRect().height;
     const lift = (cardH / Math.max(canvas.clientHeight, 1)) * radius * 2.4;
     controls.target.set(0, -lift, 0);
+    cells.position.set(0, -lift * 0.6, 0); // early stages sit where the fetus's centre does
     controls.minDistance = dist * 0.45;
     controls.maxDistance = dist * 1.8;
     scene.fog.density = 0.06 / radius;
@@ -479,6 +490,100 @@
     }, onError);
   }
 
+  // ---- weeks 1-5: procedural cell stages ----
+  const cells = new THREE.Group();
+  cells.visible = false;
+  scene.add(cells);
+  const MAXC = 420;
+  const cellMat = new THREE.MeshPhysicalMaterial({ color: 0xe6a592, roughness: 0.32, clearcoat: 0.4, clearcoatRoughness: 0.3, sheen: 0.6, sheenColor: new THREE.Color(0xffe0d6), transparent: true, opacity: 0.93 });
+  const cellMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 28, 20), cellMat, MAXC);
+  cellMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  cells.add(cellMesh);
+  const veil = (color, opacity) => new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), new THREE.MeshPhysicalMaterial({ color, roughness: 0.2, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide }));
+  const zona = veil(0xe8f2ef, 0.16);   // zona pellucida around egg / early divisions
+  const yolk = veil(0xe9c98a, 0.22);   // yolk sac (week 5)
+  const amnion = veil(0xdceeed, 0.1);  // amniotic cavity (week 5)
+  cells.add(zona, yolk, amnion);
+  const R = 0.075; // on-screen radius of the early stages (scene units)
+  const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpS = new THREE.Vector3(), tmpP = new THREE.Vector3();
+  function fib(n, i) { // even points on a unit sphere
+    const y = 1 - (2 * (i + 0.5)) / n, r = Math.sqrt(1 - y * y), a = i * 2.39996323;
+    return new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r);
+  }
+  function place(list) {
+    let i = 0;
+    for (const [p, rad, sx, sy, sz] of list) {
+      if (i >= MAXC) break;
+      tmpS.set(rad * (sx || 1), rad * (sy || 1), rad * (sz || 1));
+      tmpM.compose(p, tmpQ, tmpS);
+      cellMesh.setMatrixAt(i++, tmpM);
+    }
+    cellMesh.count = i;
+    cellMesh.instanceMatrix.needsUpdate = true;
+  }
+  const smooth = (a, b, x) => { const t = Math.min(Math.max((x - a) / (b - a), 0), 1); return t * t * (3 - 2 * t); };
+  function buildCells(w) {
+    const list = [];
+    zona.visible = yolk.visible = amnion.visible = false;
+    if (w < 3) {
+      // the egg: one large cell, zona, and a ring of corona cells
+      list.push([new THREE.Vector3(), R * 0.72]);
+      zona.visible = true; zona.scale.setScalar(R * 0.86);
+      for (let i = 0; i < 90; i++) list.push([fib(90, i).multiplyScalar(R * 1.02), R * 0.09]);
+    } else if (w < 4) {
+      // cleavage: 1 -> 2 -> 4 -> 8 -> 16 -> 32 over the week
+      const d = (w - 3) * 7;
+      const n = d < 1 ? 1 : d < 2 ? 2 : d < 3 ? 4 : d < 4 ? 8 : d < 5.2 ? 16 : 32;
+      zona.visible = true; zona.scale.setScalar(R * 0.92);
+      if (n === 1) list.push([new THREE.Vector3(), R * 0.72]);
+      else if (n === 2) { list.push([new THREE.Vector3(-R * 0.36, 0, 0), R * 0.5]); list.push([new THREE.Vector3(R * 0.36, 0, 0), R * 0.5]); }
+      else {
+        const rc = R * 0.88 * Math.pow(n, -1 / 3) * (n >= 16 ? 1.05 : 1.0);
+        const shell = n >= 16 ? R * 0.52 : R * 0.42;
+        for (let i = 0; i < n; i++) list.push([fib(n, i).multiplyScalar(shell), rc]);
+        if (n >= 16) for (let i = 0; i < Math.floor(n / 4); i++) list.push([fib(Math.floor(n / 4), i).multiplyScalar(shell * 0.35), rc]);
+      }
+    } else if (w < 5) {
+      // blastocyst: flat trophoblast cells on a hollow sphere, inner cell mass at one pole
+      const k = smooth(4, 5, w), Rb = R * (1.0 + 0.15 * k), n = 150;
+      for (let i = 0; i < n; i++) {
+        const p = fib(n, i);
+        tmpQ.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p);
+        list.push([p.clone().multiplyScalar(Rb), R * 0.11, 1.15, 0.45, 1.15]);
+      }
+      tmpQ.identity();
+      for (let i = 0; i < 26; i++) list.push([fib(26, i).multiplyScalar(R * 0.18).add(new THREE.Vector3(0, Rb * 0.72, 0)), R * 0.1]);
+      zona.visible = w < 4.3; zona.scale.setScalar(Rb * 1.12);
+      // oriented flat cells need per-instance rotation
+      let i = 0;
+      for (const [p, rad, sx, sy, sz] of list) {
+        const q = new THREE.Quaternion();
+        if (sy !== undefined) q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p.clone().normalize());
+        tmpS.set(rad * (sx || 1), rad * (sy || 1), rad * (sz || 1));
+        tmpM.compose(p, q, tmpS);
+        cellMesh.setMatrixAt(i++, tmpM);
+      }
+      cellMesh.count = i;
+      cellMesh.instanceMatrix.needsUpdate = true;
+      return;
+    } else {
+      // embryonic disc: three layers of cells between the amniotic cavity (above) and the yolk sac (below)
+      const k = smooth(5, 6, w), rx = R * (1.1 + 0.25 * k), rz = R * (0.8 + 0.15 * k);
+      const layerY = [R * 0.07, 0, -R * 0.07];
+      for (let L = 0; L < 3; L++) {
+        const step = R * 0.085;
+        for (let x = -rx; x <= rx; x += step) for (let z = -rz; z <= rz; z += step) {
+          if ((x * x) / (rx * rx) + (z * z) / (rz * rz) > 1) continue;
+          list.push([new THREE.Vector3(x, layerY[L], z), R * 0.052]);
+        }
+      }
+      yolk.visible = true; yolk.scale.set(rx * 0.7, R * 0.55, rz * 0.8); yolk.position.set(0, -R * 0.58, 0);
+      amnion.visible = true; amnion.scale.set(rx * 0.95, R * 0.32, rz * 0.98); amnion.position.set(0, R * 0.3, 0);
+    }
+    tmpQ.identity();
+    place(list);
+  }
+
   // ---- weeks: morph between neighbouring stage keys, scale to real size ----
   const range = document.getElementById("week-range");
   const wkEl = document.getElementById("wk"), triEl = document.getElementById("tri");
@@ -491,8 +596,36 @@
     const t = b === a ? 0 : Math.min(Math.max((w - a) / (b - a), 0), 1);
     return { a, b, t, v: f(WEEKS[a]) * (1 - t) + f(WEEKS[b]) * t };
   }
+  function setPhase(whole) {
+    for (const sp of document.getElementById("phases").children) {
+      sp.classList.toggle("on", whole >= Number(sp.dataset.from) && whole <= Number(sp.dataset.to));
+    }
+    for (const t of ticks.children) t.classList.toggle("live", Number(t.dataset.week) === whole);
+  }
   function setWeek(w) {
-    w = Math.min(Math.max(w, FIRST), LAST);
+    w = Math.min(Math.max(w, 1), LAST);
+    const whole = Math.min(Math.max(Math.floor(w + 0.5), 1), LAST);
+    if (w < FIRST - 0.5) {
+      pivot.visible = false;
+      const early = w < EARLY_LAST + 1;
+      cells.visible = early;
+      if (early) buildCells(w);
+      if (whole !== shownWeek) {
+        shownWeek = whole;
+        wkEl.firstChild.nodeValue = "الأسبوع " + ar(whole) + " ";
+        triEl.textContent = "الثلث الأول";
+        const e = EARLY[whole];
+        lenK.textContent = e ? e.label : "الطول";
+        lenEl.textContent = e ? e.size : "قيد البناء";
+        wtEl.textContent = e ? "أقل من ميليغرام" : "قيد البناء";
+        noteEl.textContent = e ? e.note : EMBRYO_NOTE;
+        setPhase(whole);
+      }
+      return;
+    }
+    pivot.visible = true;
+    cells.visible = false;
+    w = Math.max(w, FIRST);
     const m = lerpWeek(w, (d) => d.ch || d.len);
     if (body && body.morphTargetDictionary) {
       const dict = body.morphTargetDictionary, inf = body.morphTargetInfluences;
@@ -505,8 +638,9 @@
     // real size, softened so early weeks stay readable (the label carries the true value)
     const s = Math.pow(m.v / 30, 0.45);
     pivot.scale.setScalar(s);
-    const whole = Math.round(w);
-    if (whole !== shownWeek) {
+    const wholeF = Math.round(w);
+    if (wholeF !== shownWeek) {
+      const whole = wholeF;
       shownWeek = whole;
       wkEl.firstChild.nodeValue = "الأسبوع " + ar(whole) + " ";
       triEl.textContent = whole <= 13 ? "الثلث الأول" : whole <= 27 ? "الثلث الثاني" : "الثلث الثالث";
@@ -517,7 +651,7 @@
       wtEl.textContent = G.v >= 1000 ? "≈ " + ar(G.v / 1000, 1) + " كغ" : "≈ " + ar(Math.round(G.v / 5) * 5) + " غ";
       const near = KEY_WEEKS.reduce((p, k) => (Math.abs(k - whole) < Math.abs(p - whole) ? k : p), KEY_WEEKS[0]);
       noteEl.textContent = NOTES[near];
-      for (const t of ticks.children) t.classList.toggle("live", Number(t.dataset.week) === whole);
+      setPhase(whole);
     }
   }
   let anim = null;
@@ -541,7 +675,7 @@
   let downAt = null;
   canvas.addEventListener("pointerdown", (e) => { downAt = { x: e.clientX, y: e.clientY, t: performance.now() }; });
   canvas.addEventListener("pointerup", (e) => {
-    if (!downAt || !body) return;
+    if (!downAt || !body || !pivot.visible) return;
     const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
     const quick = performance.now() - downAt.t < 350;
     downAt = null;
@@ -585,6 +719,8 @@
     if (!reduceMotion) {
       const t = now / 1000;
       root.rotation.z = Math.sin(t * 0.35) * 0.04;
+      cells.rotation.y = t * 0.18;
+      cells.rotation.x = Math.sin(t * 0.21) * 0.25;
       root.rotation.x = Math.sin(t * 0.27 + 1.3) * 0.03;
       root.position.y = (root.userData.y0 ?? (root.userData.y0 = root.position.y)) + Math.sin(t * 0.5) * 0.004;
     }
