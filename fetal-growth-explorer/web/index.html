@@ -262,7 +262,7 @@
         </div>
       </div>
     </section>
-    <p class="credit">نموذج أولي · الأسابيع تُحسب من آخر دورة · ١–٥ مرحلة الخلايا · ٦–١١ قيد البناء · ١٢–٤٠ من قياسات النمو (Hadlock) · الشكل مبني على <a href="https://sketchfab.com/3d-models/baby-f05a87806cad49feb75ac7659d55c368" target="_blank" rel="noopener">“Baby” by joekarava</a> (CC BY 4.0)</p>
+    <p class="credit">نموذج أولي · الأسابيع تُحسب من آخر دورة · ١–٥ مرحلة الخلايا · ٦–١٠ المُضغة (مراحل كارنيغي، شكل مبسّط) · ١١–٤٠ من قياسات النمو (Hadlock) · الشكل مبني على <a href="https://sketchfab.com/3d-models/baby-f05a87806cad49feb75ac7659d55c368" target="_blank" rel="noopener">“Baby” by joekarava</a> (CC BY 4.0)</p>
   </footer>
 </div>
 
@@ -297,7 +297,14 @@
     4: { size: "≈ ٠٫٢ مم", label: "القطر", note: "الكرة تصير كيسة أريمية مجوّفة فيها كتلة خلايا داخلية، وتنغرس في جدار الرحم." },
     5: { size: "≈ ١٫٥ مم", label: "طول القرص الجنيني", note: "الكتلة الداخلية تصير قرصاً جنينياً من ثلاث طبقات تتكوّن منها أعضاء الجسم كلها، ويحيط به الكيس المحي والسلى." },
   };
-  const EMBRYO_NOTE = "مرحلة المُضغة: يبدأ القلب بالنبض، ويتكوّن الأنبوب العصبي وبراعم الأطراف وملامح الوجه. هذه المرحلة قيد البناء في النموذج.";
+  // embryonic period, gestational weeks 6-10 (Carnegie stages ~13-23); crown-rump length in mm
+  const EMBRYO = {
+    6: { crl: 4.5, note: "القلب يبدأ ينبض، والجسم مقوّس على شكل حرف C وله ذيل صغير، وتظهر براعم الذراعين ثم الساقين." },
+    7: { crl: 10, note: "الرأس يكبر بسرعة وتظهر بقعة العين، والذراعان تنتهيان بصفيحتين ستصيران الكفين." },
+    8: { crl: 16, note: "تظهر خطوط الأصابع والمرفقان، والذيل يقصر، وملامح الوجه تبدأ تتشكّل." },
+    9: { crl: 23, note: "الأصابع تنفصل، والذيل يختفي تقريباً، والجفون تغطي العينين." },
+    10: { crl: 31, note: "نهاية مرحلة المُضغة: الأعضاء الرئيسية كلها تكوّنت، وشكل الجسم صار بشرياً." },
+  };
   const ar = (n, d = 0) => Number(n).toLocaleString("ar-EG", { maximumFractionDigits: d, minimumFractionDigits: d });
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -305,7 +312,7 @@
   const ticks = document.getElementById("ticks");
   for (let w = 1; w <= 40; w++) {
     const b = document.createElement("button");
-    const live = (w >= FIRST && w <= LAST) || w <= EARLY_LAST;
+    const live = w >= 1 && w <= LAST;
     b.className = "tick" + (w % 4 === 0 ? " major" : "") + (live ? " avail" : "");
     b.type = "button";
     b.dataset.week = w;
@@ -331,7 +338,7 @@
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 0.95;
   renderer.physicallyCorrectLights = true;
 
   const scene = new THREE.Scene();
@@ -344,14 +351,14 @@
   controls.rotateSpeed = 0.6;
 
   // lighting: warm key from upper front-left, teal fill from the water, rim from behind
-  scene.add(new THREE.HemisphereLight(0xcfe6e3, 0x0b1e22, 0.9));
-  const key = new THREE.DirectionalLight(0xfff0e6, 3.6);
+  scene.add(new THREE.HemisphereLight(0xcfe6e3, 0x0b1e22, 0.55));
+  const key = new THREE.DirectionalLight(0xfff0e6, 2.1);
   key.position.set(-1.2, 1.6, 1.4);
   scene.add(key);
   const fill = new THREE.DirectionalLight(0x9cc9c6, 0.9);
   fill.position.set(1.5, -0.4, 1.0);
   scene.add(fill);
-  const rim = new THREE.DirectionalLight(0xffe2d2, 2.2);
+  const rim = new THREE.DirectionalLight(0xffe2d2, 1.3);
   rim.position.set(0.4, 0.8, -1.8);
   scene.add(rim);
 
@@ -470,7 +477,7 @@
     const cardH = document.querySelector("footer").getBoundingClientRect().height;
     const lift = (cardH / Math.max(canvas.clientHeight, 1)) * radius * 2.4;
     controls.target.set(0, -lift, 0);
-    cells.position.set(0, -lift * 0.6, 0); // early stages sit where the fetus's centre does
+    cells.position.set(0, 0, 0); // early stages sit where the fetus's centre does (the camera aims below it)
     controls.minDistance = dist * 0.45;
     controls.maxDistance = dist * 1.8;
     scene.fog.density = 0.06 / radius;
@@ -584,6 +591,86 @@
     place(list);
   }
 
+  // ---- weeks 6-10: procedural embryo (C-shaped body, tail, heart bulge, eye, limb buds) ----
+  const embryo = new THREE.Group();
+  embryo.visible = false;
+  scene.add(embryo);
+  const embMat = new THREE.MeshPhysicalMaterial({ color: 0xe3a08d, roughness: 0.38, clearcoat: 0.35, clearcoatRoughness: 0.35, sheen: 0.7, sheenColor: new THREE.Color(0xffd2c4), transparent: true, opacity: 0.94 });
+  const heartMat = new THREE.MeshPhysicalMaterial({ color: 0xc9564f, roughness: 0.4, clearcoat: 0.3, transparent: true, opacity: 0.85 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x2a1c1c, roughness: 0.5 });
+  let embBuiltAt = -1;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  function buildEmbryo(w) {
+    if (Math.abs(w - embBuiltAt) < 0.04) return;
+    embBuiltAt = w;
+    for (const c of embryo.children.slice()) { embryo.remove(c); if (c.geometry) c.geometry.dispose(); }
+    const t = Math.min(Math.max((w - 6) / 4, 0), 1);                 // 0 at 6 w, 1 at 10 w
+    const tailK = 1 - smooth(8, 9.6, w);                                // tail regresses by ~9 w
+    const A = THREE.MathUtils.degToRad(lerp(300, 205, t));              // the C unrolls as the head lifts
+    const phi0 = THREE.MathUtils.degToRad(lerp(150, 120, t));
+    const N = 90, M = 28;
+    const H = lerp(0.36, 0.62, t), B = lerp(0.30, 0.42, t);
+    const end = lerp(1.0, 0.86, 1 - tailK);                             // the body ends sooner once the tail is gone
+    const rho = (sN) => {
+      const g = (x, c, wd) => Math.exp(-(((x - c) / wd) ** 2));
+      const head = H * g(sN, 0.12, 0.15 + 0.05 * t), trunk = B * g(sN, 0.52, 0.32);
+      const tail = 0.07 * tailK * g(sN, 0.95, 0.12);
+      const taper = 1 - smooth(end - 0.06, end, sN);
+      return Math.max(Math.max(head, trunk, tail) * taper, 0.012);
+    };
+    const pos = [], idx = [];
+    const centre = new THREE.Vector3(0, 0, 0), Z = new THREE.Vector3(0, 0, 1);
+    const P = (sN) => new THREE.Vector3(Math.cos(phi0 - A * sN), Math.sin(phi0 - A * sN), 0);
+    for (let i = 0; i <= N; i++) {
+      const sN = (i / N) * end, p = P(sN), inward = centre.clone().sub(p).normalize(), r = rho(sN);
+      for (let j = 0; j < M; j++) {
+        const a = (j / M) * Math.PI * 2;
+        const v = p.clone().addScaledVector(inward, Math.cos(a) * r).addScaledVector(Z, Math.sin(a) * r * 0.92);
+        pos.push(v.x, v.y, v.z);
+      }
+    }
+    for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) {
+      const a = i * M + j, b = i * M + ((j + 1) % M), c = (i + 1) * M + j, d = (i + 1) * M + ((j + 1) % M);
+      idx.push(a, c, b, b, c, d);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    embryo.add(new THREE.Mesh(g, embMat));
+    const at = (sN, inwardOff, zOff) => {
+      const p = P(sN), inward = centre.clone().sub(p).normalize();
+      return p.addScaledVector(inward, inwardOff).addScaledVector(Z, zOff);
+    };
+    const ball = (mat, p, sx, sy, sz, q) => {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 20), mat);
+      m.position.copy(p); m.scale.set(sx, sy, sz); if (q) m.quaternion.copy(q);
+      embryo.add(m);
+      return m;
+    };
+    // heart prominence: large at 6-7 w, absorbed into the chest by 9 w
+    const hr = lerp(0.2, 0.06, t);
+    ball(heartMat, at(0.33, rho(0.33) * 0.75, 0), hr, hr * 1.1, hr);
+    // eye: pigment appears ~7 w
+    const eyeK = smooth(6.6, 7.6, w);
+    if (eyeK > 0) for (const side of [1, -1]) ball(eyeMat, at(0.1, H * 0.35, side * H * 0.82), 0.05 * eyeK, 0.05 * eyeK, 0.03);
+    // limb buds -> paddles -> limbs with hands/feet
+    const limb = (sN, len, side, lag) => {
+      const k = Math.min(Math.max((w - 6 - lag) / 4, 0), 1);
+      const L = lerp(0.1, len, k), base = at(sN, rho(sN) * 0.3, side * rho(sN) * 0.85);
+      const p = P(sN), inward = centre.clone().sub(p).normalize();
+      const dir = inward.clone().multiplyScalar(0.8).addScaledVector(Z, side * 0.35).add(new THREE.Vector3(0, -0.25, 0)).normalize();
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      ball(embMat, base.clone().addScaledVector(dir, L * 0.5), 0.07 + 0.03 * k, L * 0.55, 0.07 + 0.03 * k, q);
+      if (k > 0.25) ball(embMat, base.clone().addScaledVector(dir, L * 1.02), 0.1 * k, 0.07 * k, 0.03 + 0.04 * k, q); // hand/foot plate
+    };
+    for (const side of [1, -1]) { limb(0.36, 0.55, side, 0); limb(0.64, 0.5, side, 0.5); }
+    // size: true crown-rump length, softened like the fetus scale (4.5 mm .. 31 mm)
+    const crl = lerp(4.5, 31, Math.min(Math.max((w - 6) / 4, 0), 1) ** 1.3);
+    embryo.scale.setScalar(0.042 * Math.pow(crl / 4.5, 0.28)); // ~ the week-11 fetus's on-screen size by 10 w
+    embryo.position.copy(cells.position);
+  }
+
   // ---- weeks: morph between neighbouring stage keys, scale to real size ----
   const range = document.getElementById("week-range");
   const wkEl = document.getElementById("wk"), triEl = document.getElementById("tri");
@@ -605,26 +692,33 @@
   function setWeek(w) {
     w = Math.min(Math.max(w, 1), LAST);
     const whole = Math.min(Math.max(Math.floor(w + 0.5), 1), LAST);
-    if (w < FIRST - 0.5) {
+    if (w < 10.5) {
       pivot.visible = false;
-      const early = w < EARLY_LAST + 1;
+      const early = w < EARLY_LAST + 0.5;
       cells.visible = early;
-      if (early) buildCells(w);
+      embryo.visible = !early;
+      if (early) buildCells(w); else buildEmbryo(w);
       if (whole !== shownWeek) {
         shownWeek = whole;
         wkEl.firstChild.nodeValue = "الأسبوع " + ar(whole) + " ";
         triEl.textContent = "الثلث الأول";
-        const e = EARLY[whole];
-        lenK.textContent = e ? e.label : "الطول";
-        lenEl.textContent = e ? e.size : "قيد البناء";
-        wtEl.textContent = e ? "أقل من ميليغرام" : "قيد البناء";
-        noteEl.textContent = e ? e.note : EMBRYO_NOTE;
+        const e = EARLY[whole], em = EMBRYO[whole];
+        if (e) {
+          lenK.textContent = e.label; lenEl.textContent = e.size; wtEl.textContent = "أقل من ميليغرام"; noteEl.textContent = e.note;
+        } else if (em) {
+          lenK.textContent = "الطول (الرأس–المقعدة)";
+          lenEl.textContent = "≈ " + ar(em.crl, em.crl < 10 ? 1 : 0) + " مم";
+          wtEl.textContent = whole < 9 ? "أقل من غرام" : "≈ " + ar(whole === 9 ? 2 : 4) + " غ";
+          noteEl.textContent = em.note;
+        }
         setPhase(whole);
       }
       return;
     }
     pivot.visible = true;
     cells.visible = false;
+    embryo.visible = false;
+    const pre = Math.min(Math.max((w - 10.5) / 1.5, 0), 1); // week 11 grows into the week-12 shape
     w = Math.max(w, FIRST);
     const m = lerpWeek(w, (d) => d.ch || d.len);
     if (body && body.morphTargetDictionary) {
@@ -636,9 +730,9 @@
       }
     }
     // real size, softened so early weeks stay readable (the label carries the true value)
-    const s = Math.pow(m.v / 30, 0.45);
+    const s = Math.pow(m.v / 30, 0.45) * (0.8 + 0.2 * pre);
     pivot.scale.setScalar(s);
-    const wholeF = Math.round(w);
+    const wholeF = pre < 1 ? Math.max(11, whole) : Math.round(w);
     if (wholeF !== shownWeek) {
       const whole = wholeF;
       shownWeek = whole;
@@ -647,8 +741,8 @@
       const L = lerpWeek(whole, (d) => d.len), G = lerpWeek(whole, (d) => d.g);
       const crl = whole < 14;
       lenK.textContent = crl ? "الطول (الرأس–المقعدة)" : "الطول (الرأس–الكعب)";
-      lenEl.textContent = "≈ " + ar(crl ? 5.4 + (whole - 12) * 2.0 : L.v, L.v < 20 ? 1 : 0) + " سم";
-      wtEl.textContent = G.v >= 1000 ? "≈ " + ar(G.v / 1000, 1) + " كغ" : "≈ " + ar(Math.round(G.v / 5) * 5) + " غ";
+      lenEl.textContent = "≈ " + ar(crl ? (whole === 11 ? 4.1 : 5.4 + (whole - 12) * 2.0) : L.v, L.v < 20 ? 1 : 0) + " سم";
+      wtEl.textContent = whole === 11 ? "≈ ٧ غ" : G.v >= 1000 ? "≈ " + ar(G.v / 1000, 1) + " كغ" : "≈ " + ar(Math.round(G.v / 5) * 5) + " غ";
       const near = KEY_WEEKS.reduce((p, k) => (Math.abs(k - whole) < Math.abs(p - whole) ? k : p), KEY_WEEKS[0]);
       noteEl.textContent = NOTES[near];
       setPhase(whole);
@@ -721,6 +815,8 @@
       root.rotation.z = Math.sin(t * 0.35) * 0.04;
       cells.rotation.y = t * 0.18;
       cells.rotation.x = Math.sin(t * 0.21) * 0.25;
+      embryo.rotation.y = Math.sin(t * 0.3) * 0.35;
+      embryo.rotation.z = Math.sin(t * 0.23) * 0.06;
       root.rotation.x = Math.sin(t * 0.27 + 1.3) * 0.03;
       root.position.y = (root.userData.y0 ?? (root.userData.y0 = root.position.y)) + Math.sin(t * 0.5) * 0.004;
     }
